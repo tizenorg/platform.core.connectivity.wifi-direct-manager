@@ -1,0 +1,8 @@
+wifi-direct-manager (0.4.0) precise; urgency=low
+
+  * Initial Update
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.4.0
+
+ -- Gibyoung Kim <lastkgb.kim@samsung.com>  Fri, 23 Nov 2012 21:35:21 +0900
+
