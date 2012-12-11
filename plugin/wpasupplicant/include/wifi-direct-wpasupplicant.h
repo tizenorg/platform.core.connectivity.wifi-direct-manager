@@ -14,6 +14,7 @@
 //#define DEFAULT_CONNECT_TMO_SECS 60
 //#define DISCOVERY_MAX_PEERS 64
 #define DEFAULT_IP_LOG_PATH "/tmp/udhcpc_log"
+#define PERSISTENT_PEER_PATH "/opt/etc/persistent-peer"
 #define DEFAULT_SERVER_IP "192.168.16.1"
 #define FREQUENCY_2G "freq=2"
 #define MAX_PEER_NUM 10
@@ -62,6 +63,7 @@ typedef void (*wfd_noti_cb) (int event_type);
 #define CMD_SEND_INVITE_REQ "P2P_INVITE"
 #define CMD_CREATE_GROUP "P2P_GROUP_ADD"
 #define CMD_CONNECT "P2P_CONNECT"
+#define CMD_DISPLAY_STRING "display"
 #define CMD_WPS_PUSHBUTTON_START "WPS_PBC"
 #define CMD_GET_PEER_INFO "P2P_PEER"
 #define CMD_SET_PARAM "SET"
@@ -219,6 +221,7 @@ typedef enum {
 	WS_EVENT_PROVISION_DISCOVERY_KEYPAD,
 
 	WS_EVENT_GROUP_STARTED,
+	WS_EVENT_PERSISTENT_GROUP_STARTED,
 	WS_EVENT_GROUP_REMOVED,
 
 	WS_EVENT_CONNECTED,
@@ -231,6 +234,7 @@ typedef enum {
 	WS_EVENT_INVITATION_RSP,
 
 	WS_EVENT_TERMINATING,
+	WS_EVENT_GO_NEG_REQUEST,
 
 } ws_event_id_e;
 
@@ -267,6 +271,7 @@ ws_event_id_s g_ws_event_info[] =
 	
 
 	{"CTRL-EVENT-TERMINATING", WS_EVENT_TERMINATING},
+	{"P2P-GO-NEG-REQUEST", WS_EVENT_GO_NEG_REQUEST},
 
 	{"", WS_EVENT_NONE}
 };
@@ -277,6 +282,7 @@ typedef struct
 	char peer_mac_address[18];
 	char peer_intf_mac_address[18];
 	char peer_ssid[32];
+	char wps_pin[9];
 } ws_event_s;
 
 typedef struct
@@ -348,6 +354,8 @@ bool wfd_ws_flush();
 int wfd_ws_dsp_init(void);
 int wfd_ws_get_persistent_group_info(wfd_persistent_group_info_s ** persistent_group_list, int* persistent_group_num);
 int wfd_ws_remove_persistent_group(wfd_persistent_group_info_s *persistent_group);
+int wfd_ws_set_persistent_reconnect(bool enabled);
+int wfd_ws_connect_for_persistent_group(unsigned char mac_addr[6], wifi_direct_wps_type_e wps_config);
 
 #endif /** __WFD_WPA_SUPPLICANT_H_ */
 

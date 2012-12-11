@@ -524,3 +524,26 @@ int wfd_oem_remove_persistent_group(wfd_persistent_group_info_s *persistent_grou
 	return (g_ops->wfd_oem_remove_persistent_group(persistent_group));
 
 }
+
+int wfd_oem_set_persistent_group_enabled(bool enabled)
+{
+	if (NULL == g_ops->wfd_oem_set_persistent_group_enabled)
+	{
+		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_set_persistent_group_enabled is NULL!!\n");
+		return false;
+	}
+
+	return (g_ops->wfd_oem_set_persistent_group_enabled(enabled));
+}
+
+int wfd_oem_connect_for_persistent_group(unsigned char mac_addr[6], wifi_direct_wps_type_e	wps_config)
+{
+	if (NULL == g_ops->wfd_oem_connect_for_persistent_group)
+	{
+		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_connect_for_persistent_group is NULL!!\n");
+		return false;
+	}
+
+	return (g_ops->wfd_oem_connect_for_persistent_group(mac_addr, wps_config));
+}
+

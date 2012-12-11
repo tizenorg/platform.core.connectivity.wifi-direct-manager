@@ -166,7 +166,7 @@ int wfd_check_wifi_direct_state()
 }
 
 
-int wfd_get_device_name(char* str, int len)
+int wfd_get_phone_device_name(char* str, int len)
 {
 	char* get_str = NULL;
 	if (str==NULL || len <=0)
@@ -188,18 +188,18 @@ int wfd_get_device_name(char* str, int len)
 }
 
 
-void wfd_set_device_name_to_ssid()
+void wfd_set_device_name()
 {
 	wfd_server_control_t * wfd_server = wfd_server_get_control();
-	char device_name[WIFI_DIRECT_MAX_SSID_LEN + 1];
+	char device_name[WIFI_DIRECT_MAX_DEVICE_NAME_LEN + 1];
 	wifi_direct_state_e state = wfd_server_get_state();
 
-	if (wfd_get_device_name(device_name, WIFI_DIRECT_MAX_SSID_LEN) != -1)
+	if (wfd_get_phone_device_name(device_name, WIFI_DIRECT_MAX_DEVICE_NAME_LEN) != -1)
 	{
-		strncpy(wfd_server->config_data.ssid, device_name, WIFI_DIRECT_MAX_SSID_LEN);
+		strncpy(wfd_server->config_data.device_name, device_name, WIFI_DIRECT_MAX_DEVICE_NAME_LEN);
 		wfd_oem_set_ssid(device_name);
 
-		// In WIFI_DIRECT_STATE_ACTIVATED  state, devie name will be applied to ssid immediately.
+		// In WIFI_DIRECT_STATE_ACTIVATED  state, devie name will be applied immediately.
 		// In other sate, it will be set in next discovery start.
 		if (state == WIFI_DIRECT_STATE_ACTIVATED)
 		{
@@ -213,12 +213,12 @@ void wfd_set_device_name_to_ssid()
 void __wfd_device_name_change_cb(keynode_t *key, void* data)
 {
 	WFD_SERVER_LOG(WFD_LOG_LOW, "device name has been changed. change ssid (friendly name)..\n");
-	wfd_set_device_name_to_ssid();
+	wfd_set_device_name();
 }
 
-int wfd_set_device_name_as_ssid()
+int wfd_set_device_name_from_phone_name()
 {
-	wfd_set_device_name_to_ssid();
+	wfd_set_device_name();
 	vconf_notify_key_changed(VCONFKEY_SETAPPL_DEVICE_NAME_STR, __wfd_device_name_change_cb, NULL);
 }
 
@@ -232,7 +232,7 @@ void __wfd_server_print_entry_list(wfd_discovery_entry_s * list, int num)
 		WFD_SERVER_LOG( WFD_LOG_LOW, "== Peer index : %d ==\n", i);
 		WFD_SERVER_LOG( WFD_LOG_LOW, "is Group Owner ? %s\n", list[i].is_group_owner ? "YES" : "NO");
 		WFD_SERVER_LOG( WFD_LOG_LOW, "is Connected ? %s\n", list[i].is_connected ? "YES" : "NO");
-		WFD_SERVER_LOG( WFD_LOG_LOW, "SSID : %s\n", list[i].ssid);
+		WFD_SERVER_LOG( WFD_LOG_LOW, "device_name : %s\n", list[i].device_name);
 		WFD_SERVER_LOG( WFD_LOG_LOW, "MAC address : " MACSTR "\n", MAC2STR(list[i].mac_address));
 		WFD_SERVER_LOG( WFD_LOG_LOW, "Device type [%d/%d] ==\n", list[i].category, list[i].subcategory);
 		WFD_SERVER_LOG( WFD_LOG_LOW, "wps cfg method [%d] ==\n", list[i].wps_cfg_methods);
@@ -248,9 +248,9 @@ void __wfd_server_print_connected_peer_info(wfd_connected_peer_info_s* list, int
 	WFD_SERVER_LOG( WFD_LOG_LOW, "------------------------------------------\n");
 	for(i = 0; i < num; i++)
 	{
-		WFD_SERVER_LOG(WFD_LOG_LOW, "CONN[%d] ssid=[%s]\n", 
+		WFD_SERVER_LOG(WFD_LOG_LOW, "CONN[%d] device_name=[%s]\n", 
 				i,
-				list[i].ssid);
+				list[i].device_name);
 		WFD_SERVER_LOG(WFD_LOG_LOW, "         cat=[%d] svc=[%d] isp2p=[%d] channel=[%d]\n",
 				list[i].category,
 				list[i].services,
@@ -387,7 +387,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 			wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s));
 			return;
 		}
-		else	if (wfd_check_mobile_ap_status() == 0)
+		else if (wfd_check_mobile_ap_status() == 0)
 		{
 			resp.result =WIFI_DIRECT_ERROR_MOBILE_AP_USED;
 			wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s));
@@ -431,7 +431,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 			}
 			else
 			{
-				wfd_set_device_name_to_ssid();
+				wfd_set_device_name();
 				wfd_oem_set_device_type(wfd_server->config_data.primary_dev_type,
 						wfd_server->config_data.secondary_dev_type);
 				wfd_oem_set_go_intent(7);
@@ -614,7 +614,6 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		}
 		else
 		{
-			int is_groupowner = false;
 			resp.result = WIFI_DIRECT_ERROR_NONE;
 			wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s));
 
@@ -622,25 +621,34 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 
 			wfd_server_remember_connecting_peer(client_req->data.mac_addr);
 
-			is_groupowner = wfd_oem_is_groupowner();
-			if (is_groupowner==true)
+			wps_config = wfd_server->config_data.wps_config;
+			WFD_SERVER_LOG( WFD_LOG_HIGH, "wps_config : %d\n", wps_config);
+
+			if (wfd_server->config_data.want_persistent_group == true)
 			{
-				ret = wfd_oem_send_invite_request(client_req->data.mac_addr);
-				WFD_SERVER_LOG(WFD_LOG_ASSERT, "Invite request: ret = %d\n", ret);
+				/* skip prov_disco_req() in persistent mode. reinvoke stored persistent group or create new persistent group */
+				ret = wfd_oem_connect_for_persistent_group(client_req->data.mac_addr, wps_config);
+				WFD_SERVER_LOG(WFD_LOG_HIGH, "wfd_oem_connect_for_persistent_group: ret = %d\n", ret);
 			}
 			else
 			{
-				wps_config = wfd_server->config_data.wps_config;
-				WFD_SERVER_LOG( WFD_LOG_ASSERT, "wps_config : %d\n", wps_config);
-
-				ret = wfd_oem_send_provision_discovery_request(client_req->data.mac_addr, wps_config, wfd_server->current_peer.is_group_owner);
-				WFD_SERVER_LOG(WFD_LOG_ASSERT, "ProvisionDiscovery request: ret = %d\n", ret);
+				if (wfd_oem_is_groupowner() == true)
+				{
+					ret = wfd_oem_send_invite_request(client_req->data.mac_addr);
+					WFD_SERVER_LOG(WFD_LOG_HIGH, "Invite request: ret = %d\n", ret);
+				}
+				else
+				{
+					ret = wfd_oem_send_provision_discovery_request(client_req->data.mac_addr, wps_config, wfd_server->current_peer.is_group_owner);
+					WFD_SERVER_LOG(WFD_LOG_HIGH, "ProvisionDiscovery request: ret = %d\n", ret);
+				}
 			}
 
 			if (ret == true)
 			{
-				wfd_oem_wps_pbc_start();
-			
+				if (wfd_server->config_data.want_persistent_group == false)
+					wfd_oem_wps_pbc_start();
+
 				snprintf(noti.param1, sizeof(noti.param1), MACSTR, MAC2STR(client_req->data.mac_addr));
 
 				noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_START;
@@ -648,7 +656,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 			}
 			else
 			{
-				if (is_groupowner == true)
+				if (wfd_oem_is_groupowner() == true)
 				{
 					wfd_server_set_state(WIFI_DIRECT_STATE_GROUP_OWNER);
 				}
@@ -784,7 +792,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 	case WIFI_DIRECT_CMD_GET_LINK_STATUS:
 	{
 		int status = wfd_server_get_state();
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "Link Status [%s]\n", wfd_print_state(status));
+		WFD_SERVER_LOG( WFD_LOG_LOW, "Link Status [%s]\n", wfd_print_state(status));
 		resp.param1 = status;
 		resp.result = WIFI_DIRECT_ERROR_NONE;
 		wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s));
@@ -903,7 +911,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 	case WIFI_DIRECT_CMD_CREATE_GROUP:
 	{
 		wfd_server_set_state(WIFI_DIRECT_STATE_CONNECTING);
-		ret = wfd_oem_create_group(wfd_server->config_data.ssid);
+		ret = wfd_oem_create_group(wfd_server->config_data.device_name);
 		if (ret==false)
 		{
 			wfd_server_set_state(WIFI_DIRECT_STATE_ACTIVATED);
@@ -956,27 +964,67 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		char ssid[32+1];
 
 		wifi_direct_state_e state = wfd_server_get_state();
-		
-		if (state < WIFI_DIRECT_STATE_CONNECTED)	/* Non-member state */ 
+
+		if (wfd_oem_get_ssid(ssid, 32)==false)
 		{
-			strncpy(ssid, wfd_server->config_data.ssid, WIFI_DIRECT_MAX_SSID_LEN);
+			resp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+		}
+		else
+		{
 			sprintf(resp.param2, ssid);
 			resp.result = WIFI_DIRECT_ERROR_NONE;
 		}
-		else	/* GO or GC state */ 
-		{
-			if (wfd_oem_get_ssid(ssid, 32)==false)
-			{
-				resp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			}
-			else
-			{
-				sprintf(resp.param2, ssid);
-				resp.result = WIFI_DIRECT_ERROR_NONE;
-			}
 
+		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
+		{
+			wfd_server_reset_client(client->sync_sockfd);
+			__WFD_SERVER_FUNC_EXIT__;
+			return;
 		}
-		
+	}
+	break;
+
+	case WIFI_DIRECT_CMD_GET_DEVICE_NAME:
+	{
+		char device_name[WIFI_DIRECT_MAX_DEVICE_NAME_LEN+1];
+
+		strncpy(device_name, wfd_server->config_data.device_name, WIFI_DIRECT_MAX_DEVICE_NAME_LEN);
+		sprintf(resp.param2, device_name);
+		resp.result = WIFI_DIRECT_ERROR_NONE;
+
+		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
+		{
+			wfd_server_reset_client(client->sync_sockfd);
+			__WFD_SERVER_FUNC_EXIT__;
+			return;
+		}
+	}
+	break;
+
+	case WIFI_DIRECT_CMD_SET_DEVICE_NAME:
+	{
+		char	device_name[WIFI_DIRECT_MAX_DEVICE_NAME_LEN+1] = {0,};
+
+		if(wfd_server_read_socket_event(client->sync_sockfd, (char*)device_name, WIFI_DIRECT_MAX_DEVICE_NAME_LEN) < 0)
+		{
+			wfd_server_reset_client(client->sync_sockfd);
+			__WFD_SERVER_FUNC_EXIT__;
+			return;
+		}
+		if ( NULL != device_name )
+			WFD_SERVER_LOG( WFD_LOG_HIGH, "device_name = [%s]\n", device_name);
+		else
+			WFD_SERVER_LOG( WFD_LOG_ASSERT, "device_name is NULL !!\n");
+
+		memset(wfd_server->config_data.device_name, 0, WIFI_DIRECT_MAX_DEVICE_NAME_LEN+1);
+		strncpy(wfd_server->config_data.device_name, device_name, WIFI_DIRECT_MAX_DEVICE_NAME_LEN);
+		ret = wfd_oem_set_ssid(device_name);
+
+		if (ret == TRUE)
+			resp.result = WIFI_DIRECT_ERROR_NONE;
+		else
+			resp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
@@ -1098,14 +1146,10 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		ret = wfd_oem_set_ssid(ssid);
 
 		if (ret == TRUE)
-		{
-			strncpy(wfd_server->config_data.ssid, ssid, WIFI_DIRECT_MAX_SSID_LEN);
 			resp.result = WIFI_DIRECT_ERROR_NONE;
-		}
-
 		else
 			resp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-		
+
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
@@ -1222,7 +1266,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 				else
 				{
 					memset(&plist_buf, 0, sizeof(plist_buf));
-					strncpy(plist_buf.ssid, tmplist->peer.ssid, sizeof(plist_buf.ssid));
+					strncpy(plist_buf.device_name, tmplist->peer.device_name, sizeof(plist_buf.device_name));
 					memcpy(&plist_buf.intf_mac_address[0], &tmplist->int_address[0], 6);
 					memcpy(&plist_buf.mac_address[0], &tmplist->peer.mac_address[0], 6);
 					plist_buf.services = tmplist->peer.services;
@@ -1608,6 +1652,15 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 	case WIFI_DIRECT_CMD_ACTIVATE_PERSISTENT_GROUP:
 	{
 		wfd_server->config_data.want_persistent_group = true;
+		ret = wfd_oem_set_persistent_group_enabled(true);
+		if (ret == false)
+		{
+			WFD_SERVER_LOG( WFD_LOG_ERROR, "Error!! wfd_oem_set_persistent_group_enabled() failed..\n");
+			resp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+			wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s));
+			__WFD_SERVER_FUNC_EXIT__;
+			return;
+		}
 
 		resp.result = WIFI_DIRECT_ERROR_NONE;
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
@@ -1622,6 +1675,15 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 	case WIFI_DIRECT_CMD_DEACTIVATE_PERSISTENT_GROUP:
 	{
 		wfd_server->config_data.want_persistent_group = false;
+		ret = wfd_oem_set_persistent_group_enabled(false);
+		if (ret == false)
+		{
+			WFD_SERVER_LOG( WFD_LOG_ERROR, "Error!! wfd_oem_set_persistent_group_enabled() failed..\n");
+			resp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+			wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s));
+			__WFD_SERVER_FUNC_EXIT__;
+			return;
+		}
 
 		resp.result = WIFI_DIRECT_ERROR_NONE;
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)

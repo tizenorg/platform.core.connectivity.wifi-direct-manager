@@ -72,6 +72,8 @@ static struct wfd_oem_operations supplicant_ops =
 	.wfd_oem_get_operating_channel = wfd_ws_get_operating_channel,
 	.wfd_oem_get_persistent_group_info = wfd_ws_get_persistent_group_info,
 	.wfd_oem_remove_persistent_group = wfd_ws_remove_persistent_group,
+	.wfd_oem_set_persistent_group_enabled = wfd_ws_set_persistent_reconnect,
+	.wfd_oem_connect_for_persistent_group = wfd_ws_connect_for_persistent_group,
 };
 
 
@@ -345,6 +347,18 @@ int wfd_ws_get_persistent_group_info(wfd_persistent_group_info_s ** persistent_g
 }
 
 int wfd_ws_remove_persistent_group(wfd_persistent_group_info_s *persistent_group)
+{
+	__WFD_SERVER_FUNC_ENTER__;
+	return false;
+}
+
+int wfd_ws_set_persistent_reconnect(bool enabled)
+{
+	__WFD_SERVER_FUNC_ENTER__;
+	return false;
+}
+
+int wfd_ws_connect_for_persistent_group(unsigned char mac_addr[6], wifi_direct_wps_type_e wps_config)
 {
 	__WFD_SERVER_FUNC_ENTER__;
 	return false;

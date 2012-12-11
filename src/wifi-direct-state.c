@@ -132,6 +132,15 @@ int wfd_server_check_valid(wifi_direct_cmd_e cmd)
 		}
 		break;
 
+	case WIFI_DIRECT_CMD_GET_SSID:
+		{
+			if (state < WIFI_DIRECT_STATE_CONNECTED)
+				valid = false;
+			else
+				valid = true;
+		}
+		break;
+
 	default:
 		valid = true;
 		break;
@@ -142,22 +151,23 @@ int wfd_server_check_valid(wifi_direct_cmd_e cmd)
 	return valid;
 }
 
-
+#if 0
 void start_wifi_direct_service()
 {
 	__WFD_SERVER_FUNC_ENTER__;
 
-	//system("launch_app com.samsung.fileshare-service");
+	//system("launch_app org.tizen.fileshare-service");
 	service_h service;
 	service_create(&service);
 	service_set_operation(service, SERVICE_OPERATION_DEFAULT);
-	service_set_package(service, "com.samsung.fileshare-service");
+	service_set_package(service, "org.tizen.fileshare-service");
 	service_send_launch_request(service, NULL, NULL);
 	service_destroy(service);
 
 	__WFD_SERVER_FUNC_EXIT__;
 	
 }
+#endif
 
 void stop_wifi_direct_service()
 {
@@ -169,11 +179,11 @@ void start_wifi_direct_ui_appl()
 {
 	__WFD_SERVER_FUNC_ENTER__;
 
-	//system("launch_app com.samsung.wifi-direct-popup");
+	//system("launch_app org.tizen.wifi-direct-popup");
 	service_h service;
 	service_create(&service);
 	service_set_operation(service, SERVICE_OPERATION_DEFAULT);
-	service_set_package(service, "com.samsung.wifi-direct-popup");
+	service_set_package(service, "org.tizen.wifi-direct-popup");
 	service_send_launch_request(service, NULL, NULL);
 	service_destroy(service);
 
@@ -217,13 +227,13 @@ void wfd_server_set_state(int state)
 		// start timer for connection
 		wfd_timer_connection_start();
 	}
-
+#if 0
 	if (wfd_server->state < WIFI_DIRECT_STATE_CONNECTED &&
 		state >= WIFI_DIRECT_STATE_CONNECTED)
 	{
 		start_wifi_direct_service();
 	}
-
+#endif
 	if (wfd_server->state == WIFI_DIRECT_STATE_CONNECTING &&
 		state != WIFI_DIRECT_STATE_CONNECTING)
 	{

@@ -276,16 +276,17 @@ void wfd_load_plugin()
 		WFD_SERVER_LOG( WFD_LOG_LOW, "Node name of this device [%s]\n", kernel_info.nodename);
 		WFD_SERVER_LOG( WFD_LOG_LOW, "HW ID of this device [%s]\n", kernel_info.machine);
 
-		
+#if 0
 		if((strcmp(kernel_info.nodename, "U1SLP") == 0)
 			|| (strcmp(kernel_info.nodename, "U1HD") == 0) 
 			/*|| (strcmp(kernel_info.nodename, "TRATS") == 0)*/)
 			filename = "/usr/lib/wifi-direct-plugin-broadcom.so";		
 		else
 			filename = "/usr/lib/wifi-direct-plugin-wpasupplicant.so";
+#endif
 	}
 
-	handle = dlopen(filename, RTLD_NOW);
+	handle = dlopen("/usr/lib/wifi-direct-plugin-wpasupplicant.so", RTLD_NOW);
 	if (!handle) {
 		WFD_SERVER_LOG( WFD_LOG_ASSERT, "Error for dlopen\n");
 		fputs(dlerror(), stderr);
@@ -359,7 +360,7 @@ static int wfd_server_init(void)
 
 	wfd_oem_init(wfd_server_process_event);
 
-	wfd_set_device_name_as_ssid();
+	wfd_set_device_name_from_phone_name();
 
 	wfd_set_DHCP_event_handler();
 

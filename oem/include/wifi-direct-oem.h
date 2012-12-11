@@ -69,6 +69,8 @@ int wfd_oem_get_requestor_mac(unsigned char mac_addr[6]);
 int wfd_oem_get_operating_channel(void);
 int wfd_oem_get_persistent_group_info(wfd_persistent_group_info_s ** persistent_group_list, int* persistent_group_num);
 int wfd_oem_remove_persistent_group(wfd_persistent_group_info_s * persistent_group);
+int wfd_oem_set_persistent_group_enabled(bool enabled);
+int wfd_oem_connect_for_persistent_group(unsigned char mac_addr[6], wifi_direct_wps_type_e wps_config);
 
 struct wfd_oem_operations {
 	int (*wfd_oem_init)(wfd_oem_event_cb event_callback);
@@ -114,7 +116,8 @@ struct wfd_oem_operations {
 	int (*wfd_oem_get_operating_channel)(void);
 	int (*wfd_oem_get_persistent_group_info)(wfd_persistent_group_info_s ** persistent_group_list, int* persistent_group_num);
 	int (*wfd_oem_remove_persistent_group)(wfd_persistent_group_info_s * persistent_group);
-	
+	int (*wfd_oem_set_persistent_group_enabled)(bool enabled);
+	int (*wfd_oem_connect_for_persistent_group)(unsigned char mac_addr[6], wifi_direct_wps_type_e wps_config);
 };
 
 extern unsigned char g_incomming_peer_mac_address[6];
