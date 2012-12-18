@@ -118,7 +118,7 @@ static int __issue_ioctl(int sock_fd, char *if_name, char *cmd, char *buf)
 	/* Issue ioctl */
 	if ((ioctl(sock_fd, SIOCSIWPRIV, &iwr)) < 0)
 	{
-		WFD_SERVER_LOG(WFD_LOG_ASSERT, "ioctl failed...!!!\n");
+		WDS_LOGF( "ioctl failed...!!!\n");
 		ret_val = RET_FAILURE;
 	}
 
@@ -136,11 +136,11 @@ int _wfd_core_set_ip_address(const char *if_name, const char *ip_address)
 	struct sockaddr_in addr;
 	int sock_fd;
 
-	WFD_SERVER_LOG(WFD_LOG_LOW, "if_name : %s ip address :%s\n", if_name, ip_address);
+	WDS_LOGD( "if_name : %s ip address :%s\n", if_name, ip_address);
 
 	if ((sock_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
 	{
-		WFD_SERVER_LOG(WFD_LOG_ASSERT, "socket open failed!!!\n");
+		WDS_LOGF( "socket open failed!!!\n");
 		return WIFI_DIRECT_ERROR_RESOURCE_BUSY;
 	}
 
@@ -154,14 +154,14 @@ int _wfd_core_set_ip_address(const char *if_name, const char *ip_address)
 	memcpy(&ifr.ifr_addr, &addr, sizeof(struct sockaddr));
 	if (ioctl(sock_fd, SIOCSIFADDR, &ifr) < 0)
 	{
-		WFD_SERVER_LOG(WFD_LOG_ASSERT, "ioctl failed...!!!\n");
+		WDS_LOGF( "ioctl failed...!!!\n");
 		close(sock_fd);
 		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
 	}
 
 	if (ioctl(sock_fd, SIOCGIFFLAGS, &ifr) < 0)
 	{
-		WFD_SERVER_LOG(WFD_LOG_ASSERT, "ioctl failed...!!!\n");
+		WDS_LOGF( "ioctl failed...!!!\n");
 		close(sock_fd);
 		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
 	}
@@ -169,7 +169,7 @@ int _wfd_core_set_ip_address(const char *if_name, const char *ip_address)
 	ifr.ifr_flags |= IFF_UP | IFF_RUNNING;
 	if (ioctl(sock_fd, SIOCSIFFLAGS, &ifr) < 0)
 	{
-		WFD_SERVER_LOG(WFD_LOG_ASSERT, "ioctl failed...!!!\n");
+		WDS_LOGF( "ioctl failed...!!!\n");
 		close(sock_fd);
 		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
 	}
@@ -192,11 +192,11 @@ int _mh_core_get_device_info(softap_device_info_t * di)
 	unsigned int sta_count = 0;
 	int i;
 
-	WFD_SERVER_LOG(WFD_LOG_ASSERT, "+\n");
+	WDS_LOGF( "+\n");
 
 	if ((sock_fd = socket(PF_INET, SOCK_DGRAM, 0)) < 0)
 	{
-		WFD_SERVER_LOG(WFD_LOG_ASSERT, "Failed to open socket...!!!\n");
+		WDS_LOGF( "Failed to open socket...!!!\n");
 		di->number = 0;
 		return WIFI_DIRECT_ERROR_RESOURCE_BUSY;
 	}
@@ -205,7 +205,7 @@ int _mh_core_get_device_info(softap_device_info_t * di)
 	ret_status = __issue_ioctl(sock_fd, if_name, cmd, buf);
 	if (ret_status < 0)
 	{
-		WFD_SERVER_LOG(WFD_LOG_ASSERT, "__issue_ioctl failed...!!!\n");
+		WDS_LOGF( "__issue_ioctl failed...!!!\n");
 		di->number = 0;
 		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
 	}
@@ -214,7 +214,7 @@ int _mh_core_get_device_info(softap_device_info_t * di)
 
 	sscanf(buf_ptr, "%02x", &sta_count);
 	buf_ptr += 2;
-	WFD_SERVER_LOG(WFD_LOG_ASSERT, "connected station : %d\n", sta_count);
+	WDS_LOGF( "connected station : %d\n", sta_count);
 
 	di->number = sta_count;
 
@@ -228,7 +228,7 @@ int _mh_core_get_device_info(softap_device_info_t * di)
 				 l_bssid[0], l_bssid[1], l_bssid[2],
 				 l_bssid[3], l_bssid[4], l_bssid[5]);
 
-		WFD_SERVER_LOG(WFD_LOG_ASSERT, "STA[%d] address[%s]\n", i,
+		WDS_LOGF( "STA[%d] address[%s]\n", i,
 					   di->bssid[i]);
 
 		buf_ptr += 12;
@@ -253,7 +253,7 @@ int _mh_core_execute_dhcp_server()
 	fp = fopen(DNSMASQ_CONF_FILE, "w");
 	if (NULL == fp)
 	{
-		WFD_SERVER_LOG(WFD_LOG_ASSERT, "Could not create the file.\n");
+		WDS_LOGF( "Could not create the file.\n");
 		return WIFI_DIRECT_ERROR_RESOURCE_BUSY;
 	}
 
@@ -262,7 +262,7 @@ int _mh_core_execute_dhcp_server()
 
 	if ((pid = fork()) < 0)
 	{
-		WFD_SERVER_LOG(WFD_LOG_ASSERT, "fork failed\n");
+		WDS_LOGF( "fork failed\n");
 		return WIFI_DIRECT_ERROR_RESOURCE_BUSY;
 	}
 
@@ -271,15 +271,15 @@ int _mh_core_execute_dhcp_server()
 		if (execl("/usr/bin/dnsmasq", "/usr/bin/dnsmasq", "-d", "-p",
 				  "0", "-C", DNSMASQ_CONF_FILE, (char *) NULL))
 		{
-			WFD_SERVER_LOG(WFD_LOG_ASSERT, "execl failed\n");
+			WDS_LOGF( "execl failed\n");
 		}
 
-		WFD_SERVER_LOG(WFD_LOG_ASSERT, "Should not get here!");
+		WDS_LOGF( "Should not get here!");
 		return WIFI_DIRECT_ERROR_RESOURCE_BUSY;
 	}
 	else
 	{
-		WFD_SERVER_LOG(WFD_LOG_ASSERT, "child pid : %d\n", pid);
+		WDS_LOGF( "child pid : %d\n", pid);
 		wfd_server->dhcp_pid = pid;
 	}
 
@@ -303,7 +303,7 @@ int _mh_core_terminate_dhcp_server()
 
 void __wfd_DHCP_lease_add_cb(keynode_t *key, void* data)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 	wifi_direct_client_noti_s noti;
@@ -315,12 +315,12 @@ void __wfd_DHCP_lease_add_cb(keynode_t *key, void* data)
 	int n = 0;
 	int i = 0;
 
-	WFD_SERVER_LOG(WFD_LOG_LOW, "DHCP: IP is leased..\n");
+	WDS_LOGD( "DHCP: IP is leased..\n");
 	memset(&noti, 0, sizeof(wifi_direct_client_noti_s));
 
 	if (wfd_oem_is_groupowner() == FALSE)
 	{
-		WFD_SERVER_LOG(WFD_LOG_LOW, "DHCP: Ignore event. and Kill DHPC server\n");
+		WDS_LOGD( "DHCP: Ignore event. and Kill DHPC server\n");
 		system("wifi-direct-dhcp.sh stop");
 		return;
 	}
@@ -328,14 +328,14 @@ void __wfd_DHCP_lease_add_cb(keynode_t *key, void* data)
 	fp = fopen(DHCP_DUMP_FILE, "r");
 	if (NULL == fp)
 	{
-		WFD_SERVER_LOG(WFD_LOG_ASSERT, "Could not read the file [%s].\n",DHCP_DUMP_FILE);
+		WDS_LOGF( "Could not read the file [%s].\n",DHCP_DUMP_FILE);
 		return;
 	}
 
     while(fgets(buf, MAX_DHCP_DUMP_SIZE, fp) != NULL)
     {
         n = sscanf(buf,"%s %s", mac_str, ip_str);
-    	WFD_SERVER_LOG(WFD_LOG_ERROR, "ip=[%s], mac=[%s].\n",ip_str, mac_str);
+    	WDS_LOGE( "ip=[%s], mac=[%s].\n",ip_str, mac_str);
         if (n != 2)
         {
         	continue;
@@ -348,11 +348,11 @@ void __wfd_DHCP_lease_add_cb(keynode_t *key, void* data)
         	if (wfd_server->connected_peers[i].isUsed == 1 &&
         			memcmp(mac_hex, wfd_server->connected_peers[i].int_address, 6) == 0)
         	{
-                	WFD_SERVER_LOG(WFD_LOG_LOW, "Found peer: interface mac=[%s].\n",mac_str);
-                	WFD_SERVER_LOG(WFD_LOG_LOW, "device mac=["MACSTR"]\n",MAC2STR(wfd_server->connected_peers[i].peer.mac_address));
+                	WDS_LOGD( "Found peer: interface mac=[%s].\n",mac_str);
+                	WDS_LOGD( "device mac=["MACSTR"]\n",MAC2STR(wfd_server->connected_peers[i].peer.mac_address));
 
         		inet_aton(ip_str, (struct in_addr*)&wfd_server->connected_peers[i].ip_address);
-                	WFD_SERVER_LOG(WFD_LOG_LOW, "Fill IP: ip=[%s].\n",ip_str);
+                	WDS_LOGD( "Fill IP: ip=[%s].\n",ip_str);
 
     			//Send event to client with [dev_mac, ip]
 		noti.event = WIFI_DIRECT_CLI_EVENT_IP_LEASED_IND;
@@ -363,20 +363,20 @@ void __wfd_DHCP_lease_add_cb(keynode_t *key, void* data)
         	}
         }
         if (i==WFD_MAC_ASSOC_STA)
-        	WFD_SERVER_LOG(WFD_LOG_ERROR, "Can't find peer from table\n");
+        	WDS_LOGE( "Can't find peer from table\n");
 
         __wfd_server_print_connected_peer();
     }
 	fclose(fp);
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDS_LOG_FUNC_EXIT__;
 }
 
 
 #define VCONFKEY_DHCPC_SERVER_IP "memory/private/wifi_direct_manager/dhcpc_server_ip"
 int wfd_get_dhcpc_server_ip(char* str, int len)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	char* get_str = NULL;
 	if (str==NULL || len <=0)
@@ -386,17 +386,17 @@ int wfd_get_dhcpc_server_ip(char* str, int len)
 
 	if (get_str == NULL)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "Error reading vconf (%s)\n", VCONFKEY_DHCPC_SERVER_IP);
+		WDS_LOGE( "Error reading vconf (%s)\n", VCONFKEY_DHCPC_SERVER_IP);
 		return -1;
 	}
 	else
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "VCONFKEY_WIFI_STATE(%s) : %d\n", VCONFKEY_DHCPC_SERVER_IP, get_str);
+		WDS_LOGD("VCONFKEY_WIFI_STATE(%s) : %d\n", VCONFKEY_DHCPC_SERVER_IP, get_str);
 		strncpy(str, get_str, len);
 		return 0;
 	}
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDS_LOG_FUNC_EXIT__;
 
 	return 0;
 
@@ -405,13 +405,13 @@ int wfd_get_dhcpc_server_ip(char* str, int len)
 
 int wfd_set_DHCP_event_handler()
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 
 	vconf_set_int(VCONFKEY_DHCP_IP_LEASE, 0);
 	vconf_notify_key_changed(VCONFKEY_DHCP_IP_LEASE, __wfd_DHCP_lease_add_cb, NULL);
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDS_LOG_FUNC_EXIT__;
 	
 	return 0;
 }

@@ -45,35 +45,35 @@ int wfd_server_is_fd_writable(int fd)
 
 	if (retval < 0)
 	{
-		WFD_SERVER_LOG(WFD_LOG_LOW, "fd [%d]: poll error ret=[%d] !!\n", fd, retval);
+		WDS_LOGD( "fd [%d]: poll error ret=[%d] !!\n", fd, retval);
 		return -1;
 	}
 	else if (retval == 0)
 	{
 		// fd might be busy.
-		WFD_SERVER_LOG(WFD_LOG_LOW, "poll timeout. fd is busy\n");
+		WDS_LOGD( "poll timeout. fd is busy\n");
 		return 0;
 	}
 
 	if (pevent.revents & POLLERR)
 	{
-		WFD_SERVER_LOG(WFD_LOG_LOW, "fd [%d]: POLLERR !!\n", fd);
+		WDS_LOGD( "fd [%d]: POLLERR !!\n", fd);
 		return -1;
 	}
 	else if (pevent.revents & POLLHUP)
 	{
-		WFD_SERVER_LOG(WFD_LOG_LOW, "fd [%d]: POLLHUP !!\n", fd);
+		WDS_LOGD( "fd [%d]: POLLHUP !!\n", fd);
 		return -1;
 	}
 	else if (pevent.revents & POLLNVAL)
 	{
-		WFD_SERVER_LOG(WFD_LOG_LOW, "fd [%d]: POLLNVAL !!\n", fd);
+		WDS_LOGD( "fd [%d]: POLLNVAL !!\n", fd);
 		return -1;
 	}
 	else if (pevent.revents & POLLOUT)
 	{
 		// fd is writable..
-		// WFD_SERVER_LOG(WFD_LOG_LOW, "fd [%d]: POLLOUT !!\n", fd);
+		// WDS_LOGD( "fd [%d]: POLLOUT !!\n", fd);
 		return 1;
 	}
 
@@ -89,12 +89,12 @@ int wfd_server_read_socket_event(int sockfd, char *dataptr, int datalen)
 	int retval = 0;
 	int total_data_recd = 0;
 
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	if (sockfd < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "Error!!! Invalid socket FD [%d]\n", sockfd);
-		__WFD_SERVER_FUNC_EXIT__;
+		WDS_LOGE( "Error!!! Invalid socket FD [%d]\n", sockfd);
+		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
@@ -102,59 +102,59 @@ int wfd_server_read_socket_event(int sockfd, char *dataptr, int datalen)
 	pollfd.events = POLLIN | POLLERR | POLLHUP;
 	pollret = poll(&pollfd, 1, timeout);
 
-	WFD_SERVER_LOG(WFD_LOG_LOW, "POLL ret = %d\n", pollret);
+	WDS_LOGD( "POLL ret = %d\n", pollret);
 
 	if (pollret > 0)
 	{
 		if (pollfd.revents == POLLIN)
 		{
-			WFD_SERVER_LOG(WFD_LOG_LOW, "POLLIN \n");
+			WDS_LOGD( "POLLIN \n");
 
 			while (datalen)
 			{
 				errno = 0;
 				retval = read(sockfd, (char*)dataptr, datalen);
-				WFD_SERVER_LOG( WFD_LOG_LOW, "sockfd %d retval %d\n",sockfd,retval);
+				WDS_LOGD( "sockfd %d retval %d\n",sockfd,retval);
 				if (retval <= 0)
 				{
-					WFD_SERVER_LOG( WFD_LOG_ERROR, "Error!!! reading data, error [%s]\n", strerror(errno));
-					__WFD_SERVER_FUNC_EXIT__;
+					WDS_LOGE( "Error!!! reading data, error [%s]\n", strerror(errno));
+					__WDS_LOG_FUNC_EXIT__;
 					return retval;
 				}
 				total_data_recd += retval;
 				dataptr += retval;
 				datalen -= retval;
 			}
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return total_data_recd;
 		}
 		else if (pollfd.revents & POLLHUP)
 		{
-			WFD_SERVER_LOG( WFD_LOG_ERROR, "Error!!! POLLHUP: connection disconnected fd=[%d]\n", sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			WDS_LOGE( "Error!!! POLLHUP: connection disconnected fd=[%d]\n", sockfd);
+			__WDS_LOG_FUNC_EXIT__;
 			return -1;
 		}
 		else if (pollfd.revents & POLLERR)
 		{
-			WFD_SERVER_LOG( WFD_LOG_ERROR, "Error!!! POLLERR: error happens at the socket. fd=[%d]\n", sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			WDS_LOGE( "Error!!! POLLERR: error happens at the socket. fd=[%d]\n", sockfd);
+			__WDS_LOG_FUNC_EXIT__;
 			return -1;
 		}
 	}
 	else if (pollret == 0)
 	{
-		WFD_SERVER_LOG(WFD_LOG_LOW, "POLLing timeout fd=[%d]\n", sockfd);
-		__WFD_SERVER_FUNC_EXIT__;
+		WDS_LOGD( "POLLing timeout fd=[%d]\n", sockfd);
+		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}
 	else
 	{
-		WFD_SERVER_LOG( WFD_LOG_ERROR, "Error!!! Polling unknown error fd=[%d]\n", sockfd);
-		__WFD_SERVER_FUNC_EXIT__;
+		WDS_LOGE( "Error!!! Polling unknown error fd=[%d]\n", sockfd);
+		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDS_LOG_FUNC_EXIT__;
 	return 0;
 }
 
@@ -163,14 +163,14 @@ void wfd_server_reset_client(int sync_sockfd)
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 	int index = 0;
 
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	for (index = 0; index < WFD_MAX_CLIENTS; index++)
 	{
 		if ((wfd_server->client[index].isUsed == TRUE) &&
 			(wfd_server->client[index].sync_sockfd == sync_sockfd))
 		{
-			WFD_SERVER_LOG( WFD_LOG_HIGH,
+			WDS_LOGI(
 					"Reset client[%d]: ClientID=%d, socketfd=(%d,%d), handle=[%d] total active clients = [%d]\n",
 					index,
 					wfd_server->client[index].client_id,
@@ -202,30 +202,30 @@ void wfd_server_reset_client(int sync_sockfd)
 
 			wfd_server_print_client();
 
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
 
-	WFD_SERVER_LOG( WFD_LOG_EXCEPTION,
+	WDS_LOGF(
 			"Error!!! Reset client fail: socketfd=%d is not found\n", sync_sockfd);
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDS_LOG_FUNC_EXIT__;
 	return;
 }
 
 void wfd_server_print_client()
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 	
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 	int index = 0;
 
-	WFD_SERVER_LOG( WFD_LOG_HIGH, "--------------------\n", wfd_server->active_clients-1);
+	WDS_LOGI( "--------------------\n", wfd_server->active_clients-1);
 	for (index = 0; index < WFD_MAX_CLIENTS; index++)
 	{
 		if (wfd_server->client[index].isUsed == TRUE)
 		{
-			WFD_SERVER_LOG(WFD_LOG_HIGH,
+			WDS_LOGI(
 					"+ CLIENT[%d]: ClientID=%d, sktfd=(%d,%d), g_src_id= [%d]\n",
 					index,
 					wfd_server->client[index].client_id,
@@ -235,10 +235,10 @@ void wfd_server_print_client()
 					);
 		}
 	}
-	WFD_SERVER_LOG( WFD_LOG_HIGH, "Total active client=[%d]\n", wfd_server->active_clients);
-	WFD_SERVER_LOG( WFD_LOG_HIGH, "--------------------\n");
+	WDS_LOGI( "Total active client=[%d]\n", wfd_server->active_clients);
+	WDS_LOGI( "--------------------\n");
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDS_LOG_FUNC_EXIT__;
 	return;
 }
 
@@ -250,20 +250,20 @@ bool wfd_server_client_request_callback(GIOChannel* source, GIOCondition conditi
 	wifi_direct_client_request_s client_req;
 	int req_len = sizeof(wifi_direct_client_request_s);
 
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	memset(&client_req, 0, req_len);
 
 	if (wfd_server_read_socket_event(sockfd, (char *) &client_req, req_len) < 0)
 	{
 		wfd_server_reset_client(sockfd);
-		__WFD_SERVER_FUNC_EXIT__;
+		__WDS_LOG_FUNC_EXIT__;
 		return FALSE;
 	}
 
 	wfd_server_process_client_request(&client_req);
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDS_LOG_FUNC_EXIT__;
 	return TRUE;
 }
 
@@ -277,13 +277,13 @@ bool wfd_server_register_client(int sockfd)
 	wifi_direct_client_response_s register_rsp;
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	if (sockfd <= 0)
 	{
 		// invalid socket fd should not be closed!!
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "Error!!! Invalid sockfd argument = [%d] \n", sockfd);
-		__WFD_SERVER_FUNC_EXIT__;
+		WDS_LOGE( "Error!!! Invalid sockfd argument = [%d] \n", sockfd);
+		__WDS_LOG_FUNC_EXIT__;
 		return TRUE;
 	}
 
@@ -292,14 +292,14 @@ bool wfd_server_register_client(int sockfd)
 	status = read(sockfd, (char*)&register_req, sizeof(wifi_direct_client_request_s));
 	if(status <= 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ERROR, "Error!!! reading data, error [%s]\n", strerror(errno));
-		__WFD_SERVER_FUNC_EXIT__;
+		WDS_LOGE( "Error!!! reading data, error [%s]\n", strerror(errno));
+		__WDS_LOG_FUNC_EXIT__;
 		return FALSE;
 	}
 
 	if (register_req.cmd == WIFI_DIRECT_CMD_REGISTER)
 	{
-		WFD_SERVER_LOG( WFD_LOG_LOW, "Client socket for sync data transfer, from client [%d] \n", register_req.client_id);
+		WDS_LOGD( "Client socket for sync data transfer, from client [%d] \n", register_req.client_id);
 
 		for (index = 0; index < WFD_MAX_CLIENTS; index++)
 		{
@@ -315,7 +315,7 @@ bool wfd_server_register_client(int sockfd)
 				errno = 0;
 				datasent = write(sockfd, (char*)&register_rsp, sizeof(wifi_direct_client_response_s));
 
-				WFD_SERVER_LOG( WFD_LOG_LOW,
+				WDS_LOGD(
 						"Written RSP of [%d] data into client socket [%d], errinfo [%s] \n",
 						datasent, sockfd, strerror(errno));
 
@@ -333,8 +333,8 @@ bool wfd_server_register_client(int sockfd)
 
 				wfd_server->active_clients++;
 
-				WFD_SERVER_LOG( WFD_LOG_LOW, "Client stored in index [%d], total active clients = [%d]\n", index, wfd_server->active_clients);
-				__WFD_SERVER_FUNC_EXIT__;
+				WDS_LOGD( "Client stored in index [%d], total active clients = [%d]\n", index, wfd_server->active_clients);
+				__WDS_LOG_FUNC_EXIT__;
 				return TRUE;
 			}
 		}
@@ -349,14 +349,14 @@ bool wfd_server_register_client(int sockfd)
 			errno = 0;
 			datasent = write(sockfd, (char*)&register_rsp, sizeof(wifi_direct_client_response_s));
 
-			WFD_SERVER_LOG(WFD_LOG_ERROR, "Error!!! Too Many Client\n");
-			__WFD_SERVER_FUNC_EXIT__;
+			WDS_LOGE( "Error!!! Too Many Client\n");
+			__WDS_LOG_FUNC_EXIT__;
 			return FALSE;
 		}
 	}
 	else if (register_req.cmd == WIFI_DIRECT_CMD_INIT_ASYNC_SOCKET)
 	{
-		WFD_SERVER_LOG( WFD_LOG_LOW, "Client socket for Async Event notification from client [%d]\n", register_req.client_id);
+		WDS_LOGD( "Client socket for Async Event notification from client [%d]\n", register_req.client_id);
 
 		for (index = 0; index < WFD_MAX_CLIENTS; index++)
 		{
@@ -366,30 +366,30 @@ bool wfd_server_register_client(int sockfd)
 			{
 				wfd_server->client[index].async_sockfd = sockfd;
 
-				WFD_SERVER_LOG( WFD_LOG_LOW, "Client stored in index [%d], total active clients = [%d]\n", index, wfd_server->active_clients);
+				WDS_LOGD( "Client stored in index [%d], total active clients = [%d]\n", index, wfd_server->active_clients);
 
 				wfd_server_print_client();
 
-				__WFD_SERVER_FUNC_EXIT__;
+				__WDS_LOG_FUNC_EXIT__;
 				return TRUE;
 			}
 		}
 
 		if (index == WFD_MAX_CLIENTS)
 		{
-			WFD_SERVER_LOG(WFD_LOG_ERROR, "Error!!! Client not found \n");
-			__WFD_SERVER_FUNC_EXIT__;
+			WDS_LOGE( "Error!!! Client not found \n");
+			__WDS_LOG_FUNC_EXIT__;
 			return FALSE;
 		}
 	}
 	else
 	{
-		WFD_SERVER_LOG( WFD_LOG_ERROR, "Error!!! Received unknown command [%d] \n", register_req.cmd);
-		__WFD_SERVER_FUNC_EXIT__;
+		WDS_LOGE( "Error!!! Received unknown command [%d] \n", register_req.cmd);
+		__WDS_LOG_FUNC_EXIT__;
 		return FALSE;
 	}
 
-	WFD_SERVER_LOG(WFD_LOG_ERROR, "Error!!! Unknown...\n");
-	__WFD_SERVER_FUNC_EXIT__;
+	WDS_LOGE( "Error!!! Unknown...\n");
+	__WDS_LOG_FUNC_EXIT__;
 	return FALSE;
 }

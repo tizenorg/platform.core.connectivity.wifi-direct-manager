@@ -151,12 +151,12 @@ static gboolean wfd_server_accept_client_socket(GIOChannel* source, GIOCondition
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 	int servfd = wfd_server->async_sockfd;
 
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	if (servfd < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "Error!!! Invalid sockfd argument = [%d] \n", servfd);
-		__WFD_SERVER_FUNC_EXIT__;
+		WDS_LOGE("Invalid sockfd argument = [%d]", servfd);
+		__WDS_LOG_FUNC_EXIT__;
 		return FALSE;
 	}
 
@@ -164,9 +164,7 @@ static gboolean wfd_server_accept_client_socket(GIOChannel* source, GIOCondition
 	clientfd = accept(servfd, NULL, &clientlen);
 	if (clientfd == -1)
 	{
-		WFD_SERVER_LOG(WFD_LOG_ASSERT,
-					   "Error!!! Accepting the client socket. Error = [%s]. Server socket = [%d] \n",
-					   strerror(errno), servfd);
+		WDS_LOGE("Failed to accept client socket. Error = [%s]. Server socket = [%d]", strerror(errno), servfd);
 
 		int ret = 0;
 		char req[10] = "";
@@ -176,27 +174,27 @@ static gboolean wfd_server_accept_client_socket(GIOChannel* source, GIOCondition
 		ret = read(servfd, req, reqlen);
 		if (ret == 0)
 		{
-			WFD_SERVER_LOG(WFD_LOG_LOW, "Server Socket got closed\n");
+			WDS_LOGD("Server Socket got closed");
 		}
 		else if (ret < 0)
 		{
-			WFD_SERVER_LOG( WFD_LOG_ERROR, "Error!!! reading server socket. Error = [%s]\n", strerror(errno));
+			WDS_LOGE( "Failed to read server socket. Error = [%s]", strerror(errno));
 		}
 		else
-			WFD_SERVER_LOG(WFD_LOG_LOW, "Read [%d] data\n", ret);
+			WDS_LOGD( "Read [%d] data\n", ret);
 
-		__WFD_SERVER_FUNC_EXIT__;
+		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
-	WFD_SERVER_LOG(WFD_LOG_LOW, "Accepted the client: [%d]\n", clientfd);
+	WDS_LOGD("Succeeded to accept client: [%d]", clientfd);
 
 	if (!(wfd_server_register_client(clientfd)))
 	{
-		WFD_SERVER_LOG(WFD_LOG_ERROR, "Error!!! adding new client\n");
+		WDS_LOGE("Failed to add new client\n");
 		close(clientfd);
 	}
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDS_LOG_FUNC_EXIT__;
 	return true;
 }
 
@@ -205,18 +203,18 @@ static int wfd_server_create_socket(void)
 	int len = 0;
 	int sockfd = -1;
 	struct sockaddr_un servAddr;
-	mode_t sock_mode;			// socket file permission
+	mode_t sock_mode;
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	/** It is safe to Unlink the path.*/
 	unlink(WFD_SERVER_SOCKET_PATH);
 	errno = 0;
 	if ((sockfd = socket(PF_LOCAL, SOCK_STREAM, 0)) == -1)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "Error!!! creating UNIX socket. Error = [%s]\n", strerror(errno));
-		__WFD_SERVER_FUNC_EXIT__;
+		WDS_LOGE( "Failed to create UNIX socket. Error = [%s]", strerror(errno));
+		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
@@ -231,31 +229,31 @@ static int wfd_server_create_socket(void)
 
 	if (bind(sockfd, (struct sockaddr *) &servAddr, len) == -1)
 	{
-		WFD_SERVER_LOG( WFD_LOG_LOW, "Error!!! binding to the socket address. Error = [%s]\n", strerror(errno));
-		__WFD_SERVER_FUNC_EXIT__;
+		WDS_LOGE( "Failed to bind server socket. Error = [%s]", strerror(errno));
+		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
-	WFD_SERVER_LOG(WFD_LOG_LOW, "Binded to the server socket.\n");
+	WDS_LOGD("Succeeded to bind server socket.");
 
 	if (chmod(WFD_SERVER_SOCKET_PATH, sock_mode) < 0)
 	{
-		WFD_SERVER_LOG(WFD_LOG_LOW, "[server] chmod() error\n");
+		WDS_LOGD( "Failed to change server socket file mode");
 		return -1;
 	}
 
 	errno = 0;
 	if (listen(sockfd, WFD_MAX_CLIENTS) == -1)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "Error!!! while listening to the socket. Error = [%s]\n", strerror(errno));
-		__WFD_SERVER_FUNC_EXIT__;
+		WDS_LOGF( "Failed to listen server socket. Error = [%s]", strerror(errno));
+		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
 	wfd_server->async_sockfd = sockfd;
 
-	WFD_SERVER_LOG( WFD_LOG_LOW, "Successfully created the server socket [%d]\n", sockfd);
-	__WFD_SERVER_FUNC_EXIT__;
+	WDS_LOGD( "Succeeded to create server socket [%d]", sockfd);
+	__WDS_LOG_FUNC_EXIT__;
 	return 1;
 }
 
@@ -269,13 +267,11 @@ void wfd_load_plugin()
 	res = uname(&kernel_info);
 	if(res != 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "Failed to detect target type\n");
+		WDS_LOGE("Failed to detect target type");
 	}
 	else
 	{
-		WFD_SERVER_LOG( WFD_LOG_LOW, "Node name of this device [%s]\n", kernel_info.nodename);
-		WFD_SERVER_LOG( WFD_LOG_LOW, "HW ID of this device [%s]\n", kernel_info.machine);
-
+		WDS_LOGD("Node name [%s], HW ID [%s]", kernel_info.nodename, kernel_info.machine);
 #if 0
 		if((strcmp(kernel_info.nodename, "U1SLP") == 0)
 			|| (strcmp(kernel_info.nodename, "U1HD") == 0) 
@@ -288,7 +284,7 @@ void wfd_load_plugin()
 
 	handle = dlopen("/usr/lib/wifi-direct-plugin-wpasupplicant.so", RTLD_NOW);
 	if (!handle) {
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "Error for dlopen\n");
+		WDS_LOGE("Failed to open shared object");
 		fputs(dlerror(), stderr);
 		return;
 	}
@@ -297,7 +293,7 @@ void wfd_load_plugin()
 	plugin_load = (int (*)(struct wfd_oem_operations **ops))dlsym(handle, "wfd_plugin_load");
 
 	if (!plugin_load) {
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "Error for dlsym[%s]\n", strerror(errno));
+		WDS_LOGF( "Failed to load symbol. Error = [%s]", strerror(errno));
 		return ;
 	}
 
@@ -318,7 +314,7 @@ static int wfd_server_init(void)
 	int i = -1;
 	unsigned char NULL_MAC[6] = { 0, 0, 0, 0, 0, 0 };
 
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	memset(&g_wfd_server, 0, sizeof(wfd_server_control_t));
 	g_wfd_server.active_clients = 0;
@@ -365,16 +361,15 @@ static int wfd_server_init(void)
 	wfd_set_DHCP_event_handler();
 
 	if (wfd_set_wifi_direct_state(WIFI_DIRECT_STATE_DEACTIVATED) < 0)
-		WFD_SERVER_LOG(WFD_LOG_ASSERT, "wfd_set_wifi_direct_state() failed\n");
+		WDS_LOGE( "Failed to  set Wi-Fi Direct state");
 
-
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDS_LOG_FUNC_EXIT__;
 	return 0;
 }
 
 static int wfd_server_destroy()
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	if (g_wfd_server.async_sockfd>0)
 		close(g_wfd_server.async_sockfd);
@@ -384,13 +379,13 @@ static int wfd_server_destroy()
 
 	wfd_oem_destroy();
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDS_LOG_FUNC_EXIT__;
 	return 0;
 }
 
 static gboolean wfd_connection_timeout_cb(void *user_data)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 	wifi_direct_client_noti_s noti;
@@ -412,12 +407,12 @@ static gboolean wfd_connection_timeout_cb(void *user_data)
 	// disconnect the peer to reset state.
 	if (wfd_oem_is_groupowner() == TRUE)
 	{
-		WFD_SERVER_LOG(WFD_LOG_LOW, "Peer's Intf MAC is " MACSTR "\n", MAC2STR(wfd_server->current_peer.intf_mac_address));
+		WDS_LOGD( "Peer's Intf MAC is " MACSTR "\n", MAC2STR(wfd_server->current_peer.intf_mac_address));
 		if ( NULL == wfd_server->current_peer.intf_mac_address )
-			WFD_SERVER_LOG( WFD_LOG_ASSERT, "[wfd_server->current_peer.intf_mac_address] is Null!\n");
+			WDS_LOGF( "[wfd_server->current_peer.intf_mac_address] is Null!\n");
 
 		if (wfd_oem_disconnect_sta(wfd_server->current_peer.intf_mac_address) == FALSE)
-			WFD_SERVER_LOG( WFD_LOG_ASSERT, "Error... wfd_oem_disconnect_sta() failed\n");
+			WDS_LOGF( "Error... wfd_oem_disconnect_sta() failed\n");
 	}
 	else
 	{
@@ -430,7 +425,7 @@ static gboolean wfd_connection_timeout_cb(void *user_data)
 		else
 		{
 			wfd_server_set_state(WIFI_DIRECT_STATE_ACTIVATED);
-			WFD_SERVER_LOG( WFD_LOG_ASSERT, "Error... wfd_oem_disconnect() failed\n");
+			WDS_LOGF( "Error... wfd_oem_disconnect() failed\n");
 		}
 	}
 #endif
@@ -448,14 +443,13 @@ static gboolean wfd_connection_timeout_cb(void *user_data)
 
 	__wfd_server_send_client_event(&noti);
 
-	__WFD_SERVER_FUNC_EXIT__;
-
+	__WDS_LOG_FUNC_EXIT__;
 	return FALSE;
 }
 
 void wfd_timer_connection_start()
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 
@@ -466,12 +460,12 @@ void wfd_timer_connection_start()
 
 	wfd_server->connection_timer = g_timeout_add(120000 /* 120 seconds*/, (GSourceFunc)wfd_connection_timeout_cb , NULL);
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDS_LOG_FUNC_EXIT__;
 }
 
 void wfd_timer_connection_cancel()
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 
@@ -480,19 +474,19 @@ void wfd_timer_connection_cancel()
 
 	wfd_server->connection_timer = 0;
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDS_LOG_FUNC_EXIT__;
 }
 
 
 static gboolean wfd_termination_timeout_cb(void *user_data)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 
 	if (wfd_server->active_clients > 0)
 	{
-		WFD_SERVER_LOG(WFD_LOG_LOW, "There is an active clients(Num=[%d]). Run timer again..\n", wfd_server->active_clients);
+		WDS_LOGD( "There is an active clients(Num=[%d]). Run timer again...", wfd_server->active_clients);
 		// Restart timer by returning true.
 		return TRUE;
 	}
@@ -501,7 +495,7 @@ static gboolean wfd_termination_timeout_cb(void *user_data)
 
 	if (state != WIFI_DIRECT_STATE_DEACTIVATED)
 	{
-		WFD_SERVER_LOG(WFD_LOG_LOW, "State is not 'deactivated' ( state=[%d] ).  Cancel timer.\n", state);
+		WDS_LOGD( "State is not 'deactivated' ( state=[%d] ).  Cancel timer.", state);
 		// Cancel timer by returning false.
 		return FALSE;
 	}
@@ -511,8 +505,8 @@ static gboolean wfd_termination_timeout_cb(void *user_data)
 
 	g_main_quit(wfd_server->mainloop);
 
-	WFD_SERVER_LOG(WFD_LOG_LOW, "g_main_quit()..\n");
-	__WFD_SERVER_FUNC_EXIT__;
+	WDS_LOGD( "g_main_quit()...");
+	__WDS_LOG_FUNC_EXIT__;
 
 	// Cancel timer by returning false.
 	return FALSE;
@@ -521,18 +515,18 @@ static gboolean wfd_termination_timeout_cb(void *user_data)
 
 void wfd_termination_timer_start()
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 
 	if (wfd_server->termination_timer > 0)
 	{
 		g_source_remove(wfd_server->termination_timer);
-		WFD_SERVER_LOG(WFD_LOG_LOW, "Termination timer is restarted..\n");
+		WDS_LOGD( "Termination timer is restarted..\n");
 	}
 	else
 	{
-		WFD_SERVER_LOG(WFD_LOG_LOW, "Termination timer is started..\n");
+		WDS_LOGD( "Termination timer is started..\n");
 	}
 
 	wfd_server->termination_timer = 0;
@@ -540,29 +534,27 @@ void wfd_termination_timer_start()
 	wfd_server->termination_timer = g_timeout_add(120000 /* 120 seconds*/, (GSourceFunc)wfd_termination_timeout_cb , NULL);
 
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDS_LOG_FUNC_EXIT__;
 }
 
 
 void wfd_termination_timer_cancel()
 {
-	__WFD_SERVER_FUNC_ENTER__;
-
+	__WDS_LOG_FUNC_ENTER__;
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 
 	if (wfd_server->termination_timer > 0)
 		g_source_remove(wfd_server->termination_timer);
 
 	wfd_server->termination_timer = 0;
-	WFD_SERVER_LOG(WFD_LOG_LOW, "Termination timer is canceled..\n");
+	WDS_LOGD( "Termination timer is canceled..\n");
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDS_LOG_FUNC_EXIT__;
 }
 
 static gboolean wfd_discovery_timeout_cb(void *user_data)
 {
-	__WFD_SERVER_FUNC_ENTER__;
-
+	__WDS_LOG_FUNC_ENTER__;
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 	wifi_direct_client_noti_s noti;
 	int ret;
@@ -582,7 +574,7 @@ static gboolean wfd_discovery_timeout_cb(void *user_data)
 	ret = wfd_oem_cancel_discovery();
 	if (ret == false)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ERROR, "Error!! wfd_oem_cancel_discovery() failed..\n");
+		WDS_LOGE( "Error!! wfd_oem_cancel_discovery() failed..\n");
 	}
 
 #if 0
@@ -594,14 +586,13 @@ static gboolean wfd_discovery_timeout_cb(void *user_data)
 	__wfd_server_send_client_event(&noti);
 #endif
 
-	__WFD_SERVER_FUNC_EXIT__;
-
+	__WDS_LOG_FUNC_EXIT__;
 	return FALSE;
 }
 
 void wfd_timer_discovery_start(int seconds)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 
@@ -612,12 +603,12 @@ void wfd_timer_discovery_start(int seconds)
 
 	wfd_server->discovery_timer = g_timeout_add((seconds*1000), (GSourceFunc)wfd_discovery_timeout_cb , NULL);
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDS_LOG_FUNC_EXIT__;
 }
 
 void wfd_timer_discovery_cancel()
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 
@@ -626,7 +617,7 @@ void wfd_timer_discovery_cancel()
 
 	wfd_server->discovery_timer = 0;
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDS_LOG_FUNC_EXIT__;
 }
 
 int main(gint argc, gchar * argv[])
@@ -635,17 +626,17 @@ int main(gint argc, gchar * argv[])
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 	int i = -1;
 
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
-	WFD_SERVER_LOG( WFD_LOG_LOW,"========================================\n");
-	WFD_SERVER_LOG( WFD_LOG_LOW,"=                                      		=\n");
-	WFD_SERVER_LOG( WFD_LOG_LOW,"=         WiFi Direct Server          	=\n");
-	WFD_SERVER_LOG( WFD_LOG_LOW,"=                                      		=\n");
-	WFD_SERVER_LOG( WFD_LOG_LOW,"========================================\n");
+	WDS_LOGD("========================================\n");
+	WDS_LOGD("=                                      		=\n");
+	WDS_LOGD("=         WiFi Direct Server          	=\n");
+	WDS_LOGD("=                                      		=\n");
+	WDS_LOGD("========================================\n");
 
 	for (i = 0; i < argc; i++)
 	{
-		WFD_SERVER_LOG(WFD_LOG_LOW, "arg[%d]= %s\n", i, argv[i]);
+		WDS_LOGD( "arg[%d]= %s", i, argv[i]);
 	}
 
 	if (!g_thread_supported())
@@ -657,16 +648,16 @@ int main(gint argc, gchar * argv[])
 
 	mainloop = g_main_loop_new(NULL, FALSE);
 
-	WFD_SERVER_LOG(WFD_LOG_LOW, "gmainloop is initialized\n");
+	WDS_LOGD( "gmainloop is initialized");
 
 
-	WFD_SERVER_LOG(WFD_LOG_LOW, "Entering g_main_loop()...\n");
+	WDS_LOGD( "Entering g_main_loop()...");
 
 	wfd_server_init();
 
 	if (wfd_server_create_socket() == -1)
 	{
-		__WFD_SERVER_FUNC_EXIT__;
+		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
@@ -678,23 +669,20 @@ int main(gint argc, gchar * argv[])
 	wfd_server->mainloop = mainloop;
 	wfd_termination_timer_start();
 
-	//////////////////////////////////
-	// Start g_main_loop
-	//
 	g_main_loop_run(mainloop);
 
-	WFD_SERVER_LOG(WFD_LOG_LOW, "Leave g_main_loop_run()...\n");
+	WDS_LOGD( "Leave g_main_loop_run()...");
 
 	wfd_server_destroy();
 
-	WFD_SERVER_LOG(WFD_LOG_LOW, "WLAN engine is destroyed...\n");
+	WDS_LOGD( "WLAN engine is destroyed...");
 
-	WFD_SERVER_LOG(WFD_LOG_LOW, "=================================\n");
-	WFD_SERVER_LOG(WFD_LOG_LOW, "     Quit WiFi Direct Manager main()\n");
-	WFD_SERVER_LOG(WFD_LOG_LOW, "=================================\n");
-	WFD_SERVER_LOG(WFD_LOG_LOW, "Bye...\n");
+	WDS_LOGD( "=================================");
+	WDS_LOGD( "     Quit WiFi Direct Manager main()");
+	WDS_LOGD( "=================================");
+	WDS_LOGD( "Bye...\n");
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDS_LOG_FUNC_EXIT__;
 
 	return 0;
 }

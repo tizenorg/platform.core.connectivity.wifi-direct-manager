@@ -15,7 +15,7 @@ INCLUDE(FindPkgConfig)
 pkg_check_modules(pkgs REQUIRED wifi-direct vconf glib-2.0 dbus-1 dbus-glib-1 gthread-2.0 dlog capi-appfw-application)
 
 FOREACH(flag ${pkgs_CFLAGS})
-	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag} -g -DVITA_FEATURE")
+	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag} -g -DUSE_DLOG")
 ENDFOREACH(flag)
 
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/src/include
