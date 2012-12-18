@@ -1,3 +1,11 @@
+wifi-direct-manager (0.5.1) precise; urgency=low
+
+  * DLog macro is changed
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.5.1
+
+ -- Gibyoung Kim <lastkgb.kim@samsung.com>  Tue, 18 Dec 2012 20:02:25 +0900
+
 wifi-direct-manager (0.5.0) precise; urgency=low
 
   * Implementation of wifi_direct_get_device_name / wifi_direct_set_device_name

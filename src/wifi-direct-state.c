@@ -37,7 +37,7 @@ int wfd_server_check_valid(wifi_direct_cmd_e cmd)
 	int valid = false;
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	state = wfd_server->state;
 	switch (cmd)
@@ -146,7 +146,7 @@ int wfd_server_check_valid(wifi_direct_cmd_e cmd)
 		break;
 	}
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDS_LOG_FUNC_EXIT__;
 
 	return valid;
 }
@@ -154,7 +154,7 @@ int wfd_server_check_valid(wifi_direct_cmd_e cmd)
 #if 0
 void start_wifi_direct_service()
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	//system("launch_app org.tizen.fileshare-service");
 	service_h service;
@@ -164,7 +164,7 @@ void start_wifi_direct_service()
 	service_send_launch_request(service, NULL, NULL);
 	service_destroy(service);
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDS_LOG_FUNC_EXIT__;
 	
 }
 #endif
@@ -177,7 +177,7 @@ void stop_wifi_direct_service()
 
 void start_wifi_direct_ui_appl()
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	//system("launch_app org.tizen.wifi-direct-popup");
 	service_h service;
@@ -187,7 +187,7 @@ void start_wifi_direct_ui_appl()
 	service_send_launch_request(service, NULL, NULL);
 	service_destroy(service);
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDS_LOG_FUNC_EXIT__;
 
 }
 
@@ -204,16 +204,16 @@ void wfd_server_set_state(int state)
 {
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	if (state < WIFI_DIRECT_STATE_DEACTIVATED
 		|| state > WIFI_DIRECT_STATE_GROUP_OWNER)
 	{
-		WFD_SERVER_LOG(WFD_LOG_ASSERT, "Error : Invalid State\n");
+		WDS_LOGF( "Error : Invalid State\n");
 		return;
 	}
 
-	WFD_SERVER_LOG(WFD_LOG_ASSERT, "State Change: [%d,%s] ---->[%d,%s]\n",
+	WDS_LOGF( "State Change: [%d,%s] ---->[%d,%s]\n",
 				   wfd_server->state, wfd_print_state(wfd_server->state),
 				   state, wfd_print_state(state));
 
@@ -270,7 +270,7 @@ void wfd_server_set_state(int state)
 	{
 		if (wfd_server->autonomous_group_owner == true)
 		{
-			WFD_SERVER_LOG(WFD_LOG_LOW, "[Reset autonomous group owner flag]\n");
+			WDS_LOGD( "[Reset autonomous group owner flag]\n");
 			wfd_server->autonomous_group_owner = false;
 		}
 	}
@@ -283,7 +283,7 @@ void wfd_server_set_state(int state)
 	if (state == WIFI_DIRECT_STATE_ACTIVATED
 		&& wfd_oem_is_discovery_enabled() == true)
 	{
-		WFD_SERVER_LOG(WFD_LOG_LOW, "state is changed to [WIFI_DIRECT_STATE_DISCOVERING]\n");
+		WDS_LOGD( "state is changed to [WIFI_DIRECT_STATE_DISCOVERING]\n");
 		wfd_server->state = WIFI_DIRECT_STATE_DISCOVERING;
 	}
 #endif
@@ -291,12 +291,12 @@ void wfd_server_set_state(int state)
 	switch (wfd_server->state)
 	{
 		//if (wfd_check_wifi_direct_state() < 0)
-		//WFD_SERVER_LOG(WFD_LOG_ASSERT, "wfd_check_wifi_direct_state() failed\n");
+		//WDS_LOGF( "wfd_check_wifi_direct_state() failed\n");
 
 	case WIFI_DIRECT_STATE_DEACTIVATED:
 		{
 			if (wfd_set_wifi_direct_state(VCONFKEY_WIFI_DIRECT_DEACTIVATED) < 0)
-				WFD_SERVER_LOG(WFD_LOG_ASSERT, "wfd_set_wifi_direct_state() failed\n");
+				WDS_LOGF( "wfd_set_wifi_direct_state() failed\n");
 			else
 				stop_wifi_direct_ui_appl();
 		}
@@ -305,28 +305,28 @@ void wfd_server_set_state(int state)
 	case WIFI_DIRECT_STATE_ACTIVATED:
 		{
 			if (wfd_set_wifi_direct_state(VCONFKEY_WIFI_DIRECT_ACTIVATED) < 0)
-				WFD_SERVER_LOG(WFD_LOG_ASSERT, "wfd_set_wifi_direct_state() failed\n");
+				WDS_LOGF( "wfd_set_wifi_direct_state() failed\n");
 		}
 		break;
 
 	case WIFI_DIRECT_STATE_DISCOVERING:
 		{
 			if (wfd_set_wifi_direct_state(VCONFKEY_WIFI_DIRECT_DISCOVERING) < 0)
-				WFD_SERVER_LOG(WFD_LOG_ASSERT, "wfd_set_wifi_direct_state() failed\n");
+				WDS_LOGF( "wfd_set_wifi_direct_state() failed\n");
 		}
 		break;
 
 	case WIFI_DIRECT_STATE_CONNECTED:
 		{
 			if (wfd_set_wifi_direct_state(VCONFKEY_WIFI_DIRECT_CONNECTED) < 0)
-				WFD_SERVER_LOG(WFD_LOG_ASSERT, "wfd_set_wifi_direct_state() failed\n");
+				WDS_LOGF( "wfd_set_wifi_direct_state() failed\n");
 		}
 		break;
 
 	case WIFI_DIRECT_STATE_GROUP_OWNER:
 		{
 			if (wfd_set_wifi_direct_state(VCONFKEY_WIFI_DIRECT_GROUP_OWNER) < 0)
-				WFD_SERVER_LOG(WFD_LOG_ASSERT, "wfd_set_wifi_direct_state() failed\n");
+				WDS_LOGF( "wfd_set_wifi_direct_state() failed\n");
 		}
 		break;
 
@@ -334,7 +334,7 @@ void wfd_server_set_state(int state)
 	case WIFI_DIRECT_STATE_ACTIVATING:
 		{
 			if (wfd_set_wifi_direct_state(VCONFKEY_WIFI_DIRECT_ACTIVATED) < 0)
-				WFD_SERVER_LOG(WFD_LOG_ASSERT, "wfd_set_wifi_direct_state() failed\n");
+				WDS_LOGF( "wfd_set_wifi_direct_state() failed\n");
 		}
 		break;
 
@@ -342,7 +342,7 @@ void wfd_server_set_state(int state)
 		break;
 	}
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDS_LOG_FUNC_EXIT__;
 
 	return;
 }

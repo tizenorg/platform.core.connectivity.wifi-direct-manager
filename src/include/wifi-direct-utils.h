@@ -40,38 +40,42 @@ int wfd_macaddr_atoe(char *p, unsigned char mac[]);
  * 	Macros
  *****************************************************************************/
 
-
-#ifdef VITA_FEATURE
+#ifdef USE_DLOG
 #include <dlog.h>
 
-#define WIFI_DIRECT_SERVER_MID		"wfd-server"
+#undef LOG_TAG
+#define LOG_TAG "WIFI_DIRECT_MANAGER"
 
-#define WFD_LOG_LOW 	LOG_VERBOSE
-#define WFD_LOG_HIGH 	LOG_INFO
-#define WFD_LOG_ERROR 	LOG_ERROR
-#define WFD_LOG_WARN 	LOG_WARN
-#define WFD_LOG_ASSERT 	LOG_FATAL
-#define WFD_LOG_EXCEPTION 	LOG_FATAL
+#define WDS_LOGV(format, args...) LOGV(format, ##args)
+#define WDS_LOGD(format, args...) LOGD(format, ##args)
+#define WDS_LOGI(format, args...) LOGI(format, ##args)
+#define WDS_LOGW(format, args...) LOGW(format, ##args)
+#define WDS_LOGE(format, args...) LOGE(format, ##args)
+#define WDS_LOGF(format, args...) LOGF(format, ##args)
 
-char * wfd_debug_print(char* file, int line, char* format, ...);
-char * wfd_trimming_path(const char* filewithpath);
-
-char * wfd_trim_path(const char* filewithpath);
-int wfd_gettid();
-
-#define WFD_SERVER_LOG(log_level, format, args...) \
-	LOG(log_level, WIFI_DIRECT_SERVER_MID, "[%s:%04d,%d] " format, wfd_trim_path(__FILE__), __LINE__,wfd_gettid(),##args)
-#define __WFD_SERVER_FUNC_ENTER__	LOG(LOG_VERBOSE,  WIFI_DIRECT_SERVER_MID, "[%s:%04d,%d] Enter: %s()\n", wfd_trim_path(__FILE__), __LINE__,wfd_gettid(),__func__)
-#define __WFD_SERVER_FUNC_EXIT__	LOG(LOG_VERBOSE,  WIFI_DIRECT_SERVER_MID, "[%s:%04d,%d] Quit: %s()\n", wfd_trim_path(__FILE__), __LINE__,wfd_gettid(),__func__)
+#define __WDS_LOG_FUNC_ENTER__ LOGV("Enter")
+#define __WDS_LOG_FUNC_EXIT__ LOGV("Quit")
 
 #else /** _DLOG_UTIL */
 
-#define WFD_SERVER_LOG(log_level, format, args...) printf("[%s:%04d,%d] " format, wfd_trim_path(__FILE__), __LINE__,wfd_gettid(), ##args)
-#define __WFD_SERVER_FUNC_ENTER__	printf("[%s:%04d,%d] Entering: %s()\n", wfd_trim_path(__FILE__), __LINE__,wfd_gettid(),__func__)
-#define __WFD_SERVER_FUNC_EXIT__	printf("[%s:%04d,%d] Quit: %s()\n", wfd_trim_path(__FILE__), __LINE__,wfd_gettid(),__func__)
+#define WDS_LOGV(format, args...) \
+	printf("[V/WIFI_DIRECT_MANAGER] %s: %s()(%4d)> "format, __FILE__, __FUNCTION__, __LINE__, ##args)
+#define WDS_LOGD(format, args...) \
+	printf("[D/WIFI_DIRECT_MANAGER] %s: %s()(%4d)> "format, __FILE__, __FUNCTION__, __LINE__, ##args)
+#define WDS_LOGI(format, args...) \
+	printf("[I/WIFI_DIRECT_MANAGER] %s: %s()(%4d)> "format, __FILE__, __FUNCTION__, __LINE__, ##args)
+#define WDS_LOGW(format, args...) \
+	printf("[W/WIFI_DIRECT_MANAGER] %s: %s()(%4d)> "format, __FILE__, __FUNCTION__, __LINE__, ##args)
+#define WDS_LOGE(format, args...) \
+	printf("[E/WIFI_DIRECT_MANAGER] %s: %s()(%4d)> "format, __FILE__, __FUNCTION__, __LINE__, ##args)
+#define WDS_LOGF(format, args...) \
+	printf("[F/WIFI_DIRECT_MANAGER] %s: %s()(%4d)> "format, __FILE__, __FUNCTION__, __LINE__, ##args)
 
-#endif /** _USE_DLOG_UTIL */
+#define __WDS_LOG_FUNC_ENTER__ \
+	printf("[V/WIFI_DIRECT_MANAGER] %s: %s()(%4d)> Enter", __FILE__, __FUNCTION__, __LINE__)
+#define __WDS_LOG_FUNC_EXIT__ \
+	printf("[V/WIFI_DIRECT_MANAGER] %s: %s()(%4d)> Exit", __FILE__, __FUNCTION__, __LINE__)
 
+#endif /** _DLOG_UTIL */
 
 #endif /** __WIFI_DIRECT_UTILS_H_ */
-

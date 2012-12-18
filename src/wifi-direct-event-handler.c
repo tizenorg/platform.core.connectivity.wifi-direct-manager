@@ -69,7 +69,7 @@ char *__wfd_print_client_event(wfd_client_event_e event)
 	case WIFI_DIRECT_CLI_EVENT_IP_LEASED_IND:
 		return "IP_LEASED_IND";
 	default:
-		WFD_SERVER_LOG(WFD_LOG_ASSERT, "Error!!! Invalid Event (%d) \n", event);
+		WDS_LOGF( "Error!!! Invalid Event (%d) \n", event);
 		return "INVALID EVENT";
 	}
 }
@@ -170,7 +170,7 @@ char *__wfd_server_print_event(wfd_event_t event)
 	case WFD_EVENT_INVITE_RESPONSE:
 		return "INVITE_RESPONSE";
   	default:
-		WFD_SERVER_LOG(WFD_LOG_ASSERT, "Error!!! Invalid Event (%d) \n", event);
+		WDS_LOGF( "Error!!! Invalid Event (%d) \n", event);
 		return "INVALID EVENT";
 	}
 
@@ -178,7 +178,7 @@ char *__wfd_server_print_event(wfd_event_t event)
 
 void __wfd_server_print_connected_peer()
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 	int i;
@@ -187,12 +187,12 @@ void __wfd_server_print_connected_peer()
 	{
 		if (wfd_server->connected_peers[i].isUsed == 0)
 		{
-			WFD_SERVER_LOG(WFD_LOG_LOW, "Connected Peer[%d] isUsed=[%d]\n", i,
+			WDS_LOGD( "Connected Peer[%d] isUsed=[%d]\n", i,
 						   wfd_server->connected_peers[i].isUsed);
 		}
 		else
 		{
-			WFD_SERVER_LOG(WFD_LOG_LOW, "Connected Peer[%d] isUsed=[%d] dev mac=" MACSTR " intf mac=" MACSTR " ip="IPSTR" device_name=%s\n" ,
+			WDS_LOGD( "Connected Peer[%d] isUsed=[%d] dev mac=" MACSTR " intf mac=" MACSTR " ip="IPSTR" device_name=%s\n" ,
 					i,
 					wfd_server->connected_peers[i].isUsed,
 					MAC2STR(wfd_server->connected_peers[i].peer.mac_address),
@@ -212,7 +212,7 @@ bool __wfd_get_ip_address(void *user_data)
 	if (wfd_oem_dhcpc_get_ip_address(ip_addr, 64, 0) == true)
 	{
 		wfd_event_t event;
-		WFD_SERVER_LOG(WFD_LOG_ERROR, "** Get IP address!!ip = %s\n", ip_addr);
+		WDS_LOGE( "** Get IP address!!ip = %s\n", ip_addr);
 		wfd_server->dhcp_ip_address_timer = 0;
 
 		event = WFD_EVENT_IP_ASSIGNED;
@@ -221,14 +221,14 @@ bool __wfd_get_ip_address(void *user_data)
 	}
 	else
 	{
-		WFD_SERVER_LOG(WFD_LOG_ERROR, "** Failed to get IP address!!Wait more...\n");
+		WDS_LOGE( "** Failed to get IP address!!Wait more...\n");
 		return true;
 	}
 }
 
 void wfd_server_start_dhcp_wait_timer()
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 
 #if 0
@@ -239,9 +239,9 @@ void wfd_server_start_dhcp_wait_timer()
 
 	interface_name = wfd_oem_get_default_interface_name();
 	if (NULL == interface_name)
-		WFD_SERVER_LOG(WFD_LOG_ERROR, "ERROR : \default interface name is NULL !!!\n");
+		WDS_LOGE( "ERROR : \default interface name is NULL !!!\n");
 	else
-		WFD_SERVER_LOG(WFD_LOG_ERROR, "Interface name is [%s]\n", interface_name);
+		WDS_LOGE( "Interface name is [%s]\n", interface_name);
 
 	sprintf(cmdStr, "killall udhcpc;/usr/bin/udhcpc -i %s -s /usr/etc/wifi-direct/udhcp_script.non-autoip &", interface_name);
 	system(cmdStr);
@@ -257,7 +257,7 @@ void wfd_server_start_dhcp_wait_timer()
 
 void wfd_server_cancel_dhcp_wait_timer()
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 	if (wfd_server->dhcp_ip_address_timer > 0)
@@ -267,7 +267,7 @@ void wfd_server_cancel_dhcp_wait_timer()
 	}
 	else
 	{
-		WFD_SERVER_LOG(WFD_LOG_ERROR, "** dhcp_wait_timer is already stopped...\n");
+		WDS_LOGE( "** dhcp_wait_timer is already stopped...\n");
 	}
 }
 
@@ -277,10 +277,10 @@ void __wfd_server_send_client_event(wifi_direct_client_noti_s * noti)
 	int ret = 0;
 	int len = sizeof(wifi_direct_client_noti_s);
 
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
-	WFD_SERVER_LOG(WFD_LOG_HIGH, "__wfd_server_send_client_event(%d, %s)\n",
+	WDS_LOGI( "__wfd_server_send_client_event(%d, %s)\n",
 				   noti->event, __wfd_print_client_event(noti->event));
 
 	for (i = 0; i < WFD_MAX_CLIENTS; i++)
@@ -290,7 +290,7 @@ void __wfd_server_send_client_event(wifi_direct_client_noti_s * noti)
 			&& (wfd_server->client[i].client_id > WFD_INVALID_ID)
 			&& (wfd_server->client[i].async_sockfd > 0))
 		{
-			WFD_SERVER_LOG(WFD_LOG_LOW, "Sending event to client[%d]: cid=[%d] sock=[%d] a-sock=[%d], dev_handle=[%d], sourceid=[%d]\n",
+			WDS_LOGD( "Sending event to client[%d]: cid=[%d] sock=[%d] a-sock=[%d], dev_handle=[%d], sourceid=[%d]\n",
 					i,
 					wfd_server->client[i].client_id,
 					wfd_server->client[i].sync_sockfd,
@@ -306,10 +306,10 @@ void __wfd_server_send_client_event(wifi_direct_client_noti_s * noti)
 			ret = write(wfd_server->client[i].async_sockfd, (char *) noti, len);
 			if (ret <= 0)
 			{
-				WFD_SERVER_LOG( WFD_LOG_ASSERT, "Error!!! writing to the socket. Error [%s] \n", strerror(errno));
+				WDS_LOGF( "Error!!! writing to the socket. Error [%s] \n", strerror(errno));
 			}
 			else
-				WFD_SERVER_LOG( WFD_LOG_LOW, "Event(%s) is Sent to client(id:%d) successfully!!!\n",
+				WDS_LOGD( "Event(%s) is Sent to client(id:%d) successfully!!!\n",
 						__wfd_print_client_event(noti->event), wfd_server->client[i].client_id);
 		}
 	}
@@ -318,7 +318,7 @@ void __wfd_server_send_client_event(wifi_direct_client_noti_s * noti)
 
 bool wfd_server_remember_connecting_peer(unsigned char device_mac[6])
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 	wfd_discovery_entry_s *peer;
 	int status;
@@ -328,12 +328,12 @@ bool wfd_server_remember_connecting_peer(unsigned char device_mac[6])
 	{
 		if (peer != NULL)
 		{
-			WFD_SERVER_LOG(WFD_LOG_LOW, "wfd_oem_get_peer_info() Success\n");
+			WDS_LOGD( "wfd_oem_get_peer_info() Success\n");
 			memcpy(&wfd_server->current_peer, peer, sizeof(wfd_discovery_entry_s));
 
 			__wfd_server_print_connected_peer();
 			free(peer);
-			WFD_SERVER_LOG(WFD_LOG_LOW, "peer " MACSTR" go=[%d] connected=[%d] ch=[%d] device_name=[%s]\n",
+			WDS_LOGD( "peer " MACSTR" go=[%d] connected=[%d] ch=[%d] device_name=[%s]\n",
 					MAC2STR(wfd_server->current_peer.mac_address),
 					wfd_server->current_peer.is_group_owner,
 					wfd_server->current_peer.is_connected,
@@ -345,13 +345,13 @@ bool wfd_server_remember_connecting_peer(unsigned char device_mac[6])
 		}
 	}
 
-	WFD_SERVER_LOG(WFD_LOG_ERROR, "Remember Peer: Error!! can't find peer from the discovery result..\n");
+	WDS_LOGE( "Remember Peer: Error!! can't find peer from the discovery result..\n");
 	return false;
 }
 
 bool wfd_server_clear_connected_peer()
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 	int i;
 	unsigned char NULL_IP[4] = { 0, 0, 0, 0};
@@ -371,7 +371,7 @@ bool wfd_server_clear_connected_peer()
 
 void wfd_server_reset_connecting_peer()
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 	unsigned char NULL_MAC[6] = { 0, 0, 0, 0, 0, 0 };
@@ -381,7 +381,7 @@ void wfd_server_reset_connecting_peer()
 
 void wfd_server_add_connected_peer(wfd_discovery_entry_s* peer, unsigned char interface_mac[6], char* ip_address)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 	int i;
 
@@ -402,7 +402,7 @@ void wfd_server_add_connected_peer(wfd_discovery_entry_s* peer, unsigned char in
 
 void wfd_server_remove_connected_peer(wfd_discovery_entry_s * peer)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 	int i;
@@ -424,7 +424,7 @@ void wfd_server_remove_connected_peer(wfd_discovery_entry_s * peer)
 
 void wfd_server_remove_connected_peer_by_interface_mac(unsigned char interface_mac[6])
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 	int i;
@@ -447,7 +447,7 @@ void wfd_server_remove_connected_peer_by_interface_mac(unsigned char interface_m
 
 int wfd_server_is_connected_peer_by_device_mac(unsigned char device_mac[6])
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 	int i;
@@ -466,7 +466,7 @@ int wfd_server_is_connected_peer_by_device_mac(unsigned char device_mac[6])
 wfd_local_connected_peer_info_t* 
 wfd_server_get_connected_peer_by_device_mac(unsigned char device_mac[6])
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 	int i;
@@ -486,7 +486,7 @@ wfd_server_get_connected_peer_by_device_mac(unsigned char device_mac[6])
 wfd_local_connected_peer_info_t* 
 wfd_server_get_connected_peer_by_interface_mac(unsigned char int_mac[6])
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 	int i;
@@ -498,7 +498,7 @@ wfd_server_get_connected_peer_by_interface_mac(unsigned char int_mac[6])
 		if (wfd_server->connected_peers[i].isUsed == 1 &&
 			memcmp(wfd_server->connected_peers[i].int_address, int_mac, 6) == 0)
 		{
-			WFD_SERVER_LOG(WFD_LOG_LOW, "Found: peer[%d] device_name=[%s] int_mac=["MACSTR"] dev_mac=["MACSTR"] cat=[%d] ip=["IPSTR"]\n",
+			WDS_LOGD( "Found: peer[%d] device_name=[%s] int_mac=["MACSTR"] dev_mac=["MACSTR"] cat=[%d] ip=["IPSTR"]\n",
 					i,
 					wfd_server->connected_peers[i].peer.device_name,
 					MAC2STR(wfd_server->connected_peers[i].int_address),
@@ -515,7 +515,7 @@ wfd_server_get_connected_peer_by_interface_mac(unsigned char int_mac[6])
 
 int wfd_server_is_connected_peer_by_interface_mac(unsigned char interface_mac[6])
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 	int i;
@@ -537,7 +537,7 @@ void wfd_server_process_event(wfd_event_t event)
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 	wifi_direct_client_noti_s noti;
 
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	memset(&noti, 0, sizeof(wifi_direct_client_noti_s));
 
@@ -546,7 +546,7 @@ void wfd_server_process_event(wfd_event_t event)
 
 	wifi_direct_state_e state = wfd_server_get_state();
 
-	WFD_SERVER_LOG(WFD_LOG_HIGH, "state=[%s] process event= [%s] \n", wfd_print_state(state), __wfd_server_print_event(noti.event));
+	WDS_LOGI( "state=[%s] process event= [%s] \n", wfd_print_state(state), __wfd_server_print_event(noti.event));
 
 	if (state == WIFI_DIRECT_STATE_CONNECTING)
 	{
@@ -683,13 +683,13 @@ void wfd_server_process_event(wfd_event_t event)
 					wfd_local_connected_peer_info_t *peer = NULL;
 					peer =
 						wfd_server_get_connected_peer_by_interface_mac(intf_mac);
-					WFD_SERVER_LOG(WFD_LOG_HIGH,
+					WDS_LOGI(
 								   "Peer's Intf MAC is " MACSTR "\n",
 								   MAC2STR(intf_mac));
 
 					if (peer == NULL)
 					{
-						WFD_SERVER_LOG(WFD_LOG_HIGH,
+						WDS_LOGI(
 									   "Something wrong... Peer's Dev MAC is " MACSTR "\n",
 									   MAC2STR(peer->peer.mac_address));
 						snprintf(noti.param1, sizeof(noti.param1), MACSTR,
@@ -727,7 +727,7 @@ void wfd_server_process_event(wfd_event_t event)
 					else
 					{
 						unsigned char intf_mac[6] = {0, };
-						WFD_SERVER_LOG(WFD_LOG_HIGH,
+						WDS_LOGI(
 									   "Something wrong. peer_num is [%d]\n",
 									   peer_num);
 						wfd_server_add_connected_peer(&wfd_server->current_peer,
@@ -759,10 +759,10 @@ void wfd_server_process_event(wfd_event_t event)
 		case WFD_EVENT_CONNECT_PBC_START:
 			noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_WPS_REQ;
 
-			WFD_SERVER_LOG(WFD_LOG_HIGH,
+			WDS_LOGI(
 						   "g_incomming_peer_mac_address is " MACSTR "\n",
 						   MAC2STR(g_incomming_peer_mac_address));
-			//WFD_SERVER_LOG(WFD_LOG_HIGH, "g_incomming_peer_ssid is [%s]\n", g_incomming_peer_ssid);
+			//WDS_LOGI( "g_incomming_peer_ssid is [%s]\n", g_incomming_peer_ssid);
 			snprintf(noti.param1, sizeof(noti.param1), MACSTR,
 					 MAC2STR(g_incomming_peer_mac_address));
 			//strncpy(noti.param2, g_incomming_peer_ssid, strlen(g_incomming_peer_ssid));
@@ -785,14 +785,14 @@ void wfd_server_process_event(wfd_event_t event)
 		case WFD_EVENT_PROV_DISCOVERY_RESPONSE_WPS_DISPLAY:
 		case WFD_EVENT_PROV_DISCOVERY_RESPONSE_WPS_KEYPAD:
 			noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_WPS_REQ;
-			WFD_SERVER_LOG(WFD_LOG_HIGH,"g_incomming_peer_mac_address is [%s]\n", g_incomming_peer_mac_address);
+			WDS_LOGI("g_incomming_peer_mac_address is [%s]\n", g_incomming_peer_mac_address);
 			snprintf(noti.param1, sizeof(noti.param1), MACSTR,	 MAC2STR(g_incomming_peer_mac_address));
-			WFD_SERVER_LOG(WFD_LOG_LOW, "SENDING CLIENT EVENT NOTI MAC = %s\n", g_incomming_peer_mac_address);
+			WDS_LOGD( "SENDING CLIENT EVENT NOTI MAC = %s\n", g_incomming_peer_mac_address);
 			__wfd_server_send_client_event(&noti);
 			break;
 
 		default:
-			WFD_SERVER_LOG(WFD_LOG_HIGH,
+			WDS_LOGI(
 						   "Unprocessed event: state=[%s] event= [%s] \n",
 						   wfd_print_state(state),
 						   __wfd_server_print_event(noti.event));
@@ -814,7 +814,7 @@ void wfd_server_process_event(wfd_event_t event)
 				wfd_server_set_state(WIFI_DIRECT_STATE_ACTIVATED);
 			}
 
-			WFD_SERVER_LOG(WFD_LOG_HIGH, "Peer's Dev MAC is " MACSTR "\n",
+			WDS_LOGI( "Peer's Dev MAC is " MACSTR "\n",
 						   MAC2STR(wfd_server->current_peer.mac_address));
 			snprintf(noti.param1, sizeof(noti.param1), MACSTR,
 					 MAC2STR(wfd_server->current_peer.mac_address));
@@ -826,7 +826,7 @@ void wfd_server_process_event(wfd_event_t event)
 			//wfd_oem_start_discovery(true, 0);
 			break;
 		default:
-			WFD_SERVER_LOG(WFD_LOG_HIGH,
+			WDS_LOGI(
 						   "Unprocessed event: state=[%s] event= [%s] \n",
 						   wfd_print_state(state),
 						   __wfd_server_print_event(noti.event));
@@ -856,15 +856,15 @@ void wfd_server_process_event(wfd_event_t event)
 				else
 				{
 					//wfd_server->config_data.wps_config = WIFI_DIRECT_WPS_TYPE_NONE;
-					WFD_SERVER_LOG(WFD_LOG_LOW, "WFD_EVENT_INVITE_REQUEST\n");
+					WDS_LOGD( "WFD_EVENT_INVITE_REQUEST\n");
 				}
 
 				noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_REQ;
 
-				WFD_SERVER_LOG(WFD_LOG_HIGH,
+				WDS_LOGI(
 							   "g_incomming_peer_mac_address is " MACSTR "\n",
 							   MAC2STR(g_incomming_peer_mac_address));
-				//WFD_SERVER_LOG(WFD_LOG_HIGH, "g_incomming_peer_ssid is [%s]\n", g_incomming_peer_ssid);
+				//WDS_LOGI( "g_incomming_peer_ssid is [%s]\n", g_incomming_peer_ssid);
 				snprintf(noti.param1, sizeof(noti.param1), MACSTR,
 						 MAC2STR(g_incomming_peer_mac_address));
 
@@ -887,7 +887,7 @@ void wfd_server_process_event(wfd_event_t event)
 						wfd_server_get_connected_peer_by_interface_mac(interface_mac);
 					if (peer != NULL)
 					{
-						WFD_SERVER_LOG(WFD_LOG_HIGH,
+						WDS_LOGI(
 									   "Peer's Intf MAC: " MACSTR ", Device MAC:" MACSTR " \n",
 									   MAC2STR(interface_mac),
 									   MAC2STR(peer->peer.mac_address));
@@ -896,7 +896,7 @@ void wfd_server_process_event(wfd_event_t event)
 					}
 					else
 					{
-						WFD_SERVER_LOG(WFD_LOG_HIGH,
+						WDS_LOGI(
 									   "Peer's Intf MAC: " MACSTR ", Device MAC:null \n",
 									   MAC2STR(interface_mac));
 						memset(noti.param1, 0, 6);
@@ -912,7 +912,7 @@ void wfd_server_process_event(wfd_event_t event)
 							WIFI_DIRECT_WPS_TYPE_PBC;
 						if (wfd_oem_disconnect() == false)
 						{
-							WFD_SERVER_LOG(WFD_LOG_EXCEPTION,
+							WDS_LOGF(
 										   "Error!!! wfd_oem_disconnect() failed!!..\n");
 						}
 					}
@@ -921,14 +921,14 @@ void wfd_server_process_event(wfd_event_t event)
 				}
 				else
 				{
-					WFD_SERVER_LOG(WFD_LOG_EXCEPTION,
+					WDS_LOGF(
 								   "Error!!! DISASSOC event come..\n");
 				}
 			}
 			break;
 
 		case WFD_EVENT_PRIMARY_IF_DISCONNECTION:
-			WFD_SERVER_LOG(WFD_LOG_LOW,
+			WDS_LOGD(
 						   "Primary interface (wlan0) is down. Just let it up!\n");
 			system("ifconfig wlan0 up");
 			break;
@@ -937,11 +937,11 @@ void wfd_server_process_event(wfd_event_t event)
 			{
 				if (state == WIFI_DIRECT_STATE_GROUP_OWNER)
 				{
-					WFD_SERVER_LOG(WFD_LOG_HIGH,
+					WDS_LOGI(
 								   "Peer's Dev MAC is " MACSTR "\n",
 								   MAC2STR(wfd_server->current_peer.
 										   mac_address));
-					//WFD_SERVER_LOG(WFD_LOG_HIGH, "Peer's SSID is [%s]\n", wfd_server->current_peer.ssid);
+					//WDS_LOGI( "Peer's SSID is [%s]\n", wfd_server->current_peer.ssid);
 					snprintf(noti.param1, sizeof(noti.param1), MACSTR,
 							 MAC2STR(wfd_server->current_peer.mac_address));
 					//strncpy(noti.param2, wfd_server->current_peer.ssid, strlen(wfd_server->current_peer.ssid));
@@ -955,7 +955,7 @@ void wfd_server_process_event(wfd_event_t event)
 				}
 				else
 				{
-					WFD_SERVER_LOG(WFD_LOG_LOW,
+					WDS_LOGD(
 								   "message is ignored [%d] at state=[%d]\n",
 								   event, state);
 				}
@@ -965,7 +965,7 @@ void wfd_server_process_event(wfd_event_t event)
 			{
 				if (state == WIFI_DIRECT_STATE_CONNECTED)
 				{
-					WFD_SERVER_LOG(WFD_LOG_HIGH,
+					WDS_LOGI(
 								   "Peer's Intf MAC: " MACSTR ", Device MAC:" MACSTR " \n",
 								   MAC2STR(wfd_server->connected_peers[0].int_address),
 								   MAC2STR(wfd_server->connected_peers[0].peer.mac_address));
@@ -982,7 +982,7 @@ void wfd_server_process_event(wfd_event_t event)
 				}
 				else
 				{
-					WFD_SERVER_LOG(WFD_LOG_LOW,
+					WDS_LOGD(
 								   "message is ignored [%d] at state=[%d]\n",
 								   event, state);
 				}
@@ -1087,10 +1087,10 @@ void wfd_server_process_event(wfd_event_t event)
 			break;
 
 		default:
-			WFD_SERVER_LOG(WFD_LOG_HIGH, "Unprocessed event: state=[%s] event= [%s] \n", wfd_print_state(state), __wfd_server_print_event(noti.event));
+			WDS_LOGI( "Unprocessed event: state=[%s] event= [%s] \n", wfd_print_state(state), __wfd_server_print_event(noti.event));
 			break;
 		}
 	}
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDS_LOG_FUNC_EXIT__;
 }

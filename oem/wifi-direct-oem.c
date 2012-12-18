@@ -30,7 +30,7 @@ int wfd_oem_init(wfd_oem_event_cb event_callback)
 {
 	if (NULL == g_ops->wfd_oem_init)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_init is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_init is NULL!!\n");
 		return false;
 	}
 
@@ -41,7 +41,7 @@ int wfd_oem_destroy()
 {
 	if (NULL == g_ops->wfd_oem_destroy)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_destroy is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_destroy is NULL!!\n");
 		return false;
 	}
 
@@ -52,7 +52,7 @@ int wfd_oem_activate()
 {
 	if (NULL == g_ops->wfd_oem_activate)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_activate is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_activate is NULL!!\n");
 		return false;
 	}
 
@@ -63,7 +63,7 @@ int wfd_oem_deactivate()
 {
 	if (NULL == g_ops->wfd_oem_deactivate)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_deactivate is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_deactivate is NULL!!\n");
 		return false;
 	}
 
@@ -75,7 +75,7 @@ int wfd_oem_connect(unsigned char mac_addr[6], wifi_direct_wps_type_e	wps_config
 {
 	if (NULL == g_ops->wfd_oem_connect)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_connect is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_connect is NULL!!\n");
 		return false;
 	}
 
@@ -86,7 +86,7 @@ int wfd_oem_wps_pbc_start()
 {
 	if (NULL == g_ops->wfd_oem_wps_pbc_start)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_wps_pbc_start is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_wps_pbc_start is NULL!!\n");
 		return false;
 	}
 
@@ -97,7 +97,7 @@ int wfd_oem_disconnect()
 {
 	if (NULL == g_ops->wfd_oem_disconnect)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_disconnect is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_disconnect is NULL!!\n");
 		return false;
 	}
 
@@ -109,7 +109,7 @@ int wfd_oem_disconnect_sta(unsigned char mac_addr[6])
 {
 	if (NULL == g_ops->wfd_oem_disconnect_sta)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_disconnect_sta is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_disconnect_sta is NULL!!\n");
 		return false;
 	}
 
@@ -120,7 +120,7 @@ bool wfd_oem_is_discovery_enabled()
 {
 	if (NULL == g_ops->wfd_oem_is_discovery_enabled)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_is_discovery_enabled is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_is_discovery_enabled is NULL!!\n");
 		return false;
 	}
 
@@ -131,7 +131,7 @@ int wfd_oem_start_discovery(bool listen_only, int timeout)
 {
 	if (NULL == g_ops->wfd_oem_start_discovery)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_start_discovery is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_start_discovery is NULL!!\n");
 		return false;
 	}
 
@@ -142,7 +142,7 @@ int wfd_oem_cancel_discovery()
 {
 	if (NULL == g_ops->wfd_oem_cancel_discovery)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_cancel_discovery is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_cancel_discovery is NULL!!\n");
 		return false;
 	}
 
@@ -155,7 +155,7 @@ int wfd_oem_get_discovery_result(wfd_discovery_entry_s ** peer_list, int* peer_n
 {
 	if (NULL == g_ops->wfd_oem_get_discovery_result)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_get_discovery_result is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_get_discovery_result is NULL!!\n");
 		return false;
 	}
 
@@ -166,7 +166,7 @@ int wfd_oem_get_peer_info(unsigned char *mac_addr, wfd_discovery_entry_s **peer)
 {
 	if (NULL == g_ops->wfd_oem_get_peer_info)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_get_peer_info is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_get_peer_info is NULL!!\n");
 		return false;
 	}
 
@@ -177,7 +177,7 @@ int wfd_oem_send_provision_discovery_request(unsigned char mac_addr[6], wifi_dir
 {
 	if (NULL == g_ops->wfd_oem_send_provision_discovery_request)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_send_provision_discovery_request is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_send_provision_discovery_request is NULL!!\n");
 		return false;
 	}
 
@@ -188,7 +188,7 @@ int wfd_oem_send_invite_request(unsigned char dev_mac_addr[6])
 {
 	if (NULL == g_ops->wfd_oem_send_invite_request)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_send_invite_request is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_send_invite_request is NULL!!\n");
 		return false;
 	}
 
@@ -200,7 +200,7 @@ int wfd_oem_create_group(char* ssid)
 {
 	if (NULL == g_ops->wfd_oem_create_group)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_create_group is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_create_group is NULL!!\n");
 		return false;
 	}
 
@@ -211,7 +211,7 @@ int wfd_oem_cancel_group()
 {
 	if (NULL == g_ops->wfd_oem_cancel_group)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_cancel_group is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_cancel_group is NULL!!\n");
 		return false;
 	}
 
@@ -222,7 +222,7 @@ int wfd_oem_activate_pushbutton()
 {
 	if (NULL == g_ops->wfd_oem_activate_pushbutton)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_activate_pushbutton is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_activate_pushbutton is NULL!!\n");
 		return false;
 	}
 
@@ -233,7 +233,7 @@ bool wfd_oem_is_groupowner()
 {
 	if (NULL == g_ops->wfd_oem_is_groupowner)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_is_groupowner is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_is_groupowner is NULL!!\n");
 		return false;
 	}
 
@@ -244,7 +244,7 @@ bool wfd_oem_is_groupclient()
 {
 	if (NULL == g_ops->wfd_oem_is_groupclient)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_is_groupclient is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_is_groupclient is NULL!!\n");
 		return false;
 	}
 
@@ -256,7 +256,7 @@ int wfd_oem_get_link_status()
 {
 	if (NULL == g_ops->wfd_oem_get_link_status)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_get_link_status is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_get_link_status is NULL!!\n");
 		return false;
 	}
 
@@ -268,7 +268,7 @@ int wfd_oem_get_ssid(char* ssid, int len)
 {
 	if (NULL == g_ops->wfd_oem_get_ssid)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_get_ssid is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_get_ssid is NULL!!\n");
 		return false;
 	}
 
@@ -279,7 +279,7 @@ bool wfd_oem_dhcpc_get_ip_address(char *ipaddr_buf, int len, int is_IPv6)
 {
 	if (NULL == g_ops->wfd_oem_dhcpc_get_ip_address)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_dhcpc_get_ip_address is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_dhcpc_get_ip_address is NULL!!\n");
 		return false;
 	}
 
@@ -291,7 +291,7 @@ char* wfd_oem_get_default_interface_name()
 {
 	if (NULL == g_ops->wfd_oem_get_default_interface_name)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_get_default_interface_name is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_get_default_interface_name is NULL!!\n");
 		return false;
 	}
 
@@ -302,7 +302,7 @@ char* wfd_oem_get_ip()
 {
 	if (NULL == g_ops->wfd_oem_get_ip)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_get_ip is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_get_ip is NULL!!\n");
 		return false;
 	}
 
@@ -313,7 +313,7 @@ int wfd_oem_set_wps_pin(char* pin)
 {
 	if (NULL == g_ops->wfd_oem_set_wps_pin)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_set_wps_pin is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_set_wps_pin is NULL!!\n");
 		return false;
 	}
 
@@ -324,7 +324,7 @@ int wfd_oem_get_wps_pin(char* wps_pin, int len)
 {
 	if (NULL == g_ops->wfd_oem_get_wps_pin)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_get_wps_pin is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_get_wps_pin is NULL!!\n");
 		return false;
 	}
 
@@ -335,7 +335,7 @@ int wfd_oem_generate_wps_pin()
 {
 	if (NULL == g_ops->wfd_oem_generate_wps_pin)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_generate_wps_pin is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_generate_wps_pin is NULL!!\n");
 		return false;
 	}
 
@@ -347,7 +347,7 @@ int wfd_oem_set_ssid(char* ssid)
 {
 	if (NULL == g_ops->wfd_oem_set_ssid)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_set_ssid is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_set_ssid is NULL!!\n");
 		return false;
 	}
 
@@ -358,7 +358,7 @@ int wfd_oem_set_wpa_passphrase(char* wpa_key)
 {
 	if (NULL == g_ops->wfd_oem_set_wpa_passphrase)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_set_wpa_passphrase is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_set_wpa_passphrase is NULL!!\n");
 		return false;
 	}
 
@@ -369,7 +369,7 @@ int wfd_oem_get_supported_wps_mode()
 {
 	if (NULL == g_ops->wfd_oem_get_supported_wps_mode)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_get_supported_wps_mode is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_get_supported_wps_mode is NULL!!\n");
 		return false;
 	}
 
@@ -380,7 +380,7 @@ int wfd_oem_get_connected_peers_count(int* peer_num)
 {
 	if (NULL == g_ops->wfd_oem_get_connected_peers_count)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_get_connected_peers_count is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_get_connected_peers_count is NULL!!\n");
 		return false;
 	}
 
@@ -392,7 +392,7 @@ int wfd_oem_get_connected_peers_info(wfd_connected_peer_info_s ** peer_list, int
 {
 	if (NULL == g_ops->wfd_oem_get_connected_peers_info)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_get_connected_peers_info is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_get_connected_peers_info is NULL!!\n");
 		return false;
 	}
 
@@ -404,7 +404,7 @@ int wfd_oem_get_go_intent(int* intent)
 {
 	if (NULL == g_ops->wfd_oem_get_go_intent)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_get_go_intent is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_get_go_intent is NULL!!\n");
 		return false;
 	}
 
@@ -416,7 +416,7 @@ int wfd_oem_set_go_intent(int intent)
 {
 	if (NULL == g_ops->wfd_oem_set_go_intent)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_set_go_intent is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_set_go_intent is NULL!!\n");
 		return false;
 	}
 
@@ -428,7 +428,7 @@ int wfd_oem_set_device_type(wifi_direct_primary_device_type_e primary_cat, wifi_
 {
 	if (NULL == g_ops->wfd_oem_set_device_type)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_set_device_type is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_set_device_type is NULL!!\n");
 		return false;
 	}
 
@@ -440,7 +440,7 @@ int wfd_oem_get_device_mac_address(unsigned char* device_mac)
 {
 	if (NULL == g_ops->wfd_oem_get_device_mac_address)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_get_device_mac_address is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_get_device_mac_address is NULL!!\n");
 		return false;
 	}
 
@@ -451,7 +451,7 @@ int wfd_oem_set_oem_loglevel(int is_increase)
 {
 	if (NULL == g_ops->wfd_oem_set_oem_loglevel)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_set_oem_loglevel is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_set_oem_loglevel is NULL!!\n");
 		return false;
 	}
 
@@ -462,7 +462,7 @@ int wfd_oem_get_disassoc_sta_mac(unsigned char *mac_addr)
 {
 	if (NULL == g_ops->wfd_oem_get_disassoc_sta_mac)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_get_disassoc_sta_mac is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_get_disassoc_sta_mac is NULL!!\n");
 		return false;
 	}
 
@@ -473,7 +473,7 @@ int wfd_oem_get_assoc_sta_mac(unsigned char *mac_addr)
 {
 	if (NULL == g_ops->wfd_oem_get_assoc_sta_mac)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_get_assoc_sta_mac is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_get_assoc_sta_mac is NULL!!\n");
 		return false;
 	}
 
@@ -484,7 +484,7 @@ int wfd_oem_get_requestor_mac(unsigned char *mac_addr)
 {
 	if (NULL == g_ops->wfd_oem_get_requestor_mac)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_get_requestor_mac is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_get_requestor_mac is NULL!!\n");
 		return false;
 	}
 
@@ -495,7 +495,7 @@ int wfd_oem_get_operating_channel()
 {
 	if (NULL == g_ops->wfd_oem_get_operating_channel)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_get_operating_channel is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_get_operating_channel is NULL!!\n");
 		return false;
 	}
 
@@ -506,7 +506,7 @@ int wfd_oem_get_persistent_group_info(wfd_persistent_group_info_s ** persistent_
 {
 	if (NULL == g_ops->wfd_oem_get_persistent_group_info)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_get_persistent_group_info is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_get_persistent_group_info is NULL!!\n");
 		return false;
 	}
 
@@ -517,7 +517,7 @@ int wfd_oem_remove_persistent_group(wfd_persistent_group_info_s *persistent_grou
 {
 	if (NULL == g_ops->wfd_oem_remove_persistent_group)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_remove_persistent_group is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_remove_persistent_group is NULL!!\n");
 		return false;
 	}
 
@@ -529,7 +529,7 @@ int wfd_oem_set_persistent_group_enabled(bool enabled)
 {
 	if (NULL == g_ops->wfd_oem_set_persistent_group_enabled)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_set_persistent_group_enabled is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_set_persistent_group_enabled is NULL!!\n");
 		return false;
 	}
 
@@ -540,7 +540,7 @@ int wfd_oem_connect_for_persistent_group(unsigned char mac_addr[6], wifi_direct_
 {
 	if (NULL == g_ops->wfd_oem_connect_for_persistent_group)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "g_ops->wfd_oem_connect_for_persistent_group is NULL!!\n");
+		WDS_LOGE( "g_ops->wfd_oem_connect_for_persistent_group is NULL!!\n");
 		return false;
 	}
 

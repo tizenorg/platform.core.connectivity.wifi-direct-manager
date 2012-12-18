@@ -30,7 +30,7 @@
 #include <arpa/inet.h>
 #include <sys/ioctl.h>
 
-#include "wifi-direct-utils.h"
+//#include "wifi-direct-utils.h"
 #include "wifi-direct-oem.h"
 #include "wifi-direct-service.h"
 #include "wifi-direct-wpasupplicant.h"
@@ -117,7 +117,7 @@ static gboolean __wfd_oem_thread_safe_event_handler_cb(GIOChannel* source, GIOCo
 	n = read(g_oem_pipe[0], &event, sizeof(event));
 	if (n < 0)
 	{
-		WFD_SERVER_LOG(WFD_LOG_ERROR, "pipe read error, Error=[%s]\n",strerror(errno));
+		WDP_LOGE( "pipe read error, Error=[%s]\n",strerror(errno));
 		return 0;  // false
 	}
 
@@ -129,7 +129,7 @@ static gboolean __wfd_oem_thread_safe_event_handler_cb(GIOChannel* source, GIOCo
 
 int __send_wpa_request(int sockfd, char *cmd, char *reply, size_t reply_buf_len)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
  
 	int result = 0;
 	size_t cmd_len;
@@ -140,23 +140,23 @@ int __send_wpa_request(int sockfd, char *cmd, char *reply, size_t reply_buf_len)
 
 	if (sockfd <=0 )
 	{
-		WFD_SERVER_LOG(WFD_LOG_ERROR,"Invalid argument sfd=[%d]\n", sockfd);
+		WDP_LOGE("Invalid argument sfd=[%d]\n", sockfd);
 		return false;
 	}
 
 	if(cmd == NULL)
 	{
-		WFD_SERVER_LOG(WFD_LOG_ERROR,"Invalid argument. Command is NULL\n");
+		WDP_LOGE("Invalid argument. Command is NULL\n");
 		return false;
 	}
 	cmd_len = strlen(cmd);
-	WFD_SERVER_LOG(WFD_LOG_HIGH,"cmd [%s] cmd_len[%d]\n", cmd, cmd_len);
+	WDP_LOGI("cmd [%s] cmd_len[%d]\n", cmd, cmd_len);
 
 	result = write(sockfd, cmd, cmd_len);
 	if ( result < 0)
 	{
-		WFD_SERVER_LOG(WFD_LOG_ERROR, "Send cmd failed: [%d]\n", result);
-		__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "Send cmd failed: [%d]\n", result);
+		__WDP_LOG_FUNC_EXIT__;
 		return false;
 	}
 
@@ -168,51 +168,51 @@ int __send_wpa_request(int sockfd, char *cmd, char *reply, size_t reply_buf_len)
 
 		if (pollret == 0)
 		{
-			WFD_SERVER_LOG(WFD_LOG_HIGH, "POLLing timeout. Nothing to read.\n");
-			__WFD_SERVER_FUNC_EXIT__;
+			WDP_LOGI( "POLLing timeout. Nothing to read.\n");
+			__WDP_LOG_FUNC_EXIT__;
 			return 0;
 		}
 		else if (pollret < 0)
 		{
-			WFD_SERVER_LOG( WFD_LOG_ERROR,"Polling error [%d]\n", pollret);
-			__WFD_SERVER_FUNC_EXIT__;
+			WDP_LOGE("Polling error [%d]\n", pollret);
+			__WDP_LOG_FUNC_EXIT__;
 			return false;
 		}
 		else
 		{
 			if (pollfd.revents == POLLIN)
 			{
-				WFD_SERVER_LOG(WFD_LOG_LOW,"POLLIN \n");
+				WDP_LOGD("POLLIN \n");
 				result = read(sockfd, (char *) reply, reply_buf_len);
 				
-				WFD_SERVER_LOG(WFD_LOG_LOW,"sockfd %d retval %d\n", sockfd, result);
-				WFD_SERVER_LOG(WFD_LOG_LOW,"reply[%s]\n", reply);
+				WDP_LOGD("sockfd %d retval %d\n", sockfd, result);
+				WDP_LOGD("reply[%s]\n", reply);
 				
 				if (result < 0)
 				{
-					WFD_SERVER_LOG(WFD_LOG_ERROR, "Error!!! reading data, error [%s]\n", strerror(errno));
-					__WFD_SERVER_FUNC_EXIT__;
+					WDP_LOGE( "Error!!! reading data, error [%s]\n", strerror(errno));
+					__WDP_LOG_FUNC_EXIT__;
 					return false;
 				}
 				break;
 			}
 			else
 			{
-				WFD_SERVER_LOG(WFD_LOG_LOW,"POLL EVENT=%d ignored\n", pollfd.revents);
-				__WFD_SERVER_FUNC_EXIT__;
+				WDP_LOGD("POLL EVENT=%d ignored\n", pollfd.revents);
+				__WDP_LOG_FUNC_EXIT__;
 				return false;
 			}
 		}
 	}
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
 	return result;
 }
 
 
 int __create_ctrl_intf(char *ctrl_intf_name, char *path)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	struct sockaddr_un servAddr;
 	struct sockaddr_un localAddr;
@@ -227,19 +227,19 @@ int __create_ctrl_intf(char *ctrl_intf_name, char *path)
 	errno = 0;
 	if ((sockfd = socket(AF_UNIX, SOCK_DGRAM, 0)) < 0)
 	{
-		WFD_SERVER_LOG(WFD_LOG_ERROR, "Error!!! creating sync socket. Error = [%s].\n", strerror(errno));
-		__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "Error!!! creating sync socket. Error = [%s].\n", strerror(errno));
+		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
-	WFD_SERVER_LOG(WFD_LOG_HIGH, "Created socket [%d]\n", sockfd);
+	WDP_LOGI( "Created socket [%d]\n", sockfd);
 
 	memset(&servAddr, 0, sizeof(servAddr));
 	servAddr.sun_family = AF_UNIX;
 	strcpy(servAddr.sun_path, path);
 	len = sizeof(servAddr.sun_family) + strlen(path);
 
-	WFD_SERVER_LOG(WFD_LOG_LOW, "Connecting to server socket to register socket [%d]\n", sockfd);
+	WDP_LOGD( "Connecting to server socket to register socket [%d]\n", sockfd);
 
 	memset(&localAddr, 0, sizeof(localAddr));
 	localAddr.sun_family = AF_UNIX;
@@ -247,13 +247,13 @@ int __create_ctrl_intf(char *ctrl_intf_name, char *path)
 
 	if (bind(sockfd, (struct sockaddr*)&localAddr, sizeof(localAddr)) < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ERROR, "Error!!! bind(). Error = [%s]. Try again..\n", strerror(errno));
+		WDP_LOGE( "Error!!! bind(). Error = [%s]. Try again..\n", strerror(errno));
 		
 		unlink(localAddr.sun_path);
 		if (bind(sockfd, (struct sockaddr*)&localAddr, sizeof(localAddr)) < 0)
 		{
-			WFD_SERVER_LOG( WFD_LOG_ERROR, "Error!!! bind(). Error = [%s]. Give up..\n", strerror(errno));
-			__WFD_SERVER_FUNC_EXIT__;
+			WDP_LOGE( "Error!!! bind(). Error = [%s]. Give up..\n", strerror(errno));
+			__WDP_LOG_FUNC_EXIT__;
 			return -1;
 		}
 	}
@@ -264,21 +264,21 @@ int __create_ctrl_intf(char *ctrl_intf_name, char *path)
 
 		if (unlink(path) < 0)
 		{
-			WFD_SERVER_LOG(WFD_LOG_ERROR, "unlink[ctrl_iface], Error=[%s]\n", strerror(errno));
-			__WFD_SERVER_FUNC_EXIT__;
+			WDP_LOGE( "unlink[ctrl_iface], Error=[%s]\n", strerror(errno));
+			__WDP_LOG_FUNC_EXIT__;
 			return -1;
 		}
 
 		if (bind(sockfd, (struct sockaddr*)&servAddr, sizeof(servAddr)) < 0)
 		{
-			WFD_SERVER_LOG(WFD_LOG_ERROR, "bind[PF_UNIX], Error=[%s]\n", strerror(errno));
-			__WFD_SERVER_FUNC_EXIT__;
+			WDP_LOGE( "bind[PF_UNIX], Error=[%s]\n", strerror(errno));
+			__WDP_LOG_FUNC_EXIT__;
 			return -1;
 		}
-		WFD_SERVER_LOG(WFD_LOG_HIGH, "Successfully replaced leftover ctrl_iface socket [%s]\n", path);
+		WDP_LOGI( "Successfully replaced leftover ctrl_iface socket [%s]\n", path);
 	}
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
 
 	return sockfd;
 }
@@ -286,26 +286,26 @@ int __create_ctrl_intf(char *ctrl_intf_name, char *path)
 
 static int __read_socket_cb(int sockfd, char *dataptr, int datalen)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	int pollret = 0;
 	struct pollfd pollfd;
 	int timeout = 2000; /** for 2 sec */
 	int retval = 0;
 
-	WFD_SERVER_LOG(WFD_LOG_LOW, "Reading msg from socketfd=[%d]\n", sockfd);
+	WDP_LOGD( "Reading msg from socketfd=[%d]\n", sockfd);
 
 	if (sockfd <= 0)
 	{
-		WFD_SERVER_LOG(WFD_LOG_ERROR, "Error!!! Invalid socket FD [%d]\n", sockfd);
-		__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "Error!!! Invalid socket FD [%d]\n", sockfd);
+		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
 	if ((dataptr == NULL) || (datalen <= 0))
 	{
-		WFD_SERVER_LOG(WFD_LOG_ERROR, "Error!!! Invalid parameter\n");
-		__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "Error!!! Invalid parameter\n");
+		__WDP_LOG_FUNC_EXIT__;
 
 		return -1;
 	}
@@ -322,46 +322,46 @@ static int __read_socket_cb(int sockfd, char *dataptr, int datalen)
 	{
 		if (pollfd.revents == POLLIN)
 		{
-			WFD_SERVER_LOG(WFD_LOG_LOW, "POLLIN\n");
+			WDP_LOGD( "POLLIN\n");
 
 			errno = 0;
 			retval = read(sockfd, (char *) dataptr, datalen);
-			WFD_SERVER_LOG(WFD_LOG_LOW, "sockfd %d retval %d\n", sockfd, retval);
+			WDP_LOGD( "sockfd %d retval %d\n", sockfd, retval);
 			if (retval <= 0)
 			{
-				WFD_SERVER_LOG(WFD_LOG_LOW, "Error!!! reading data, Error=[%s]\n", strerror(errno));
+				WDP_LOGD( "Error!!! reading data, Error=[%s]\n", strerror(errno));
 			}
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDP_LOG_FUNC_EXIT__;
 			return retval;
 		}
 		else if (pollfd.revents & POLLHUP)
 		{
-			WFD_SERVER_LOG(WFD_LOG_LOW, "POLLHUP\n");
-			__WFD_SERVER_FUNC_EXIT__;
+			WDP_LOGD( "POLLHUP\n");
+			__WDP_LOG_FUNC_EXIT__;
 
 			return 0;
 		}
 		else if (pollfd.revents & POLLERR)
 		{
-			WFD_SERVER_LOG(WFD_LOG_LOW, "POLLERR\n");
-			__WFD_SERVER_FUNC_EXIT__;
+			WDP_LOGD( "POLLERR\n");
+			__WDP_LOG_FUNC_EXIT__;
 			return 0;
 		}
 	}
 	else if (pollret == 0)
 	{
-		WFD_SERVER_LOG(WFD_LOG_LOW, "POLLing timeout  \n");
-		__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGD( "POLLing timeout  \n");
+		__WDP_LOG_FUNC_EXIT__;
 		return 0;
 	}
 	else
 	{
-		WFD_SERVER_LOG(WFD_LOG_LOW, "Polling unknown error \n");
-		__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGD( "Polling unknown error \n");
+		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
 	return 1;
 }
 
@@ -378,7 +378,7 @@ void __polling_ip(char *ipaddr_buf, int len, int is_IPv6)
 		usleep(250);
 		i++;
 	}
-	WFD_SERVER_LOG(WFD_LOG_ERROR, "** Failed to get IP address!!\n");
+	WDP_LOGE( "** Failed to get IP address!!\n");
 }
 
 char* __get_event_str(char*ptr, char* event_str)
@@ -412,7 +412,7 @@ char* __get_event_str(char*ptr, char* event_str)
 
 int __extract_value_str(char *str, char *key, char *value)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 	char *tmp_str = NULL;
 	int i = 0;
 
@@ -422,11 +422,11 @@ int __extract_value_str(char *str, char *key, char *value)
 	tmp_str = strstr(str, key);
 	if(tmp_str == NULL)
 	{
-		WFD_SERVER_LOG(WFD_LOG_ERROR, "Key[%s] is not found\n", key);
+		WDP_LOGE( "Key[%s] is not found\n", key);
 		return -1;
 	}
 	tmp_str = tmp_str + strlen(key) + 1;
-	//WFD_SERVER_LOG(WFD_LOG_LOW, "tmp_str [%s]\n", tmp_str);
+	//WDP_LOGD( "tmp_str [%s]\n", tmp_str);
 
 	for(i = 0; tmp_str[i]; i++)
 	{
@@ -439,9 +439,9 @@ int __extract_value_str(char *str, char *key, char *value)
 	memcpy(value, tmp_str, i);
 	value[i] = '\0';
 
-	WFD_SERVER_LOG(WFD_LOG_LOW, "extracted value [%s]\n", value);
+	WDP_LOGD( "extracted value [%s]\n", value);
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
 	return i;
 }
 
@@ -602,7 +602,7 @@ char* __get_persistent_group_value(char*ptr, ws_network_info_s* group)
 
 int __parsing_peer(char* buf, ws_discovered_peer_info_s* peer)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	char* ptr = buf;
 	char item[64];
@@ -617,7 +617,7 @@ int __parsing_peer(char* buf, ws_discovered_peer_info_s* peer)
 	peer->mac[18]='\0';
 	ptr += 17+1;
 
-	WFD_SERVER_LOG(WFD_LOG_LOW, "mac=%s\n", peer->mac);
+	WDP_LOGD( "mac=%s\n", peer->mac);
 
 	for(;;)
 	{
@@ -688,12 +688,12 @@ int __parsing_peer(char* buf, ws_discovered_peer_info_s* peer)
 				if (ret == ULONG_MAX)
 				{
 					peer->config_methods = 0;
-					WFD_SERVER_LOG(WFD_LOG_ERROR, "config_methods has wrong value=[%s], Error=[%s]\n", value, strerror(errno));
+					WDP_LOGE( "config_methods has wrong value=[%s], Error=[%s]\n", value, strerror(errno));
 				}
 				else
 				{
 					peer->config_methods = (unsigned int)ret;
-					WFD_SERVER_LOG(WFD_LOG_LOW, "config_methods value=[%x <- %s]\n", peer->config_methods, value);
+					WDP_LOGD( "config_methods value=[%x <- %s]\n", peer->config_methods, value);
 				}
 			}
 			break;
@@ -705,12 +705,12 @@ int __parsing_peer(char* buf, ws_discovered_peer_info_s* peer)
 				if (ret == ULONG_MAX)
 				{
 					peer->dev_capab = 0;
-					WFD_SERVER_LOG(WFD_LOG_ERROR, "device_capab has wrong value=[%s], Error=[%s]\n", value, strerror(errno));
+					WDP_LOGE( "device_capab has wrong value=[%s], Error=[%s]\n", value, strerror(errno));
 				}
 				else
 				{
 					peer->dev_capab = (unsigned int)ret;
-					WFD_SERVER_LOG(WFD_LOG_LOW, "device_capab value=[%x <- %s]\n", peer->dev_capab, value);
+					WDP_LOGD( "device_capab value=[%x <- %s]\n", peer->dev_capab, value);
 				}
 			}
 			break;
@@ -722,12 +722,12 @@ int __parsing_peer(char* buf, ws_discovered_peer_info_s* peer)
 				if (ret == ULONG_MAX)
 				{
 					peer->group_capab = 0;
-					WFD_SERVER_LOG(WFD_LOG_ERROR, "group_capab has wrong value=[%s], Error=[%s]\n", value, strerror(errno));
+					WDP_LOGE( "group_capab has wrong value=[%s], Error=[%s]\n", value, strerror(errno));
 				}
 				else
 				{
 					peer->group_capab = (unsigned int)ret;
-					WFD_SERVER_LOG(WFD_LOG_LOW, "group_capab value=[%x <- %s]\n", peer->group_capab, value);
+					WDP_LOGD( "group_capab value=[%x <- %s]\n", peer->group_capab, value);
 				}
 			}
 			break;
@@ -774,12 +774,12 @@ int __parsing_peer(char* buf, ws_discovered_peer_info_s* peer)
 			break;
 
  		default:
-			WFD_SERVER_LOG(WFD_LOG_LOW, "unknown field\n");
+			WDP_LOGD( "unknown field\n");
 			break;
 		}
 	}
 
- 	__WFD_SERVER_FUNC_EXIT__;
+ 	__WDP_LOG_FUNC_EXIT__;
 
 	return 0;
 	
@@ -788,7 +788,7 @@ int __parsing_peer(char* buf, ws_discovered_peer_info_s* peer)
 
 int __parsing_persistent_group(char* buf, ws_network_info_s ws_persistent_group_list[], int* persistent_group_num)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	char* ptr = buf;
 	ws_network_info_s group;
@@ -819,14 +819,14 @@ int __parsing_persistent_group(char* buf, ws_network_info_s ws_persistent_group_
 
 	*persistent_group_num = count;
 
- 	__WFD_SERVER_FUNC_EXIT__;
+ 	__WDP_LOG_FUNC_EXIT__;
 	return 0;
 	
 }
 
 void __parsing_ws_event(char* buf, ws_event_s *event)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	char* ptr = buf;
 	char event_str[64];
@@ -836,7 +836,7 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 
 	if (NULL == buf)
 	{
-		WFD_SERVER_LOG(WFD_LOG_ERROR, "ERROR : buf is NULL!!\n");
+		WDP_LOGE( "ERROR : buf is NULL!!\n");
 		return;
 	}
 
@@ -844,7 +844,7 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 	ptr = __get_event_str(ptr, event_str);
 
 	if (NULL != event_str)
-		WFD_SERVER_LOG(WFD_LOG_LOW, "event str [%s]\n", event_str);
+		WDP_LOGD( "event str [%s]\n", event_str);
 
 	i=0;
 	event_id = WS_EVENT_NONE;
@@ -864,15 +864,15 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 		
 		case WS_EVENT_DISCOVER_FOUND_PEER:
 			event->id = WS_EVENT_DISCOVER_FOUND_PEER;
-			WFD_SERVER_LOG(WFD_LOG_LOW, "WS EVENT : [WS_EVENT_DISCOVER_FOUND_PEER]\n");
+			WDP_LOGD( "WS EVENT : [WS_EVENT_DISCOVER_FOUND_PEER]\n");
 		break;
 
 		case WS_EVENT_PROVISION_DISCOVERY_RESPONSE:
 			event->id = WS_EVENT_PROVISION_DISCOVERY_RESPONSE;
 			ptr = __get_event_str(ptr, event_str);
 			strncpy(event->peer_mac_address, event_str, sizeof(event->peer_mac_address)); 
-			WFD_SERVER_LOG( WFD_LOG_LOW, "WS EVENT : [WS_EVENT_PROVISION_DISCOVERY_RESPONSE]\n");
-			WFD_SERVER_LOG( WFD_LOG_LOW, "WS EVENT : [MAC : %s]\n", event_str);
+			WDP_LOGD( "WS EVENT : [WS_EVENT_PROVISION_DISCOVERY_RESPONSE]\n");
+			WDP_LOGD( "WS EVENT : [MAC : %s]\n", event_str);
 		break;
 
 		case WS_EVENT_PROVISION_DISCOVERY_PBC_REQ:
@@ -880,21 +880,21 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 			res = __extract_value_str(ptr, "p2p_dev_addr", event->peer_mac_address);
 			if(res <= 0)
 			{
-				WFD_SERVER_LOG(WFD_LOG_ERROR, "Failed to extract p2p_dev_addr");
+				WDP_LOGE( "Failed to extract p2p_dev_addr");
 				// TO-DO: stop parsing and make event callback function stop
-				__WFD_SERVER_FUNC_EXIT__;
+				__WDP_LOG_FUNC_EXIT__;
 				return;
 			}
 			res = __extract_value_str(ptr, "name" , event->peer_ssid);
 			if(res <= 0)
 			{
-				WFD_SERVER_LOG(WFD_LOG_ERROR, "Failed to extract name(ssid)");
+				WDP_LOGE( "Failed to extract name(ssid)");
 				// TO-DO: stop parsing and make event callback function stop
-				__WFD_SERVER_FUNC_EXIT__;
+				__WDP_LOG_FUNC_EXIT__;
 				return;
 			}
-			WFD_SERVER_LOG( WFD_LOG_LOW, "WS EVENT : [WS_EVENT_PROVISION_DISCOVERY_PBC_REQ]\n");
-			WFD_SERVER_LOG( WFD_LOG_LOW, "WS EVENT : [MAC : %s]\n", event_str);
+			WDP_LOGD( "WS EVENT : [WS_EVENT_PROVISION_DISCOVERY_PBC_REQ]\n");
+			WDP_LOGD( "WS EVENT : [MAC : %s]\n", event_str);
 		break;
 
 		case WS_EVENT_PROVISION_DISCOVERY_DISPLAY:
@@ -902,34 +902,34 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 			res = __extract_value_str(ptr, "p2p_dev_addr", event->peer_mac_address);
 			if(res <= 0)
 			{
-				WFD_SERVER_LOG(WFD_LOG_LOW, "Failed to extract p2p_dev_addr");
-				WFD_SERVER_LOG(WFD_LOG_LOW, "Prov disc Response : DISPLAY");
+				WDP_LOGD( "Failed to extract p2p_dev_addr");
+				WDP_LOGD( "Prov disc Response : DISPLAY");
 				event->id = WS_EVENT_PROVISION_DISCOVERY_RESPONSE_DISPLAY;
 				ptr = __get_event_str(ptr, event_str);
 				strncpy(event->peer_mac_address, event_str, sizeof(event->peer_mac_address));
-				WFD_SERVER_LOG( WFD_LOG_LOW, "WS EVENT : [WS_EVENT_PROVISION_DISCOVERY_RESPONSE_DISPLAY]\n");
-				WFD_SERVER_LOG( WFD_LOG_LOW, "WS EVENT : [MAC : %s]\n", event_str);
+				WDP_LOGD( "WS EVENT : [WS_EVENT_PROVISION_DISCOVERY_RESPONSE_DISPLAY]\n");
+				WDP_LOGD( "WS EVENT : [MAC : %s]\n", event_str);
 				ptr = __get_event_str(ptr, event_str);
 				strncpy(event->wps_pin, event_str, sizeof(event->wps_pin));
-				WFD_SERVER_LOG( WFD_LOG_LOW, "WS EVENT : [PIN : %s]\n", event_str);
-				__WFD_SERVER_FUNC_EXIT__;
+				WDP_LOGD( "WS EVENT : [PIN : %s]\n", event_str);
+				__WDP_LOG_FUNC_EXIT__;
 				return;
 			}
 			ptr = __get_event_str(ptr, event_str); /* Stepping Mac Addr */
 			ptr = __get_event_str(ptr, event_str); /* Stepping PIN */
 			memset(event->wps_pin, 0x00, sizeof(event->wps_pin));
 			strncpy(event->wps_pin, event_str, sizeof(event->wps_pin));
-			WFD_SERVER_LOG( WFD_LOG_LOW, "WS EVENT : [PIN : %s]\n", event_str);
+			WDP_LOGD( "WS EVENT : [PIN : %s]\n", event_str);
 
 			res = __extract_value_str(ptr, "name" , event->peer_ssid);
 			if(res <= 0)
 			{
-				WFD_SERVER_LOG(WFD_LOG_ERROR, "Failed to extract name(ssid)");
-				__WFD_SERVER_FUNC_EXIT__;
+				WDP_LOGE( "Failed to extract name(ssid)");
+				__WDP_LOG_FUNC_EXIT__;
 				return;
 			}
-			WFD_SERVER_LOG( WFD_LOG_LOW, "WS EVENT : [WS_EVENT_PROVISION_DISCOVERY_DISPLAY]\n");
-			WFD_SERVER_LOG( WFD_LOG_LOW, "WS EVENT : [MAC : %s]\n", event_str);
+			WDP_LOGD( "WS EVENT : [WS_EVENT_PROVISION_DISCOVERY_DISPLAY]\n");
+			WDP_LOGD( "WS EVENT : [MAC : %s]\n", event_str);
 		break;
 
 		case WS_EVENT_PROVISION_DISCOVERY_KEYPAD:
@@ -937,31 +937,31 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 			res = __extract_value_str(ptr, "p2p_dev_addr", event->peer_mac_address);
 			if(res <= 0)
 			{
-				WFD_SERVER_LOG(WFD_LOG_LOW, "Failed to extract p2p_dev_addr");
-				WFD_SERVER_LOG(WFD_LOG_LOW, "Prov disc Response : KEYPAD");
+				WDP_LOGD( "Failed to extract p2p_dev_addr");
+				WDP_LOGD( "Prov disc Response : KEYPAD");
 				event->id = WS_EVENT_PROVISION_DISCOVERY_RESPONSE_KEYPAD;
 				ptr = __get_event_str(ptr, event_str);
 				strncpy(event->peer_mac_address, event_str, sizeof(event->peer_mac_address)); 
-				WFD_SERVER_LOG( WFD_LOG_LOW, "WS EVENT : [WS_EVENT_PROVISION_DISCOVERY_RESPONSE_KEYPAD]\n");
-				WFD_SERVER_LOG( WFD_LOG_LOW, "WS EVENT : [MAC : %s]\n", event_str);
-				__WFD_SERVER_FUNC_EXIT__;
+				WDP_LOGD( "WS EVENT : [WS_EVENT_PROVISION_DISCOVERY_RESPONSE_KEYPAD]\n");
+				WDP_LOGD( "WS EVENT : [MAC : %s]\n", event_str);
+				__WDP_LOG_FUNC_EXIT__;
 				return;
 			}
 			res = __extract_value_str(ptr, "name" , event->peer_ssid);
 			if(res <= 0)
 			{
-				WFD_SERVER_LOG(WFD_LOG_ERROR, "Failed to extract name(ssid)");
-				__WFD_SERVER_FUNC_EXIT__;
+				WDP_LOGE( "Failed to extract name(ssid)");
+				__WDP_LOG_FUNC_EXIT__;
 				return;
 			}
-			WFD_SERVER_LOG( WFD_LOG_LOW, "WS EVENT : [WS_EVENT_PROVISION_DISCOVERY_KEYPAD]\n");
-			WFD_SERVER_LOG( WFD_LOG_LOW, "WS EVENT : [MAC : %s]\n", event_str);
+			WDP_LOGD( "WS EVENT : [WS_EVENT_PROVISION_DISCOVERY_KEYPAD]\n");
+			WDP_LOGD( "WS EVENT : [MAC : %s]\n", event_str);
 		break;
 
 
 		case WS_EVENT_GROUP_STARTED:
 			event->id = WS_EVENT_GROUP_STARTED;
-			WFD_SERVER_LOG( WFD_LOG_LOW, "WS EVENT : [WS_EVENT_GROUP_STARTED]\n");
+			WDP_LOGD( "WS EVENT : [WS_EVENT_GROUP_STARTED]\n");
 			{
 				int res = 0;
 				char *dev_addr;
@@ -970,7 +970,7 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 				if(res > 0)
 					strcpy(event->peer_mac_address, dev_addr);
 				free(dev_addr);
-				WFD_SERVER_LOG(WFD_LOG_LOW, "connected peer mac address [%s]", event->peer_mac_address);
+				WDP_LOGD( "connected peer mac address [%s]", event->peer_mac_address);
 
 				/* for checking persistent group */
 				char *dummy;
@@ -978,7 +978,7 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 				res = __extract_value_str(ptr, "PERSISTENT", dummy);
 				if(res >= 0)
 				{
-					WFD_SERVER_LOG(WFD_LOG_LOW, "[PERSISTENT GROUP]");
+					WDP_LOGD( "[PERSISTENT GROUP]");
 					event->id = WS_EVENT_PERSISTENT_GROUP_STARTED;
 				}
 				free(dummy);
@@ -987,17 +987,17 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 
 		case WS_EVENT_GROUP_REMOVED:
 			event->id = WS_EVENT_GROUP_REMOVED;
-			WFD_SERVER_LOG( WFD_LOG_LOW, "WS EVENT : [WS_EVENT_GROUP_REMOVED]\n");
+			WDP_LOGD( "WS EVENT : [WS_EVENT_GROUP_REMOVED]\n");
 		break;
 
 		case WS_EVENT_TERMINATING:
 			event->id = WS_EVENT_TERMINATING;
-			WFD_SERVER_LOG( WFD_LOG_LOW, "WS EVENT : [WS_EVENT_TERMINATING]\n");
+			WDP_LOGD( "WS EVENT : [WS_EVENT_TERMINATING]\n");
 		break;
 #if 1
 		case WS_EVENT_CONNECTED:
 			{
-				WFD_SERVER_LOG( WFD_LOG_LOW, "WS EVENT : [WS_EVENT_CONNECTED]\n");
+				WDP_LOGD( "WS EVENT : [WS_EVENT_CONNECTED]\n");
 				int res = 0;
 				char *intf_addr;
 				intf_addr = (char*) calloc(1, 18);
@@ -1005,14 +1005,14 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 				res = __extract_value_str(ptr, "to", intf_addr);
 				if(res > 0)
 					wfd_macaddr_atoe(intf_addr, g_assoc_sta_mac);
-				WFD_SERVER_LOG(WFD_LOG_LOW, "connected peer interface mac address [%s]", intf_addr);
+				WDP_LOGD( "connected peer interface mac address [%s]", intf_addr);
 				free(intf_addr);
 			}
 		break;
 #endif
 		case WS_EVENT_STA_CONNECTED:
 			{
-				WFD_SERVER_LOG( WFD_LOG_LOW, "WS EVENT : [WS_EVENT_STA_CONNECTED]\n");
+				WDP_LOGD( "WS EVENT : [WS_EVENT_STA_CONNECTED]\n");
 				int res = 0;
 				event->id = WS_EVENT_STA_CONNECTED;
 
@@ -1020,13 +1020,13 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 				strncpy(event->peer_intf_mac_address, event_str, sizeof(event->peer_intf_mac_address));
 
 				res = __extract_value_str(ptr, "dev_addr", event->peer_mac_address);
-				WFD_SERVER_LOG(WFD_LOG_LOW, "connected peer mac address [%s]", event->peer_intf_mac_address);
+				WDP_LOGD( "connected peer mac address [%s]", event->peer_intf_mac_address);
 			}
 		break;
 
 		case WS_EVENT_DISCONNECTED:
 			{
-				WFD_SERVER_LOG( WFD_LOG_LOW, "WS EVENT : [WS_EVENT_DISCONNECTED]\n");
+				WDP_LOGD( "WS EVENT : [WS_EVENT_DISCONNECTED]\n");
 				int res = 0;
 				char *intf_addr;
 				intf_addr = (char*) calloc(1, 18);
@@ -1035,13 +1035,13 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 				if(res > 0)
 					strncpy(event->peer_mac_address, intf_addr, 18);
 				free(intf_addr);
-				WFD_SERVER_LOG(WFD_LOG_LOW, "disconnected peer mac address [%s]", event->peer_mac_address);
+				WDP_LOGD( "disconnected peer mac address [%s]", event->peer_mac_address);
 			}
 		break;
 
 		case WS_EVENT_STA_DISCONNECTED:
 			{
-				WFD_SERVER_LOG( WFD_LOG_LOW, "WS EVENT : [WS_EVENT_STA_DISCONNECTED]\n");
+				WDP_LOGD( "WS EVENT : [WS_EVENT_STA_DISCONNECTED]\n");
 				int res = 0;
 				event->id = WS_EVENT_STA_DISCONNECTED;
 
@@ -1049,13 +1049,13 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 				strncpy(event->peer_intf_mac_address, event_str, sizeof(event->peer_intf_mac_address));
 
 				res = __extract_value_str(ptr, "dev_addr", event->peer_mac_address);
-				WFD_SERVER_LOG(WFD_LOG_LOW, "disconnected peer mac address [%s]", event->peer_intf_mac_address);
+				WDP_LOGD( "disconnected peer mac address [%s]", event->peer_intf_mac_address);
 			}
 		break;
 
 		case WS_EVENT_INVITATION_REQ:
 			{
-				WFD_SERVER_LOG( WFD_LOG_LOW, "WS EVENT : [WS_EVENT_INVITATION_REQ]\n");
+				WDP_LOGD( "WS EVENT : [WS_EVENT_INVITATION_REQ]\n");
 				int res = 0;
 				event->id = WS_EVENT_INVITATION_REQ;
 
@@ -1066,17 +1066,17 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 #endif
 				if(res <= 0)
 				{
-					WFD_SERVER_LOG(WFD_LOG_ERROR, "Failed to extract p2p_dev_addr");
-					__WFD_SERVER_FUNC_EXIT__;
+					WDP_LOGE( "Failed to extract p2p_dev_addr");
+					__WDP_LOG_FUNC_EXIT__;
 					return;
 				}
- 				WFD_SERVER_LOG( WFD_LOG_LOW, "WS EVENT : [GO MAC : %s]\n", event->peer_mac_address);
+ 				WDP_LOGD( "WS EVENT : [GO MAC : %s]\n", event->peer_mac_address);
 			}
 		break;
 
 		case WS_EVENT_INVITATION_RSP:
 			{
-				WFD_SERVER_LOG( WFD_LOG_LOW, "WS EVENT : [WS_EVENT_INVITATION_RSP]\n");
+				WDP_LOGD( "WS EVENT : [WS_EVENT_INVITATION_RSP]\n");
 				//int res = 0;
 				event->id = WS_EVENT_INVITATION_RSP;
 
@@ -1084,17 +1084,17 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 				res = __extract_value_str(ptr, "status", );
 				if(res <= 0)
 				{
-				    WFD_SERVER_LOG(WFD_LOG_ERROR, "Failed to extract p2p_dev_addr");
+				    WDP_LOGE( "Failed to extract p2p_dev_addr");
 				    return;
 				}
- 				WFD_SERVER_LOG( WFD_LOG_LOW, "WS EVENT : [GO MAC : %s]\n", event->peer_mac_address);
+ 				WDP_LOGD( "WS EVENT : [GO MAC : %s]\n", event->peer_mac_address);
 #endif
 
 			}
 		break;
 		case WS_EVENT_GO_NEG_REQUEST:
 			{
-				WFD_SERVER_LOG( WFD_LOG_LOW, "WS EVENT : "
+				WDP_LOGD( "WS EVENT : "
 						"[WS_EVENT_GO_NEG_REQUEST]\n");
 				wfd_server_control_t * wfd_server = wfd_server_get_control();
 				if (wfd_server->config_data.wps_config !=
@@ -1107,7 +1107,7 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 					wfd_ws_connect_for_go_neg(g_incomming_peer_mac_address,
 							wfd_server->config_data.wps_config);
 				} else {
-					WFD_SERVER_LOG( WFD_LOG_LOW, "WS EVENT : "
+					WDP_LOGD( "WS EVENT : "
 							"[WS_EVENT_GO_NEG_REQUEST] in PBC case\n");
 				}
 			}
@@ -1115,11 +1115,11 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 		
 
  		default:
-			WFD_SERVER_LOG( WFD_LOG_ASSERT, "ERROR : unknown event !!\n");
+			WDP_LOGE( "ERROR : unknown event !!\n");
 		break;
 	}
 
- 	__WFD_SERVER_FUNC_EXIT__;
+ 	__WDP_LOG_FUNC_EXIT__;
 
 	return;
 	
@@ -1127,7 +1127,7 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 
 int __store_persistent_peer(int network_id, char* persistent_group_ssid, char* peer_mac_address)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	char buf[100] = "";
 	FILE *fp = NULL;
@@ -1137,7 +1137,7 @@ int __store_persistent_peer(int network_id, char* persistent_group_ssid, char* p
 	fp = fopen(PERSISTENT_PEER_PATH, "a");
 	if (NULL == fp)
 	{
-		WFD_SERVER_LOG(WFD_LOG_ASSERT, "ERROR : file open failed!! [persistent-peer]\n");
+		WDP_LOGE( "ERROR : file open failed!! [persistent-peer]\n");
 		return WIFI_DIRECT_ERROR_RESOURCE_BUSY;
 	}
 
@@ -1145,21 +1145,21 @@ int __store_persistent_peer(int network_id, char* persistent_group_ssid, char* p
 	fputs(buf, fp);
 	fclose(fp);
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
 	return true;
 
 }
 
 int __get_network_id_from_network_list_with_ssid(char* persistent_group_ssid)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	int persistent_group_count = 0;
 	int i;
 	int result;
 	wfd_persistent_group_info_s* plist;
 
-	WFD_SERVER_LOG(WFD_LOG_LOW, "search with persistent_group_ssid = [%s]\n",persistent_group_ssid);
+	WDP_LOGD( "search with persistent_group_ssid = [%s]\n",persistent_group_ssid);
 
 	result = wfd_ws_get_persistent_group_info(&plist, &persistent_group_count);
 	if (result == true)
@@ -1168,35 +1168,35 @@ int __get_network_id_from_network_list_with_ssid(char* persistent_group_ssid)
 		{
 			for(i=0; i<persistent_group_count; i++)
 			{
-				WFD_SERVER_LOG( WFD_LOG_LOW, "plist[%d].ssid=[%s]\n", i,plist[i].ssid);
+				WDP_LOGD( "plist[%d].ssid=[%s]\n", i,plist[i].ssid);
 				if (strcmp(plist[i].ssid, persistent_group_ssid) == 0)
 				{
-					WFD_SERVER_LOG( WFD_LOG_LOW, "Found peer in persistent group list [network id : %d]\n", plist[i].network_id);
+					WDP_LOGD( "Found peer in persistent group list [network id : %d]\n", plist[i].network_id);
 					return plist[i].network_id;
 				}
 			}
-			WFD_SERVER_LOG( WFD_LOG_ERROR, "There is no Persistent Group has ssid[%s]\n", persistent_group_ssid);
-			__WFD_SERVER_FUNC_EXIT__;
+			WDP_LOGE( "There is no Persistent Group has ssid[%s]\n", persistent_group_ssid);
+			__WDP_LOG_FUNC_EXIT__;
 			return -1;
 		}
 		else
 		{
-			WFD_SERVER_LOG( WFD_LOG_ERROR, "have no Persistent Group!!\n");
-			__WFD_SERVER_FUNC_EXIT__;
+			WDP_LOGE( "have no Persistent Group!!\n");
+			__WDP_LOG_FUNC_EXIT__;
 			return -1;
 		}
 	}
 	else
 	{
-		WFD_SERVER_LOG( WFD_LOG_ERROR, "Error!! wfd_ws_get_persistent_group_info() failed..\n");
-		__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "Error!! wfd_ws_get_persistent_group_info() failed..\n");
+		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
 }
 
 int __get_network_id_from_network_list_with_go_mac(char* go_mac_address)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	int persistent_group_count = 0;
 	int i;
@@ -1204,7 +1204,7 @@ int __get_network_id_from_network_list_with_go_mac(char* go_mac_address)
 	wfd_persistent_group_info_s* plist;
 	char mac_str[18] = {0, };
 
-	WFD_SERVER_LOG(WFD_LOG_LOW, "search with persistent_group go_mac_address = [%s]\n",go_mac_address);
+	WDP_LOGD( "search with persistent_group go_mac_address = [%s]\n",go_mac_address);
 
 	result = wfd_ws_get_persistent_group_info(&plist, &persistent_group_count);
 	if (result == true)
@@ -1214,28 +1214,28 @@ int __get_network_id_from_network_list_with_go_mac(char* go_mac_address)
 			for(i=0; i<persistent_group_count; i++)
 			{
 				snprintf(mac_str, 18, MACSTR, MAC2STR(plist[i].go_mac_address));
-				WFD_SERVER_LOG( WFD_LOG_LOW, "plist[%d].go_mac_address=[%s]\n", i,mac_str);
+				WDP_LOGD( "plist[%d].go_mac_address=[%s]\n", i,mac_str);
 				if (strcmp(mac_str, go_mac_address) == 0)
 				{
-					WFD_SERVER_LOG( WFD_LOG_LOW, "Found peer in persistent group list [network id : %d]\n", plist[i].network_id);
+					WDP_LOGD( "Found peer in persistent group list [network id : %d]\n", plist[i].network_id);
 					return plist[i].network_id;
 				}
 			}
-			WFD_SERVER_LOG( WFD_LOG_ERROR, "There is no Persistent Group has go mac[%s]\n", go_mac_address);
-			__WFD_SERVER_FUNC_EXIT__;
+			WDP_LOGE( "There is no Persistent Group has go mac[%s]\n", go_mac_address);
+			__WDP_LOG_FUNC_EXIT__;
 			return -1;
 		}
 		else
 		{
-			WFD_SERVER_LOG( WFD_LOG_ERROR, "have no Persistent Group!!\n");
-			__WFD_SERVER_FUNC_EXIT__;
+			WDP_LOGE( "have no Persistent Group!!\n");
+			__WDP_LOG_FUNC_EXIT__;
 			return -1;
 		}
 	}
 	else
 	{
-		WFD_SERVER_LOG( WFD_LOG_ERROR, "Error!! wfd_ws_get_persistent_group_info() failed..\n");
-		__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "Error!! wfd_ws_get_persistent_group_info() failed..\n");
+		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
 }
@@ -1243,7 +1243,7 @@ int __get_network_id_from_network_list_with_go_mac(char* go_mac_address)
 
 int __get_network_id_from_persistent_client_list_with_mac(char* peer_mac_address)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	FILE *fp = NULL;
 	char buf[100] = "";
@@ -1255,14 +1255,14 @@ int __get_network_id_from_persistent_client_list_with_mac(char* peer_mac_address
 	fp = fopen(PERSISTENT_PEER_PATH, "r");
 	if (NULL == fp)
 	{
-		WFD_SERVER_LOG(WFD_LOG_ASSERT, "ERROR : file open failed!! [persistent-peer]\n");
+		WDP_LOGE( "ERROR : file open failed!! [persistent-peer]\n");
 		return WIFI_DIRECT_ERROR_RESOURCE_BUSY;
 	}
 
 	while(fgets(buf, 100, fp) != NULL)
 	{
 		n = sscanf(buf,"%d %s %s", &network_id, stored_ssid, stored_peer_mac);
-		WFD_SERVER_LOG(WFD_LOG_LOW, "network_id=[%d], ssid=[%s], peer_mac=[%s]\n",network_id, stored_ssid, stored_peer_mac);
+		WDP_LOGD( "network_id=[%d], ssid=[%s], peer_mac=[%s]\n",network_id, stored_ssid, stored_peer_mac);
 
 		if (strcmp(stored_peer_mac, peer_mac_address) == 0)
 		{
@@ -1271,16 +1271,16 @@ int __get_network_id_from_persistent_client_list_with_mac(char* peer_mac_address
 	}
 	fclose(fp);
 
-	WFD_SERVER_LOG(WFD_LOG_LOW, "Can not find peer mac in persistent peer list\n");
+	WDP_LOGD( "Can not find peer mac in persistent peer list\n");
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
 	return -1;
 
 }
 
 bool __is_already_stored_persistent_client(int network_id, char* peer_mac_address)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	FILE *fp = NULL;
 	char buf[100] = "";
@@ -1292,34 +1292,34 @@ bool __is_already_stored_persistent_client(int network_id, char* peer_mac_addres
 	fp = fopen(PERSISTENT_PEER_PATH, "r");
 	if (NULL == fp)
 	{
-		WFD_SERVER_LOG(WFD_LOG_ASSERT, "ERROR : file open failed!! [persistent-peer]\n");
+		WDP_LOGE( "ERROR : file open failed!! [persistent-peer]\n");
 		return WIFI_DIRECT_ERROR_RESOURCE_BUSY;
 	}
 
 	while(fgets(buf, 100, fp) != NULL)
 	{
 		n = sscanf(buf,"%d %s %s", &stored_network_id, stored_ssid, stored_peer_mac);
-		WFD_SERVER_LOG(WFD_LOG_LOW, "stored_network_id=[%d], stored_ssid=[%s], stored_peer_mac=[%s]\n",stored_network_id, stored_ssid, stored_peer_mac);
+		WDP_LOGD( "stored_network_id=[%d], stored_ssid=[%s], stored_peer_mac=[%s]\n",stored_network_id, stored_ssid, stored_peer_mac);
 
 		if ((strcmp(stored_peer_mac, peer_mac_address) == 0)
 			&& (stored_network_id == network_id))
 		{
-			WFD_SERVER_LOG(WFD_LOG_LOW, "found peer in persistent peer list\n");
-			__WFD_SERVER_FUNC_EXIT__;
+			WDP_LOGD( "found peer in persistent peer list\n");
+			__WDP_LOG_FUNC_EXIT__;
 			return true;
 		}
 	}
 	fclose(fp);
 
-	WFD_SERVER_LOG(WFD_LOG_LOW, "Can not find peer in persistent peer list\n");
-	__WFD_SERVER_FUNC_EXIT__;
+	WDP_LOGD( "Can not find peer in persistent peer list\n");
+	__WDP_LOG_FUNC_EXIT__;
 	return false;
 
 }
 
 int __get_persistent_group_clients(void)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	FILE *fp = NULL;
 	char buf[100] = "";
@@ -1331,25 +1331,25 @@ int __get_persistent_group_clients(void)
 	fp = fopen(PERSISTENT_PEER_PATH, "r");
 	if (NULL == fp)
 	{
-		WFD_SERVER_LOG(WFD_LOG_ASSERT, "ERROR : file open failed!! [persistent-peer]\n");
+		WDP_LOGE( "ERROR : file open failed!! [persistent-peer]\n");
 		return WIFI_DIRECT_ERROR_RESOURCE_BUSY;
 	}
 
 	while(fgets(buf, 100, fp) != NULL)
 	{
 		n = sscanf(buf,"%d %s %s", &network_id, ssid, peer_mac);
-		WFD_SERVER_LOG(WFD_LOG_LOW, "network_id=[%d], ssid=[%s], peer_mac=[%s]\n",network_id, ssid, peer_mac);
+		WDP_LOGD( "network_id=[%d], ssid=[%s], peer_mac=[%s]\n",network_id, ssid, peer_mac);
 	}
 	fclose(fp);
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
 	return true;
 
 }
 
 int __send_invite_request_with_network_id(int network_id, unsigned char dev_mac_addr[6])
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	char cmd[128] = {0, };
 	char mac_str[18] = {0, };
@@ -1361,25 +1361,25 @@ int __send_invite_request_with_network_id(int network_id, unsigned char dev_mac_
 	snprintf(cmd, sizeof(cmd), "%s persistent=%d peer=%s", CMD_SEND_INVITE_REQ, network_id, mac_str);
 
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-	WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(p2p_invite persistent=%d peer=%s) result=[%d]\n", network_id, mac_str, result);
+	WDP_LOGD( "__send_wpa_request(p2p_invite persistent=%d peer=%s) result=[%d]\n", network_id, mac_str, result);
 
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ERROR, "__send_wpa_request FAILED!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
 	{
-		WFD_SERVER_LOG( WFD_LOG_ERROR, "__send_wpa_request FAILED!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
-	WFD_SERVER_LOG(WFD_LOG_LOW, "Invite... peer-MAC [%s]\n", mac_str);
+	WDP_LOGD( "Invite... peer-MAC [%s]\n", mac_str);
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
 	return true;
 }
 
@@ -1391,7 +1391,7 @@ int glist_compare_peer_mac_cb(const void* data1, const void* data2)
 
 	if (data1==NULL || data2==NULL)
 	{
-		WFD_SERVER_LOG(WFD_LOG_ERROR, "Error!! data is NULL\n");
+		WDP_LOGE( "Error!! data is NULL\n");
 		return -1;
 	}
 
@@ -1406,16 +1406,16 @@ void glist_print_connected_peer_cb(gpointer data, gpointer user_data)
 {
 	char *mac_str = (char*) data;
 	int count = *(int*)user_data;
-	WFD_SERVER_LOG( WFD_LOG_LOW, "Connected peer[%d] mac=[%s]\n", count, mac_str);
+	WDP_LOGD( "Connected peer[%d] mac=[%s]\n", count, mac_str);
 	*(int*)user_data = count+1;
 }
 
 void wfd_ws_print_connected_peer()
 {
-	WFD_SERVER_LOG( WFD_LOG_LOW, "Connected Peer Table\n");
+	WDP_LOGD( "Connected Peer Table\n");
 	int count = 0;
 	g_list_foreach(g_conn_peer_addr, glist_print_connected_peer_cb, &count);	
-	WFD_SERVER_LOG( WFD_LOG_LOW, "Count=%d\n", count);
+	WDP_LOGD( "Count=%d\n", count);
 }
 
 void wfd_ws_glist_reset_connected_peer()
@@ -1441,7 +1441,7 @@ static gboolean __ws_event_callback(GIOChannel * source,
 										   GIOCondition condition,
 										   gpointer data)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	int sockfd = g_monitor_sockfd;
 	char buffer[4096] = {0, };
@@ -1451,16 +1451,16 @@ static gboolean __ws_event_callback(GIOChannel * source,
 	// Read socket
 	if ( (n = __read_socket_cb(sockfd, buffer, sizeof(buffer))) < 0)	
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "Error!!! Reading Async Event[%d]\n", sockfd);
-		__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "Error!!! Reading Async Event[%d]\n", sockfd);
+		__WDP_LOG_FUNC_EXIT__;
 		return false;
 	}
 
-	WFD_SERVER_LOG( WFD_LOG_LOW, "Received Event:[%d, %s]\n", n, buffer);
+	WDP_LOGD( "Received Event:[%d, %s]\n", n, buffer);
 
 	__parsing_ws_event(buffer, &event);
 
-	WFD_SERVER_LOG( WFD_LOG_LOW, "EVENT ID = %d\n", event.id);
+	WDP_LOGD( "EVENT ID = %d\n", event.id);
 
 	switch (event.id)
 	{
@@ -1475,7 +1475,7 @@ static gboolean __ws_event_callback(GIOChannel * source,
 
 			wfd_server_control_t * wfd_server = wfd_server_get_control();
 
-			WFD_SERVER_LOG(WFD_LOG_LOW, "wfd_server->current_peer.is_group_owner=[%d]\n", wfd_server->current_peer.is_group_owner);
+			WDP_LOGD( "wfd_server->current_peer.is_group_owner=[%d]\n", wfd_server->current_peer.is_group_owner);
 			if (wfd_server->current_peer.is_group_owner == FALSE)
 				wfd_ws_connect(la_mac_addr, WIFI_DIRECT_WPS_TYPE_PBC);
 		}
@@ -1489,7 +1489,7 @@ static gboolean __ws_event_callback(GIOChannel * source,
 			memcpy(g_incomming_peer_mac_address, la_mac_addr, 6);
 			memset(g_wps_pin, 0x00, sizeof(g_wps_pin));
 			memcpy(&g_wps_pin, event.wps_pin, 8);
-			WFD_SERVER_LOG(WFD_LOG_LOW, "MAC ADDR = %s\tPIN = %s\n", g_incomming_peer_mac_address,g_wps_pin);
+			WDP_LOGD( "MAC ADDR = %s\tPIN = %s\n", g_incomming_peer_mac_address,g_wps_pin);
 			g_noti_cb(WFD_EVENT_PROV_DISCOVERY_RESPONSE_WPS_DISPLAY);
 		}
 		break;
@@ -1516,11 +1516,11 @@ static gboolean __ws_event_callback(GIOChannel * source,
 			memset(g_incomming_peer_ssid, 0, sizeof(g_incomming_peer_ssid));
 			strncpy(g_incomming_peer_ssid, event.peer_ssid, sizeof(g_incomming_peer_ssid));
 			if (event.wps_pin != NULL) {
-				WFD_SERVER_LOG(WFD_LOG_LOW, "NEW PIN RECEIVED = %s\n", event.wps_pin);
+				WDP_LOGD( "NEW PIN RECEIVED = %s\n", event.wps_pin);
 				memset(g_wps_pin, 0x00, sizeof(g_wps_pin));
 				strncpy(g_wps_pin, event.wps_pin, sizeof(g_wps_pin));
 			}
-			WFD_SERVER_LOG(WFD_LOG_LOW, "Prov Req:  mac[" MACSTR"] ssid=[%s]\n",
+			WDP_LOGD( "Prov Req:  mac[" MACSTR"] ssid=[%s]\n",
 				MAC2STR(g_incomming_peer_mac_address), g_incomming_peer_ssid);
 
 			if (WS_EVENT_PROVISION_DISCOVERY_PBC_REQ == event.id)
@@ -1536,10 +1536,10 @@ static gboolean __ws_event_callback(GIOChannel * source,
 		{
 			if(wfd_ws_is_groupowner())
 			{
-				WFD_SERVER_LOG( WFD_LOG_LOW," CHECK : It's AP... \n");
+				WDP_LOGD(" CHECK : It's AP... \n");
 				system("/usr/bin/wifi-direct-dhcp.sh server");
 				__polling_ip(g_local_interface_ip_address, 20, FALSE);
-				WFD_SERVER_LOG( WFD_LOG_ERROR, "*** IP : %s\n", g_local_interface_ip_address);
+				WDP_LOGE( "*** IP : %s\n", g_local_interface_ip_address);
 
 				g_noti_cb(WFD_EVENT_SOFTAP_READY);
 			}
@@ -1548,7 +1548,7 @@ static gboolean __ws_event_callback(GIOChannel * source,
 				wfd_ws_glist_reset_connected_peer();
 
 				g_conn_peer_addr = g_list_append(g_conn_peer_addr, strdup(event.peer_mac_address));
-				WFD_SERVER_LOG(WFD_LOG_LOW, "connected peer[%s] is added\n", event.peer_mac_address);
+				WDP_LOGD( "connected peer[%s] is added\n", event.peer_mac_address);
 
 				g_noti_cb(WFD_EVENT_CREATE_LINK_COMPLETE);
 			}
@@ -1559,10 +1559,10 @@ static gboolean __ws_event_callback(GIOChannel * source,
 		{
 			if(wfd_ws_is_groupowner())
 			{
-				WFD_SERVER_LOG( WFD_LOG_LOW," CHECK : It's AP... \n");
+				WDP_LOGD(" CHECK : It's AP... \n");
 				system("/usr/bin/wifi-direct-dhcp.sh server");
 				__polling_ip(g_local_interface_ip_address, 20, FALSE);
-				WFD_SERVER_LOG( WFD_LOG_ERROR, "*** IP : %s\n", g_local_interface_ip_address);
+				WDP_LOGE( "*** IP : %s\n", g_local_interface_ip_address);
 
 				g_noti_cb(WFD_EVENT_SOFTAP_READY);
 			}
@@ -1571,7 +1571,7 @@ static gboolean __ws_event_callback(GIOChannel * source,
 				wfd_ws_glist_reset_connected_peer();
 
 				g_conn_peer_addr = g_list_append(g_conn_peer_addr, strdup(event.peer_mac_address));
-				WFD_SERVER_LOG(WFD_LOG_LOW, "connected peer[%s] is added\n", event.peer_mac_address);
+				WDP_LOGD( "connected peer[%s] is added\n", event.peer_mac_address);
 
 				wfd_server_control_t * wfd_server = wfd_server_get_control();
 
@@ -1604,7 +1604,7 @@ static gboolean __ws_event_callback(GIOChannel * source,
 		case WS_EVENT_TERMINATING:
 			system("/usr/bin/wlan.sh stop");
 			system("/usr/sbin/wpa_supp_p2p.sh stop");
-			WFD_SERVER_LOG( WFD_LOG_ASSERT, "Device is Deactivated\n");
+			WDP_LOGE( "Device is Deactivated\n");
 		break;
 
 		case WS_EVENT_CONNECTED:
@@ -1620,7 +1620,7 @@ static gboolean __ws_event_callback(GIOChannel * source,
 				if(element != NULL)
 				{
 					g_conn_peer_addr = g_list_remove(g_conn_peer_addr, event.peer_mac_address);
-					WFD_SERVER_LOG(WFD_LOG_LOW, "disconnected peer[%s] is removed\n", event.peer_mac_address);
+					WDP_LOGD( "disconnected peer[%s] is removed\n", event.peer_mac_address);
 					free((char*) element->data);
 				}
 			}
@@ -1633,7 +1633,7 @@ static gboolean __ws_event_callback(GIOChannel * source,
 				if(element  == NULL)
 				{
 					g_conn_peer_addr = g_list_append(g_conn_peer_addr, strdup(event.peer_mac_address));
-					WFD_SERVER_LOG(WFD_LOG_LOW, "connected peer[%s] is added\n", event.peer_mac_address);
+					WDP_LOGD( "connected peer[%s] is added\n", event.peer_mac_address);
 				}
 
 				wfd_ws_print_connected_peer();
@@ -1654,8 +1654,8 @@ static gboolean __ws_event_callback(GIOChannel * source,
 					network_id = __get_network_id_from_network_list_with_ssid(g_persistent_group_ssid);
 					if (network_id < 0)	/* NOT Persistent group */
 					{
-						WFD_SERVER_LOG(WFD_LOG_LOW, "__get_network_id_from_network_list_with_ssid FAIL!![%d]\n", network_id);
-						WFD_SERVER_LOG(WFD_LOG_LOW, "[NOT Persistent Group]\n");
+						WDP_LOGD( "__get_network_id_from_network_list_with_ssid FAIL!![%d]\n", network_id);
+						WDP_LOGD( "[NOT Persistent Group]\n");
 					}
 					else	/* Persistent group */
 					{
@@ -1665,7 +1665,7 @@ static gboolean __ws_event_callback(GIOChannel * source,
 							/* storing new persistent group client*/
 							result = __store_persistent_peer(network_id, g_persistent_group_ssid, event.peer_mac_address);
 							if (result != true)
-								WFD_SERVER_LOG(WFD_LOG_LOW, "__store_persistent_peer FAIL!![%d]\n", result);
+								WDP_LOGD( "__store_persistent_peer FAIL!![%d]\n", result);
 						}
 
 						/* We need to store current peer
@@ -1690,12 +1690,12 @@ static gboolean __ws_event_callback(GIOChannel * source,
 				if(element != NULL)
 				{
 					g_conn_peer_addr = g_list_remove(g_conn_peer_addr, element->data);
-					WFD_SERVER_LOG(WFD_LOG_LOW, "disconnected peer[%s] is removed\n", event.peer_mac_address);
+					WDP_LOGD( "disconnected peer[%s] is removed\n", event.peer_mac_address);
 					wfd_ws_print_connected_peer();
 				}
 				else
 				{
-					WFD_SERVER_LOG(WFD_LOG_LOW, "Something wrong.. disconnected peer[%s] is not in Table\n", event.peer_mac_address);
+					WDP_LOGD( "Something wrong.. disconnected peer[%s] is not in Table\n", event.peer_mac_address);
 				}
 				wfd_macaddr_atoe(event.peer_intf_mac_address, g_disassoc_sta_mac);
 				g_noti_cb(WFD_EVENT_SOFTAP_STA_DISASSOC);
@@ -1707,7 +1707,7 @@ static gboolean __ws_event_callback(GIOChannel * source,
 			unsigned char la_mac_addr[6];
 			wfd_macaddr_atoe(event.peer_mac_address, la_mac_addr);
 			memcpy(&g_incomming_peer_mac_address, la_mac_addr, 6);
-			WFD_SERVER_LOG(WFD_LOG_LOW, "INVITATION REQ. RECEIVED:  mac[" MACSTR"]\n", MAC2STR(g_incomming_peer_mac_address));
+			WDP_LOGD( "INVITATION REQ. RECEIVED:  mac[" MACSTR"]\n", MAC2STR(g_incomming_peer_mac_address));
 			wfd_ws_start_discovery(false, 0);
 
 			g_noti_cb(WFD_EVENT_INVITE_REQUEST);
@@ -1724,27 +1724,27 @@ static gboolean __ws_event_callback(GIOChannel * source,
 
 	}
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
 
 	return true;
 }
 
 int __convert_category_from_type(char *pri_dev_type)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 	char *saveptr = NULL;
 	char *token = NULL;
 
 	if(pri_dev_type == NULL)
 	{
-		WFD_SERVER_LOG(WFD_LOG_ERROR, "Incorrect parameter\n");
+		WDP_LOGE( "Incorrect parameter\n");
 		return -1;
 	}
 
 	token = strtok_r(pri_dev_type, "-", &saveptr);
 	if(token == NULL)
 	{
-		WFD_SERVER_LOG(WFD_LOG_LOW, "Extracting failed\n");
+		WDP_LOGD( "Extracting failed\n");
 		return -1;
 	}
 
@@ -1774,17 +1774,17 @@ int __convert_category_from_type(char *pri_dev_type)
 		return WIFI_DIRECT_PRIMARY_DEVICE_TYPE_COMPUTER;
 	else
 	{
-		WFD_SERVER_LOG(WFD_LOG_LOW, "Unknown device type [%s]\n", token);
+		WDP_LOGD( "Unknown device type [%s]\n", token);
 		return -1;
 	}
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
 	return -1;
 }
 
 
 int __wpa_ctrl_attach(int sockfd)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	char cmd[8] = {0};
 	char res_buffer[1024]={0,};
@@ -1793,12 +1793,12 @@ int __wpa_ctrl_attach(int sockfd)
 
 	strncpy(cmd, CMD_ATTACH, sizeof(cmd));
 	result = __send_wpa_request(sockfd, cmd, (char*)res_buffer,  res_buffer_len);
-	WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request(ATTACH) result=[%d]\n", result);
+	WDP_LOGE( "__send_wpa_request(ATTACH) result=[%d]\n", result);
 	
 	if (result < 0)
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED!!\n");
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
 
- 	__WFD_SERVER_FUNC_EXIT__;
+ 	__WDP_LOG_FUNC_EXIT__;
 
 	return result;
 }
@@ -1809,37 +1809,37 @@ int __wpa_ctrl_attach(int sockfd)
 static char*
 __convert_wps_config_methods_value(wifi_direct_wps_type_e wps_config_methods)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
-	WFD_SERVER_LOG( WFD_LOG_LOW,"wps_config_methods [%d]\n", wps_config_methods);
+	WDP_LOGD("wps_config_methods [%d]\n", wps_config_methods);
 
 	switch(wps_config_methods)
 	{
 		case WIFI_DIRECT_WPS_TYPE_PBC:
 		{
-		 	__WFD_SERVER_FUNC_EXIT__;
+		 	__WDP_LOG_FUNC_EXIT__;
 			return "pbc";
 		}
 		break;
 
 		case WIFI_DIRECT_WPS_TYPE_PIN_DISPLAY:
 		{
-		 	__WFD_SERVER_FUNC_EXIT__;
+		 	__WDP_LOG_FUNC_EXIT__;
 			return "display";
 		}
 		break;
 
 		case WIFI_DIRECT_WPS_TYPE_PIN_KEYPAD:
 		{
-		 	__WFD_SERVER_FUNC_EXIT__;
+		 	__WDP_LOG_FUNC_EXIT__;
 			return "keypad";
 		}
 		break;
 
 		default :
 		{
-			WFD_SERVER_LOG( WFD_LOG_LOW,"Invalid input parameter!\n");
-		 	__WFD_SERVER_FUNC_EXIT__;
+			WDP_LOGD("Invalid input parameter!\n");
+		 	__WDP_LOG_FUNC_EXIT__;
 			return "";
 		}
 		break;
@@ -1850,7 +1850,7 @@ __convert_wps_config_methods_value(wifi_direct_wps_type_e wps_config_methods)
 static unsigned int
 __convert_device_type(char *ptr)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	char* p = ptr;
 	int c = 0;
@@ -1858,7 +1858,7 @@ __convert_device_type(char *ptr)
 
 	if (p==NULL)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "ERROR : ptr is NULL!!\n");
+		WDP_LOGE( "ERROR : ptr is NULL!!\n");
 		return 0;
 	}
 
@@ -1869,9 +1869,9 @@ __convert_device_type(char *ptr)
 	}
 	category_type[c]='\0';
 
-	WFD_SERVER_LOG( WFD_LOG_LOW,"category=[%d]\n", atoi(category_type));
+	WDP_LOGD("category=[%d]\n", atoi(category_type));
  
- 	__WFD_SERVER_FUNC_EXIT__;
+ 	__WDP_LOG_FUNC_EXIT__;
 
 	return atoi(category_type);
 }
@@ -1879,7 +1879,7 @@ __convert_device_type(char *ptr)
 static unsigned int
 __convert_secondary_device_type(char *ptr)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	char* p = NULL;
 	int c = 0;
@@ -1887,14 +1887,14 @@ __convert_secondary_device_type(char *ptr)
 
 	if (ptr==NULL)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "ERROR : ptr is NULL!!\n");
+		WDP_LOGE( "ERROR : ptr is NULL!!\n");
 		return 0;
 	}
 
 	p = strstr(ptr, WIFI_ALLIANCE_OUI);
 	if (p==NULL)
 	{
-		WFD_SERVER_LOG(WFD_LOG_ERROR, "ERROR : Unknown OUI, It's vendor specific device type..\n");
+		WDP_LOGE( "ERROR : Unknown OUI, It's vendor specific device type..\n");
 		return 0;
 	}
 	p += strlen(WIFI_ALLIANCE_OUI); // // skip OUI (e.g. 1-0050F204-5)
@@ -1907,9 +1907,9 @@ __convert_secondary_device_type(char *ptr)
 	}
 	category_type[c]='\0';
 
-	WFD_SERVER_LOG( WFD_LOG_LOW,"sub-category [%d]\n", atoi(category_type));
+	WDP_LOGD("sub-category [%d]\n", atoi(category_type));
 
- 	__WFD_SERVER_FUNC_EXIT__;
+ 	__WDP_LOG_FUNC_EXIT__;
 
 	return atoi(category_type);
 }
@@ -1917,7 +1917,7 @@ __convert_secondary_device_type(char *ptr)
 
 int __convert_freq_to_channel(char *freq_kHz)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 	int i = 0;
 	int channel = 0;
 
@@ -1931,7 +1931,7 @@ int __convert_freq_to_channel(char *freq_kHz)
 		i++;
 	}
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
 	return channel;
 }
 
@@ -1956,7 +1956,7 @@ void __wfd_oem_callback(wfd_event_t event_type)
 
 int __wfd_ws_reinvoke_persistent_group(int network_id)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	char cmd[64] = {0, };
 	char res_buffer[1024]={0,};
@@ -1967,34 +1967,34 @@ int __wfd_ws_reinvoke_persistent_group(int network_id)
 	snprintf(cmd, sizeof(cmd), "%s %s%d", CMD_CREATE_GROUP, "persistent=", network_id);
 
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-	WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(P2P_GROUP_ADD persistent=%d) result=[%d]\n", network_id, result);
+	WDP_LOGD( "__send_wpa_request(P2P_GROUP_ADD persistent=%d) result=[%d]\n", network_id, result);
 
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
 	{
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
-	WFD_SERVER_LOG( WFD_LOG_LOW, "Create p2p persistent group... \n");
+	WDP_LOGD( "Create p2p persistent group... \n");
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
 	return true;
 }
 
 int wfd_ws_init(wfd_oem_event_cb event_callback)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 #if 1  // Threadsafe event handling
 	if (pipe(g_oem_pipe) < 0) {
-		WFD_SERVER_LOG(WFD_LOG_LOW, "pipe error : Error=[%s]\n", strerror(errno));
+		WDP_LOGD( "pipe error : Error=[%s]\n", strerror(errno));
 		return false;
 	}
 
@@ -2010,23 +2010,23 @@ int wfd_ws_init(wfd_oem_event_cb event_callback)
 	memset(g_incomming_peer_mac_address, 0, sizeof(g_incomming_peer_mac_address));
 	memset(g_incomming_peer_ssid, 0, sizeof(g_incomming_peer_ssid));
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
 	return true;
 }
 
 int wfd_ws_destroy()
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	// Do nothing upto now...
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
 	return true;
 }
 
 int wfd_ws_activate()
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 	int result = 0;
 	char cmd[128] = {0, };
 	char res_buffer[1024]={0,};
@@ -2040,13 +2040,13 @@ int wfd_ws_activate()
 	g_global_sockfd = __create_ctrl_intf("p2p_ctrl_global", "/var/run/p2p_global");
 	if(g_global_sockfd < 0)
 	{
-		WFD_SERVER_LOG(WFD_LOG_ERROR, "Failed to create Global Control interface\n");
+		WDP_LOGE( "Failed to create Global Control interface\n");
 		return false;
 	}
 
 	strncpy(cmd, CMD_INTERFACE, sizeof(cmd));
 	result = __send_wpa_request(g_global_sockfd, cmd, res_buffer,  res_buffer_len);
-	WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request(LOG_LEVEL) result=[%d]\n", result);
+	WDP_LOGE( "__send_wpa_request(LOG_LEVEL) result=[%d]\n", result);
 	if(!strstr(res_buffer, "wlan0"))
 	{
 		memset(cmd, 0x0, 128);
@@ -2054,7 +2054,7 @@ int wfd_ws_activate()
 
 		snprintf(cmd, sizeof(cmd), "%s %s", CMD_INTERFACE_ADD, "wlan0\t/usr/etc/wifi-direct/p2p_suppl.conf\tnl80211\t/var/run/p2p_supplicant");
 		result = __send_wpa_request(g_global_sockfd, cmd, res_buffer,  res_buffer_len);
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request(LOG_LEVEL) result=[%d]\n", result);
+		WDP_LOGE( "__send_wpa_request(LOG_LEVEL) result=[%d]\n", result);
 	}
 	memset(res_buffer, 0x0, 1024);
 
@@ -2074,7 +2074,7 @@ int wfd_ws_activate()
 			{
 				if (__wpa_ctrl_attach(g_monitor_sockfd) < 0)
 				{
-					WFD_SERVER_LOG( WFD_LOG_ERROR, "Failed to attach p2p_supplicant!!! monitor_sockfd=[%d]\n", g_monitor_sockfd);
+					WDP_LOGE( "Failed to attach p2p_supplicant!!! monitor_sockfd=[%d]\n", g_monitor_sockfd);
 					return false;
 				}
 				break;
@@ -2083,36 +2083,36 @@ int wfd_ws_activate()
 		count--;
 
 		if (count == 0)
-			WFD_SERVER_LOG( WFD_LOG_ASSERT, "Failed to create socket !!\n");		
+			WDP_LOGE( "Failed to create socket !!\n");		
 		
 	} while (count > 0);
 
-	WFD_SERVER_LOG( WFD_LOG_LOW, "Successfully socket connected to server !!\n");
+	WDP_LOGD( "Successfully socket connected to server !!\n");
 
 	GIOChannel *gio3;
 
 	gio3 = g_io_channel_unix_new(g_monitor_sockfd);
 	g_source_id = g_io_add_watch(gio3, G_IO_IN | G_IO_ERR | G_IO_HUP, (GIOFunc) __ws_event_callback, NULL);
 	g_io_channel_unref(gio3);
-	WFD_SERVER_LOG( WFD_LOG_LOW, "Scoket is successfully registered to g_main_loop.\n");
+	WDP_LOGD( "Scoket is successfully registered to g_main_loop.\n");
 
 	//wfd_ws_set_oem_loglevel(3);
 
 	/* init miracast */
 	if(wfd_ws_dsp_init() == true)
-		WFD_SERVER_LOG( WFD_LOG_LOW, "Success : wfd_ws_dsp_init() \n");
+		WDP_LOGD( "Success : wfd_ws_dsp_init() \n");
 	else
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "Failed : wfd_ws_dsp_init()\n");
+		WDP_LOGE( "Failed : wfd_ws_dsp_init()\n");
 
 	__get_persistent_group_clients();
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
 	return true;
 }
 
 int wfd_ws_deactivate()
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	char cmd[32] = {0, };
 	char res_buffer[1024]={0,};
@@ -2125,17 +2125,17 @@ int wfd_ws_deactivate()
 	// detach monitor interface
 	strncpy(cmd, CMD_DETACH, sizeof(cmd));
 	result = __send_wpa_request(g_monitor_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-	WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(CMD_DETACH) result=[%d]\n", result);
+	WDP_LOGD( "__send_wpa_request(CMD_DETACH) result=[%d]\n", result);
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
 	{
-		WFD_SERVER_LOG(WFD_LOG_ERROR, "DETACH command Fail. result [%d], res_buffer [%s]\n", result, res_buffer);
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "DETACH command Fail. result [%d], res_buffer [%s]\n", result, res_buffer);
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 	memset(cmd, 0x0, 32);
@@ -2154,11 +2154,11 @@ int wfd_ws_deactivate()
 	// interface_remove
 	snprintf(cmd, sizeof(cmd), "%s %s", CMD_INTERFACE_REMOVE, "p2p-wlan0-0");
 	result = __send_wpa_request(g_global_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-	WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(INTERFACE_REMOVE p2p-wlan0-0) result=[%d]\n", result);
+	WDP_LOGD( "__send_wpa_request(INTERFACE_REMOVE p2p-wlan0-0) result=[%d]\n", result);
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 	memset(cmd, 0x0, 32);
@@ -2167,16 +2167,16 @@ int wfd_ws_deactivate()
 	// interface_remove
 	snprintf(cmd, sizeof(cmd), "%s %s", CMD_INTERFACE_REMOVE, "wlan0");
 	result = __send_wpa_request(g_global_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-	WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(INTERFACE_REMOVE wlan0) result=[%d]\n", result);
+	WDP_LOGD( "__send_wpa_request(INTERFACE_REMOVE wlan0) result=[%d]\n", result);
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
 	{
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
@@ -2191,13 +2191,13 @@ int wfd_ws_deactivate()
 	system("/usr/bin/wlan.sh stop");
 	system("/usr/sbin/wpa_supp_p2p.sh stop");
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
  	return true;
 }
 
 int wfd_ws_wps_pbc_start(void)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
  	char cmd[8] = {0, };
 	char res_buffer[1024]={0,};
@@ -2206,36 +2206,36 @@ int wfd_ws_wps_pbc_start(void)
 
 	if (wfd_ws_is_groupowner()!=true)
 	{
-		WFD_SERVER_LOG(WFD_LOG_ERROR, "wps_pbc_start() can be called, only when device is go!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "wps_pbc_start() can be called, only when device is go!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
 	strncpy(cmd, CMD_WPS_PUSHBUTTON_START, sizeof(cmd));
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-	WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(WPS_PBC) result=[%d]\n", result);
+	WDP_LOGD( "__send_wpa_request(WPS_PBC) result=[%d]\n", result);
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
 	{
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
-	WFD_SERVER_LOG( WFD_LOG_LOW, "start WPS PBC...\n");
+	WDP_LOGD( "start WPS PBC...\n");
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
  	return true;
 }
 
 int wfd_ws_connect(unsigned char mac_addr[6], wifi_direct_wps_type_e wps_config)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	char cmd[50] = {0, };
 	char mac_str[18] = {0, };
@@ -2244,13 +2244,13 @@ int wfd_ws_connect(unsigned char mac_addr[6], wifi_direct_wps_type_e wps_config)
 	int result;
 
 	wfd_server_control_t * wfd_server = wfd_server_get_control();
-	WFD_SERVER_LOG(WFD_LOG_LOW, "wfd_server->current_peer.is_group_owner=[%d]\n", wfd_server->current_peer.is_group_owner);
+	WDP_LOGD( "wfd_server->current_peer.is_group_owner=[%d]\n", wfd_server->current_peer.is_group_owner);
 
 	if (wfd_ws_is_groupowner()==true)
 	{
 		strncpy(cmd, CMD_WPS_PUSHBUTTON_START, sizeof(cmd));
 		result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-		WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(WPS_PBC) result=[%d]\n", result);
+		WDP_LOGD( "__send_wpa_request(WPS_PBC) result=[%d]\n", result);
 	}
 
 	if (wfd_server->current_peer.is_group_owner)
@@ -2258,89 +2258,89 @@ int wfd_ws_connect(unsigned char mac_addr[6], wifi_direct_wps_type_e wps_config)
 		snprintf(mac_str, 18, MACSTR, MAC2STR(mac_addr));
 		snprintf(cmd, sizeof(cmd),"%s %s %s join", CMD_CONNECT, mac_str, __convert_wps_config_methods_value(wps_config));
 		result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-		WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(CMD_CONNECT join) result=[%d]\n", result);
+		WDP_LOGD( "__send_wpa_request(CMD_CONNECT join) result=[%d]\n", result);
 	}
 	else
 	{
 		snprintf(mac_str, 18, MACSTR, MAC2STR(mac_addr));
-		WFD_SERVER_LOG( WFD_LOG_LOW, "MAC ADDR = [%s]\t PIN = [%s]\n",
+		WDP_LOGD( "MAC ADDR = [%s]\t PIN = [%s]\n",
 				mac_str, g_wps_pin);
 		if (wps_config == WIFI_DIRECT_WPS_TYPE_PBC) {
 			snprintf(cmd, sizeof(cmd), "%s %s %s", CMD_CONNECT,
 				mac_str, __convert_wps_config_methods_value(wps_config));
 		} else if (wps_config == WIFI_DIRECT_WPS_TYPE_PIN_DISPLAY 	||
 				wps_config == WIFI_DIRECT_WPS_TYPE_PIN_KEYPAD) {
-			WFD_SERVER_LOG( WFD_LOG_LOW, "CONFIG = [%d] \n", wps_config);
+			WDP_LOGD( "CONFIG = [%d] \n", wps_config);
 			snprintf(cmd, sizeof(cmd), "%s %s %s %s", CMD_CONNECT,
 					mac_str, g_wps_pin, CMD_DISPLAY_STRING);
-			WFD_SERVER_LOG( WFD_LOG_LOW, "COMMAND = [%s]\n", cmd);
+			WDP_LOGD( "COMMAND = [%s]\n", cmd);
 		} else {
-			WFD_SERVER_LOG( WFD_LOG_LOW, "UNKNOWN CONFIG METHOD\n");
+			WDP_LOGD( "UNKNOWN CONFIG METHOD\n");
 			return false;
 		}
 		result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-		WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(P2P_CONNECT) result=[%d]\n", result);
+		WDP_LOGD( "__send_wpa_request(P2P_CONNECT) result=[%d]\n", result);
 	}
 
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
 	{
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
-	WFD_SERVER_LOG( WFD_LOG_LOW, "Connecting... peer-MAC [%s]\n", mac_str);
+	WDP_LOGD( "Connecting... peer-MAC [%s]\n", mac_str);
  
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
  	return true;
 }
 int wfd_ws_connect_for_go_neg(unsigned char mac_addr[6],
 		wifi_direct_wps_type_e wps_config)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 	char cmd[50] = {0, };
 	char mac_str[18] = {0, };
 	char res_buffer[1024]={0,};
 	int res_buffer_len = sizeof(res_buffer);
 	int result;
 
-	WFD_SERVER_LOG( WFD_LOG_LOW, "CONNECT REQUEST FOR GO NEGOTIATION");
+	WDP_LOGD( "CONNECT REQUEST FOR GO NEGOTIATION");
 
 	if (wps_config == WIFI_DIRECT_WPS_TYPE_PIN_KEYPAD ||
 			wps_config == WIFI_DIRECT_WPS_TYPE_PIN_DISPLAY) {
 		snprintf(mac_str, 18, MACSTR, MAC2STR(mac_addr));
-		WFD_SERVER_LOG( WFD_LOG_LOW, "CONFIG = [%d] \n", wps_config);
+		WDP_LOGD( "CONFIG = [%d] \n", wps_config);
 		snprintf(cmd, sizeof(cmd), "%s %s %s", CMD_CONNECT, mac_str,
 				g_wps_pin);
-		WFD_SERVER_LOG( WFD_LOG_LOW, "COMMAND = [%s]****\n", cmd);
+		WDP_LOGD( "COMMAND = [%s]****\n", cmd);
 	} else {
-		WFD_SERVER_LOG( WFD_LOG_LOW, "UNKNOWN CONFIG METHOD\n");
+		WDP_LOGD( "UNKNOWN CONFIG METHOD\n");
 		return false;
 	}
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer,
 			res_buffer_len);
 	if (result < 0)	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0)) {
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
-	WFD_SERVER_LOG( WFD_LOG_LOW, "Connecting... peer-MAC [%s]\n", mac_str);
-	__WFD_SERVER_FUNC_EXIT__;
+	WDP_LOGD( "Connecting... peer-MAC [%s]\n", mac_str);
+	__WDP_LOG_FUNC_EXIT__;
  	return true;
 }
 int wfd_ws_disconnect()
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	char cmd[32] = {0, };
 	char res_buffer[1024]={0,};
@@ -2349,24 +2349,24 @@ int wfd_ws_disconnect()
 
 	snprintf(cmd, sizeof(cmd), "%s %s", CMD_GROUP_REMOVE, DEFAULT_IF_NAME);
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-	WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(P2P_GROUP_REMOVE) result=[%d]\n", result);
+	WDP_LOGD( "__send_wpa_request(P2P_GROUP_REMOVE) result=[%d]\n", result);
 
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
 	{
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
-	WFD_SERVER_LOG( WFD_LOG_LOW, "disconnect... remove group [%s]\n", DEFAULT_IF_NAME);
+	WDP_LOGD( "disconnect... remove group [%s]\n", DEFAULT_IF_NAME);
  
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
  	return true;
 }
 
@@ -2374,27 +2374,27 @@ int wfd_ws_disconnect()
 // TODO: should find how to disconnect with peer by peer_mac
 int wfd_ws_disconnect_sta(unsigned char mac_addr[6])
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	int result;
 
  	result = wfd_ws_disconnect();
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
  	return result;
 }
 
 bool wfd_ws_is_discovery_enabled()
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
 	return false;
 }
 
 bool wfd_ws_flush()
 {
-        __WFD_SERVER_FUNC_ENTER__;
+        __WDP_LOG_FUNC_ENTER__;
 
         char cmd[16] = {0, };
         char res_buffer[1024]={0,};
@@ -2404,22 +2404,22 @@ bool wfd_ws_flush()
         // Skip checking result..
         strncpy(cmd, CMD_FLUSH, sizeof(cmd));
         result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-        WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(P2P_FLUSH) result=[%d]\n", result);
+        WDP_LOGD( "__send_wpa_request(P2P_FLUSH) result=[%d]\n", result);
 
         if (result < 0)
         {
-                WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED!!\n");
-                __WFD_SERVER_FUNC_EXIT__;
+                WDP_LOGE( "__send_wpa_request FAILED!!\n");
+                __WDP_LOG_FUNC_EXIT__;
                 return false;
         }
 
         if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
         {
-                __WFD_SERVER_FUNC_EXIT__;
+                __WDP_LOG_FUNC_EXIT__;
                 return false;
         }
 
-        __WFD_SERVER_FUNC_EXIT__;
+        __WDP_LOG_FUNC_EXIT__;
         return true;
 }
 
@@ -2427,7 +2427,7 @@ bool wfd_ws_flush()
 
 int wfd_ws_start_discovery(bool listen_only, int timeout)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	char cmd[16] = {0, };
 	char res_buffer[1024]={0,};
@@ -2447,25 +2447,25 @@ int wfd_ws_start_discovery(bool listen_only, int timeout)
 			strncpy(cmd, CMD_START_LISTEN, sizeof(cmd));
 
 			result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-			WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(P2P_LISTEN) result=[%d]\n", result);
+			WDP_LOGD( "__send_wpa_request(P2P_LISTEN) result=[%d]\n", result);
 	}
 	else
 	{
 		strncpy(cmd, CMD_START_DISCOVER, sizeof(cmd));
 		result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-		WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(P2P_FIND) result=[%d]\n", result);
+		WDP_LOGD( "__send_wpa_request(P2P_FIND) result=[%d]\n", result);
 	}
 
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
 	{
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
@@ -2475,13 +2475,13 @@ int wfd_ws_start_discovery(bool listen_only, int timeout)
 	else
 		g_noti_cb(WFD_EVENT_DISCOVER_START_80211_SCAN);
 
- 	__WFD_SERVER_FUNC_EXIT__;
+ 	__WDP_LOG_FUNC_EXIT__;
  	return true;
 }
 
 int wfd_ws_cancel_discovery()
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	char cmd[16] = {0, };
 	char res_buffer[1024]={0,};
@@ -2490,31 +2490,31 @@ int wfd_ws_cancel_discovery()
 
 	strncpy(cmd, CMD_CANCEL_DISCOVER, sizeof(cmd));
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-	WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(P2P_STOP_FIND) result=[%d]\n", result);
+	WDP_LOGD( "__send_wpa_request(P2P_STOP_FIND) result=[%d]\n", result);
 
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
 	{
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
 	// to notify to the application.
 	g_noti_cb(WFD_EVENT_DISCOVER_CANCEL);
 
- 	__WFD_SERVER_FUNC_EXIT__;
+ 	__WDP_LOG_FUNC_EXIT__;
  	return true;
 }
 
 int wfd_ws_get_discovery_result(wfd_discovery_entry_s ** peer_list, int* peer_num)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 	
 	char cmd[40] = {0, };
 	char mac_str[18] = {0, };
@@ -2532,13 +2532,13 @@ int wfd_ws_get_discovery_result(wfd_discovery_entry_s ** peer_list, int* peer_nu
 	/* Reading first discovered peer */
 	strncpy(cmd, CMD_GET_FIRST_DISCOVERED_PEER, sizeof(cmd));
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-	WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(P2P_PEER FIRST) result=[%d]\n", result);
+	WDP_LOGD( "__send_wpa_request(P2P_PEER FIRST) result=[%d]\n", result);
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED!!\n");
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
 		*peer_num = 0;
 		*peer_list = NULL;
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
@@ -2546,7 +2546,7 @@ int wfd_ws_get_discovery_result(wfd_discovery_entry_s ** peer_list, int* peer_nu
 	{
 		*peer_num = 0;
 		*peer_list = NULL;
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
@@ -2563,7 +2563,7 @@ int wfd_ws_get_discovery_result(wfd_discovery_entry_s ** peer_list, int* peer_nu
 		strncpy(mac_str, ws_peer_list[peer_count-1].mac, sizeof(mac_str));
 		snprintf(cmd, sizeof(cmd), "%s%s", CMD_GET_NEXT_DISCOVERED_PEER, mac_str);
 		result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-		WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(P2P_PEER NEXT-) result=[%d]\n", result);
+		WDP_LOGD( "__send_wpa_request(P2P_PEER NEXT-) result=[%d]\n", result);
 
 		if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))	/* p2p_supplicant returns the 'FAIL' if there is no discovered peer. */
 			break;
@@ -2573,12 +2573,12 @@ int wfd_ws_get_discovery_result(wfd_discovery_entry_s ** peer_list, int* peer_nu
 
 	} while(1);
 
-	WFD_SERVER_LOG(WFD_LOG_LOW, "number of discovered peers: %d\n", peer_count);
+	WDP_LOGD( "number of discovered peers: %d\n", peer_count);
 
 	for(i=0; i<peer_count; i++)
 	{
 		memset(&wfd_peer_list[i], 0, sizeof(wfd_discovery_entry_s));
-		WFD_SERVER_LOG( WFD_LOG_LOW, "index [%d] MAC [%s] GOstate=[%s] groupCapab=[%x] devCapab=[%x] is_wfd_device[%d] Name[%s] type=[%s] ssid[%s]\n",
+		WDP_LOGD( "index [%d] MAC [%s] GOstate=[%s] groupCapab=[%x] devCapab=[%x] is_wfd_device[%d] Name[%s] type=[%s] ssid[%s]\n",
 				i,
 				ws_peer_list[i].mac,
 				ws_peer_list[i].go_state,
@@ -2641,7 +2641,7 @@ int wfd_ws_get_discovery_result(wfd_discovery_entry_s ** peer_list, int* peer_nu
 		else
 			wfd_peer_list[i].is_group_owner = false;
 
-		WFD_SERVER_LOG( WFD_LOG_LOW, "GroupOwnerCapab: %x & %x = %d\n", ws_peer_list[i].group_capab, GROUP_CAPAB_GROUP_OWNER, (ws_peer_list[i].group_capab & GROUP_CAPAB_GROUP_OWNER));
+		WDP_LOGD( "GroupOwnerCapab: %x & %x = %d\n", ws_peer_list[i].group_capab, GROUP_CAPAB_GROUP_OWNER, (ws_peer_list[i].group_capab & GROUP_CAPAB_GROUP_OWNER));
 
 		// is_persistent_go
 		if ((ws_peer_list[i].group_capab & GROUP_CAPAB_PERSISTENT_GROUP) > 0)  /* checking persistent GO state */
@@ -2670,16 +2670,16 @@ int wfd_ws_get_discovery_result(wfd_discovery_entry_s ** peer_list, int* peer_nu
 	*peer_num = peer_count;
 	*peer_list = &wfd_peer_list[0];
 
-	WFD_SERVER_LOG( WFD_LOG_ASSERT, "Getting discovery result is Completed.\n");
+	WDP_LOGE( "Getting discovery result is Completed.\n");
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
  	return true;
 
 }
 
 int wfd_ws_get_peer_info(unsigned char *mac_addr, wfd_discovery_entry_s **peer)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
  	char cmd[32] = {0, };
 	char mac_str[18] = {0, };
@@ -2696,26 +2696,26 @@ int wfd_ws_get_peer_info(unsigned char *mac_addr, wfd_discovery_entry_s **peer)
 	snprintf(mac_str, 18, MACSTR, MAC2STR(mac_addr));
 	snprintf(cmd, sizeof(cmd),"%s %s", CMD_GET_PEER_INFO, mac_str);
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-	WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(P2P_PEER) result=[%d]\n", result);
+	WDP_LOGD( "__send_wpa_request(P2P_PEER) result=[%d]\n", result);
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED!!\n");
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
 		*peer = NULL;
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))	/* p2p_supplicant returns the 'FAIL' if there is no discovered peer. */
 	{
 		*peer = NULL;
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
 	// TODO: parsing peer info
 	__parsing_peer(res_buffer, &ws_peer_info);
 
-	WFD_SERVER_LOG( WFD_LOG_LOW, "MAC [%s] GOstate=[%s] groupCapab=[%x] devCapab=[%x] Name[%s] type=[%s] ssid[%s]\n",
+	WDP_LOGD( "MAC [%s] GOstate=[%s] groupCapab=[%x] devCapab=[%x] Name[%s] type=[%s] ssid[%s]\n",
 			ws_peer_info.mac,
 			ws_peer_info.go_state,
 			ws_peer_info.group_capab,
@@ -2759,7 +2759,7 @@ int wfd_ws_get_peer_info(unsigned char *mac_addr, wfd_discovery_entry_s **peer)
 	else
 		wfd_peer_info->is_group_owner = false;
 
-	WFD_SERVER_LOG( WFD_LOG_LOW, "GroupOwnerCapab: %x & %x = %d\n", ws_peer_info.group_capab, GROUP_CAPAB_GROUP_OWNER, (ws_peer_info.group_capab & GROUP_CAPAB_GROUP_OWNER));
+	WDP_LOGD( "GroupOwnerCapab: %x & %x = %d\n", ws_peer_info.group_capab, GROUP_CAPAB_GROUP_OWNER, (ws_peer_info.group_capab & GROUP_CAPAB_GROUP_OWNER));
 
 	// is_persistent_go
 	if ((ws_peer_info.group_capab & GROUP_CAPAB_PERSISTENT_GROUP) > 0)  /* checking persistent GO state */
@@ -2786,13 +2786,13 @@ int wfd_ws_get_peer_info(unsigned char *mac_addr, wfd_discovery_entry_s **peer)
 
 	*peer = wfd_peer_info;
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
 	return true;
 }
 
 int wfd_ws_send_provision_discovery_request(unsigned char mac_addr[6], wifi_direct_wps_type_e config_method, int is_peer_go)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	char cmd[40] = {0, };
 	char mac_str[18] = {0, };
@@ -2805,39 +2805,39 @@ int wfd_ws_send_provision_discovery_request(unsigned char mac_addr[6], wifi_dire
 		snprintf(mac_str, 18, MACSTR, MAC2STR(mac_addr));
 		snprintf(cmd, sizeof(cmd),"%s %s %s join", CMD_CONNECT, mac_str, __convert_wps_config_methods_value(config_method));
 		result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-		WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(P2P_PROV_DISC) result=[%d]\n", result);
+		WDP_LOGD( "__send_wpa_request(P2P_PROV_DISC) result=[%d]\n", result);
 	}
 	else
 	{
 		snprintf(mac_str, 18, MACSTR, MAC2STR(mac_addr));
 		snprintf(cmd, sizeof(cmd),"%s %s %s", CMD_SEND_PROVISION_DISCOVERY_REQ, mac_str, __convert_wps_config_methods_value(config_method));
 		result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-		WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(P2P_PROV_DISC) result=[%d]\n", result);
+		WDP_LOGD( "__send_wpa_request(P2P_PROV_DISC) result=[%d]\n", result);
 	}
 
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
 	{
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
-	WFD_SERVER_LOG( WFD_LOG_LOW, "Provisioning... peer-MAC [%s]\n", mac_str);
+	WDP_LOGD( "Provisioning... peer-MAC [%s]\n", mac_str);
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
  	return true;
 }
 
 
 bool wfd_ws_get_go_dev_addr(char* p2p_device_address)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	char cmd[16] = {0, };
 	char res_buffer[1024]={0,};
@@ -2846,33 +2846,33 @@ bool wfd_ws_get_go_dev_addr(char* p2p_device_address)
 
 	if (p2p_device_address == NULL)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "Wrong param\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "Wrong param\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
 	strncpy(cmd, CMD_STATUS_P2P, sizeof(cmd));
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-	WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(STATUS P2P) result=[%d]\n", result);
+	WDP_LOGD( "__send_wpa_request(STATUS P2P) result=[%d]\n", result);
 
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
 	{
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
 	char* ptr = strstr(res_buffer, "p2p_device_address=");
 	if (ptr==NULL)
 	{
-	    WFD_SERVER_LOG( WFD_LOG_LOW, "Can't find p2p_device_address...\n");
-	    __WFD_SERVER_FUNC_EXIT__;
+	    WDP_LOGD( "Can't find p2p_device_address...\n");
+	    __WDP_LOG_FUNC_EXIT__;
 	    return false;
 	}
 
@@ -2881,27 +2881,27 @@ bool wfd_ws_get_go_dev_addr(char* p2p_device_address)
 
 	if (__get_item_value(ptr, item, value) == NULL)
 	{
-	    WFD_SERVER_LOG( WFD_LOG_LOW, "Can't wrong format to get p2p_device_address...\n");
-	    __WFD_SERVER_FUNC_EXIT__;
+	    WDP_LOGD( "Can't wrong format to get p2p_device_address...\n");
+	    __WDP_LOG_FUNC_EXIT__;
 	    return false;
 	}
 
 	if (strcmp(item, "p2p_device_address")!=0)
 	{
-	    WFD_SERVER_LOG( WFD_LOG_LOW, "Can't get p2p_device_address.... item=[%s]\n", item);
-	    __WFD_SERVER_FUNC_EXIT__;
+	    WDP_LOGD( "Can't get p2p_device_address.... item=[%s]\n", item);
+	    __WDP_LOG_FUNC_EXIT__;
 	    return false;
 	}
 
 	strncpy(p2p_device_address, value, sizeof(value));
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
  	return true;
 }
 
 int wfd_ws_send_invite_request(unsigned char dev_mac_addr[6])
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	char cmd[128] = {0, };
 	char mac_str[18] = {0, };
@@ -2917,7 +2917,7 @@ int wfd_ws_send_invite_request(unsigned char dev_mac_addr[6])
 
 	if(wfd_ws_get_go_dev_addr(p2p_device_address) == false)
 	{
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
@@ -2925,32 +2925,32 @@ int wfd_ws_send_invite_request(unsigned char dev_mac_addr[6])
 	snprintf(cmd, sizeof(cmd), "%s group=p2p-wlan0-0 peer=%s go_dev_addr=%s", CMD_SEND_INVITE_REQ, mac_str, p2p_device_address);
 
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-	WFD_SERVER_LOG( WFD_LOG_HIGH, "__send_wpa_request(CMD_SEND_INVITE_REQ) result=[%d]\n", result);
+	WDP_LOGI( "__send_wpa_request(CMD_SEND_INVITE_REQ) result=[%d]\n", result);
 
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ERROR, "__send_wpa_request FAILED!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
 	{
-		WFD_SERVER_LOG( WFD_LOG_ERROR, "__send_wpa_request FAILED!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
-	WFD_SERVER_LOG(WFD_LOG_LOW, "Invite... peer-MAC [%s]\n", mac_str);
+	WDP_LOGD( "Invite... peer-MAC [%s]\n", mac_str);
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
  	return true;
 }
 
 
 int wfd_ws_create_group(char* ssid)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	char cmd[64] = {0, };
 	char res_buffer[1024]={0,};
@@ -2969,30 +2969,30 @@ int wfd_ws_create_group(char* ssid)
 	}
 
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-	WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(P2P_GROUP_ADD) result=[%d]\n", result);
+	WDP_LOGD( "__send_wpa_request(P2P_GROUP_ADD) result=[%d]\n", result);
 
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
 	{
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
-	WFD_SERVER_LOG( WFD_LOG_LOW, "Create p2p group... \n");
+	WDP_LOGD( "Create p2p group... \n");
  
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
  	return true;
 }
 
 int wfd_ws_cancel_group()
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	char cmd[30] = {0, };
 	char res_buffer[1024]={0,};
@@ -3002,30 +3002,30 @@ int wfd_ws_cancel_group()
 	snprintf(cmd, sizeof(cmd), "%s %s", CMD_GROUP_REMOVE, DEFAULT_IF_NAME);
 	
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-	WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(P2P_GROUP_REMOVE) result=[%d]\n", result);
+	WDP_LOGD( "__send_wpa_request(P2P_GROUP_REMOVE) result=[%d]\n", result);
 
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
 	{
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
-	WFD_SERVER_LOG( WFD_LOG_LOW, "Remove p2p group... \n");
+	WDP_LOGD( "Remove p2p group... \n");
  
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
  	return true;
 }
 
 int wfd_ws_activate_pushbutton()
 {
- 	__WFD_SERVER_FUNC_ENTER__;
+ 	__WDP_LOG_FUNC_ENTER__;
 
  	char cmd[8] = {0, };
 	char res_buffer[1024]={0,};
@@ -3034,29 +3034,29 @@ int wfd_ws_activate_pushbutton()
 
 	strncpy(cmd, CMD_WPS_PUSHBUTTON_START, sizeof(cmd));
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-	WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(WPS_PBC) result=[%d]\n", result);
+	WDP_LOGD( "__send_wpa_request(WPS_PBC) result=[%d]\n", result);
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
 	{
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
-	WFD_SERVER_LOG( WFD_LOG_LOW, "start WPS PBC...\n");
+	WDP_LOGD( "start WPS PBC...\n");
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
  	return true;
  }
 
 bool wfd_ws_is_groupowner()
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	char cmd[16] = {0, };
 	char res_buffer[1024]={0,};
@@ -3065,35 +3065,35 @@ bool wfd_ws_is_groupowner()
 
 	strncpy(cmd, CMD_STATUS_P2P, sizeof(cmd));
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-	WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(STATUS P2P) result=[%d]\n", result);
+	WDP_LOGD( "__send_wpa_request(STATUS P2P) result=[%d]\n", result);
 
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
 	{
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
 	if(strstr(res_buffer, "mode=P2P GO") == NULL)
 	{
-	    WFD_SERVER_LOG( WFD_LOG_LOW, "This device is not Groupowner\n");
-	    __WFD_SERVER_FUNC_EXIT__;
+	    WDP_LOGD( "This device is not Groupowner\n");
+	    __WDP_LOG_FUNC_EXIT__;
 	    return false;
 	}
  
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
  	return true;
 }
 
 bool wfd_ws_is_groupclient()
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 	char cmd[16] = {0, };
 	char res_buffer[1024]={0,};
 	int res_buffer_len = sizeof(res_buffer);
@@ -3101,35 +3101,35 @@ bool wfd_ws_is_groupclient()
 
 	strncpy(cmd, CMD_STATUS_P2P, sizeof(cmd));
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-	WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(STATUS P2P) result=[%d]\n", result);
+	WDP_LOGD( "__send_wpa_request(STATUS P2P) result=[%d]\n", result);
 
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
 	{
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
 	if(strstr(res_buffer, "mode=station") == NULL)
 	{
-	    WFD_SERVER_LOG( WFD_LOG_LOW, "This device is not client\n");
-	    __WFD_SERVER_FUNC_EXIT__;
+	    WDP_LOGD( "This device is not client\n");
+	    __WDP_LOG_FUNC_EXIT__;
 	    return false;
 	}
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
  	return true;
 }
 
 int wfd_ws_get_ssid(char* ssid, int len)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	char cmd[12] = {0, };
  	char tmp_ssid[64] = {0, };
@@ -3139,53 +3139,53 @@ int wfd_ws_get_ssid(char* ssid, int len)
 
 	if(ssid == NULL)
 	{
-		WFD_SERVER_LOG(WFD_LOG_ERROR, "Incorrect parameter");
+		WDP_LOGE( "Incorrect parameter");
 		return -1;
 	}
 
 	strncpy(cmd, CMD_STATUS_P2P, sizeof(cmd));
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-	WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(STATUS) result=[%d]\n", result);
+	WDP_LOGD( "__send_wpa_request(STATUS) result=[%d]\n", result);
 
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ERROR, "__send_wpa_request FAILED!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return -1;
 	}
 
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
 	{
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return -1;
 	}
 
 	result = __extract_value_str(res_buffer, "\nssid", (char*) tmp_ssid);
 	if(result <= 0)
 	{
-		WFD_SERVER_LOG(WFD_LOG_ERROR, "Extracting value failed\n");
+		WDP_LOGE( "Extracting value failed\n");
 		return -1;
 	}
-	WFD_SERVER_LOG( WFD_LOG_LOW, "######    ssid [%s]         ###########\n", tmp_ssid);
+	WDP_LOGD( "######    ssid [%s]         ###########\n", tmp_ssid);
 	memcpy(ssid, tmp_ssid, len);
 	ssid[len] = '\0';
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
  	return true;
 }
 
 char* wfd_ws_get_default_interface_name()
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
  
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
 	
  	return DEFAULT_IF_NAME;
 }
 
 bool wfd_ws_dhcpc_get_ip_address(char *ipaddr_buf, int len, int is_IPv6)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	struct ifreq IfRequest;
 	struct sockaddr_in* sin = NULL;
@@ -3202,14 +3202,14 @@ bool wfd_ws_dhcpc_get_ip_address(char *ipaddr_buf, int len, int is_IPv6)
 #endif
 
 		if((fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP)) < 0) {
-			WFD_SERVER_LOG( WFD_LOG_ERROR, "Failed to open socket\n");
+			WDP_LOGE( "Failed to open socket\n");
 			return false;
 		}
 
 		memset(IfRequest.ifr_name, 0, DEFAULT_IF_NAME_LEN);
 		strncpy(IfRequest.ifr_name, DEFAULT_IF_NAME, DEFAULT_IF_NAME_LEN - 1);
 		if(ioctl(fd, SIOCGIFADDR, &IfRequest) < 0) {
-			WFD_SERVER_LOG( WFD_LOG_ERROR, "Failed to get IP\n");
+			WDP_LOGE( "Failed to get IP\n");
 			close(fd);
 			return false;
 		}
@@ -3222,7 +3222,7 @@ bool wfd_ws_dhcpc_get_ip_address(char *ipaddr_buf, int len, int is_IPv6)
 	}
 #endif
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
 	
 	return false;
 }
@@ -3230,51 +3230,51 @@ bool wfd_ws_dhcpc_get_ip_address(char *ipaddr_buf, int len, int is_IPv6)
 
 char* wfd_ws_get_ip()
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	char ip_string[20] = {0,};
 
 	snprintf(ip_string, 20, "%s", g_local_interface_ip_address);
-	WFD_SERVER_LOG( WFD_LOG_LOW, "################################################\n");
-	WFD_SERVER_LOG( WFD_LOG_LOW, "######    IP = %s         ###########\n", ip_string);
-	WFD_SERVER_LOG( WFD_LOG_LOW, "################################################\n");
+	WDP_LOGD( "################################################\n");
+	WDP_LOGD( "######    IP = %s         ###########\n", ip_string);
+	WDP_LOGD( "################################################\n");
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
  	return ip_string;
 }
 
 int wfd_ws_set_wps_pin(char* pin)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 	if (pin != NULL) {
 		strncpy(g_wps_pin, pin, sizeof(g_wps_pin));
-		WFD_SERVER_LOG( WFD_LOG_LOW, "SETTING WPS PIN = %s\n", \
+		WDP_LOGD( "SETTING WPS PIN = %s\n", \
 				g_wps_pin);
 	} else {
 		return false;
 	}
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
  	return true;
  }
 
 int wfd_ws_get_wps_pin(char* wps_pin, int len)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	if (wps_pin == NULL) {
 		return false;
 	}
  	strncpy(wps_pin, g_wps_pin, sizeof(g_wps_pin));
-	WFD_SERVER_LOG( WFD_LOG_LOW, "FILLED WPS PIN = %s\n", wps_pin);
-	__WFD_SERVER_FUNC_EXIT__;
+	WDP_LOGD( "FILLED WPS PIN = %s\n", wps_pin);
+	__WDP_LOG_FUNC_EXIT__;
  	return true;
 }
 
 int wfd_ws_generate_wps_pin()
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
  
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
  	return true;
 
 }
@@ -3282,7 +3282,7 @@ int wfd_ws_generate_wps_pin()
 
 int wfd_ws_set_ssid(char* ssid)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	char cmd[128] = {0, };
 	char res_buffer[1024]={0,};
@@ -3291,24 +3291,24 @@ int wfd_ws_set_ssid(char* ssid)
 
 	if (ssid == NULL || strlen(ssid) == 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ERROR, "Wrong SSID\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "Wrong SSID\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
 	snprintf(cmd, sizeof(cmd), "%s device_name %s", CMD_SET_PARAM, ssid);
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-	WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(CMD_SET_PARAM) result=[%d]\n", result);
+	WDP_LOGD( "__send_wpa_request(CMD_SET_PARAM) result=[%d]\n", result);
 
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
 	{
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 	memset(cmd, 0x0, 128);
@@ -3316,35 +3316,35 @@ int wfd_ws_set_ssid(char* ssid)
 
 	snprintf(cmd, sizeof(cmd), "%s p2p_ssid_postfix %s", CMD_SET_PARAM, ssid);
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-	WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(CMD_SET_PARAM) result=[%d]\n", result);
+	WDP_LOGD( "__send_wpa_request(CMD_SET_PARAM) result=[%d]\n", result);
 
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
 	{
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
  	return true;
 }
 
 int wfd_ws_set_wpa_passphrase(char* wpa_key)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
  
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
  	return true;
 }
 
 int wfd_ws_get_supported_wps_mode()
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	int wps_config;
 
@@ -3354,13 +3354,13 @@ int wfd_ws_get_supported_wps_mode()
 
 	return wps_config;
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
  	return true;
 }
 
 int wfd_ws_get_connected_peers_count(int* peer_num)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 	GList *element = NULL;
 
 	*peer_num = 0;
@@ -3370,15 +3370,15 @@ int wfd_ws_get_connected_peers_count(int* peer_num)
 		(*peer_num)++;
 		element = g_list_next(element);
 	}
-	WFD_SERVER_LOG( WFD_LOG_LOW, "Connected peer number [%d]\n", *peer_num);
-	__WFD_SERVER_FUNC_EXIT__;
+	WDP_LOGD( "Connected peer number [%d]\n", *peer_num);
+	__WDP_LOG_FUNC_EXIT__;
  	return true;
 }
 
 
 int wfd_ws_get_connected_peers_info(wfd_connected_peer_info_s ** peer_list, int* peer_num)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 	int i = 0;
 	char cmd[32] = {0, };
 	char res_buffer[1024]={0,};
@@ -3389,7 +3389,7 @@ int wfd_ws_get_connected_peers_info(wfd_connected_peer_info_s ** peer_list, int*
 
 	if(peer_list == NULL || peer_num == NULL)
 	{
-		WFD_SERVER_LOG( WFD_LOG_LOW, "Incorrect parameter\n");
+		WDP_LOGD( "Incorrect parameter\n");
 		return false;
 	}
 
@@ -3400,7 +3400,7 @@ int wfd_ws_get_connected_peers_info(wfd_connected_peer_info_s ** peer_list, int*
 	tmp_peer_list = (wfd_connected_peer_info_s*) calloc(*peer_num, sizeof(wfd_connected_peer_info_s));
 	if(tmp_peer_list == NULL)
 	{
-		WFD_SERVER_LOG( WFD_LOG_LOW, "Memory allocatin failed\n");
+		WDP_LOGD( "Memory allocatin failed\n");
 		*peer_list = NULL;
 		*peer_num = 0;
 
@@ -3410,23 +3410,23 @@ int wfd_ws_get_connected_peers_info(wfd_connected_peer_info_s ** peer_list, int*
 	element = g_list_first(g_conn_peer_addr);
 	while(element)
 	{
-		WFD_SERVER_LOG(WFD_LOG_LOW, "element data is [%s]\n", (char*) element->data);
+		WDP_LOGD( "element data is [%s]\n", (char*) element->data);
 		memset(cmd, 0x0, 32);
 		memset(res_buffer, 0x0, 1024);
 
 		snprintf(cmd, sizeof(cmd), "%s %s", CMD_GET_PEER_INFO, (char*) element->data);
 		result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-		WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(%s) result=[%d]\n", cmd, result);
+		WDP_LOGD( "__send_wpa_request(%s) result=[%d]\n", cmd, result);
 
 		if (result < 0)
 		{
-			WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED!!\n");
+			WDP_LOGE( "__send_wpa_request FAILED!!\n");
 			*peer_list = NULL;
 			*peer_num = 0;
 			if (tmp_peer_list != NULL)
 				free(tmp_peer_list);
 
-		 	__WFD_SERVER_FUNC_EXIT__;
+		 	__WDP_LOG_FUNC_EXIT__;
 		 	return false;
 		}
 
@@ -3437,7 +3437,7 @@ int wfd_ws_get_connected_peers_info(wfd_connected_peer_info_s ** peer_list, int*
 			if (tmp_peer_list != NULL)
 				free(tmp_peer_list);
 
-		 	__WFD_SERVER_FUNC_EXIT__;
+		 	__WDP_LOG_FUNC_EXIT__;
 	 		return false;
 		}
 
@@ -3456,7 +3456,7 @@ int wfd_ws_get_connected_peers_info(wfd_connected_peer_info_s ** peer_list, int*
 		result = __extract_value_str(res_buffer, "device_name", (char*) tmp_peer_list[i].device_name);
 		if(result <= 0)
 		{
-			WFD_SERVER_LOG(WFD_LOG_ERROR, "Extracting value failed\n");
+			WDP_LOGE( "Extracting value failed\n");
 			*peer_list = NULL;
 			*peer_num = 0;
 			if (tmp_peer_list != NULL)
@@ -3471,7 +3471,7 @@ int wfd_ws_get_connected_peers_info(wfd_connected_peer_info_s ** peer_list, int*
 		result = __extract_value_str(res_buffer, "interface_addr", (char*) intf_mac_address);
 		if(result <= 0)
 		{
-			WFD_SERVER_LOG(WFD_LOG_ERROR, "Extracting value failed\n");
+			WDP_LOGE( "Extracting value failed\n");
 			*peer_list = NULL;
 			*peer_num = 0;
 			if (tmp_peer_list != NULL)
@@ -3487,7 +3487,7 @@ int wfd_ws_get_connected_peers_info(wfd_connected_peer_info_s ** peer_list, int*
 		result = __extract_value_str(res_buffer, "pri_dev_type", (char*) pri_dev_type);
 		if(result <= 0)
 		{
-			WFD_SERVER_LOG(WFD_LOG_ERROR, "Extracting value failed\n");
+			WDP_LOGE( "Extracting value failed\n");
 			*peer_list = NULL;
 			*peer_num = 0;
 			if (tmp_peer_list != NULL)
@@ -3499,7 +3499,7 @@ int wfd_ws_get_connected_peers_info(wfd_connected_peer_info_s ** peer_list, int*
 		tmp_peer_list[i].category = __convert_category_from_type(pri_dev_type);
 		if(tmp_peer_list[i].category < 0)
 		{
-			WFD_SERVER_LOG(WFD_LOG_ERROR, "Category converting error\n");
+			WDP_LOGE( "Category converting error\n");
 			*peer_list = NULL;
 			*peer_num = 0;
 			if (tmp_peer_list != NULL)
@@ -3513,14 +3513,14 @@ int wfd_ws_get_connected_peers_info(wfd_connected_peer_info_s ** peer_list, int*
 	}
 
 	*peer_list = tmp_peer_list;
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
  	return true;
 }
 
 
 int wfd_ws_get_go_intent(int *p2p_go_intent)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	char cmd[32] = {0, };
 	char res_buffer[1024]={0,};
@@ -3529,37 +3529,37 @@ int wfd_ws_get_go_intent(int *p2p_go_intent)
 
 	if (p2p_go_intent == NULL)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ERROR, "p2p_go_intent is NULL\n", p2p_go_intent);
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "p2p_go_intent is NULL\n", p2p_go_intent);
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
 	snprintf(cmd, sizeof(cmd), "%s p2p_go_intent", CMD_GET_PARAM);
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-	WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(GET P2P_GO_INTENT) result=[%d]\n", result);
+	WDP_LOGD( "__send_wpa_request(GET P2P_GO_INTENT) result=[%d]\n", result);
 
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
 	{
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
 	*p2p_go_intent = atoi(res_buffer);
  
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
  	return true;
 }
 
 int wfd_ws_set_go_intent(int go_intent)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	char cmd[32] = {0, };
 	char res_buffer[1024]={0,};
@@ -3568,36 +3568,36 @@ int wfd_ws_set_go_intent(int go_intent)
 
 	if (go_intent < 0 || go_intent > 15)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ERROR, "Wrong p2p_go_intent [%d]\n", go_intent);
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "Wrong p2p_go_intent [%d]\n", go_intent);
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
 	snprintf(cmd, sizeof(cmd), "%s p2p_go_intent %d", CMD_SET_PARAM, go_intent);
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-	WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(CMD_SET_PARAM) result=[%d]\n", result);
+	WDP_LOGD( "__send_wpa_request(CMD_SET_PARAM) result=[%d]\n", result);
 
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
 	{
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
  
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
  	return true;
 }
 
 
 int wfd_ws_set_device_type(wifi_direct_primary_device_type_e primary_cat, wifi_direct_secondary_device_type_e sub_cat)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	char cmd[32] = {0, };
 	char res_buffer[1024]={0,};
@@ -3606,18 +3606,18 @@ int wfd_ws_set_device_type(wifi_direct_primary_device_type_e primary_cat, wifi_d
 
 	snprintf(cmd, sizeof(cmd), "%s device_type %d", CMD_SET_PARAM, primary_cat);
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-	WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(CMD_SET_PARAM) result=[%d]\n", result);
+	WDP_LOGD( "__send_wpa_request(CMD_SET_PARAM) result=[%d]\n", result);
 
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
 	{
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 	memset(cmd, 0x0, 32);
@@ -3625,29 +3625,29 @@ int wfd_ws_set_device_type(wifi_direct_primary_device_type_e primary_cat, wifi_d
 
 	snprintf(cmd, sizeof(cmd), "%s device_type %d", CMD_SET_PARAM, sub_cat);
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-	WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(CMD_SET_PARAM) result=[%d]\n", result);
+	WDP_LOGD( "__send_wpa_request(CMD_SET_PARAM) result=[%d]\n", result);
 
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
 	{
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
- 	__WFD_SERVER_FUNC_EXIT__;
+ 	__WDP_LOG_FUNC_EXIT__;
  	return true;
 }
 
 
 int wfd_ws_get_device_mac_address(unsigned char* device_mac)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	char cmd[8] = {0, };
  	char device_address[18] = {0, };
@@ -3657,18 +3657,18 @@ int wfd_ws_get_device_mac_address(unsigned char* device_mac)
 
 	strncpy(cmd, CMD_STATUS, sizeof(cmd));
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-	WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(STATUS) result=[%d]\n", result);
+	WDP_LOGD( "__send_wpa_request(STATUS) result=[%d]\n", result);
 
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ERROR, "__send_wpa_request FAILED!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return -1;
 	}
 
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
 	{
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return -1;
 	}
 
@@ -3679,17 +3679,17 @@ int wfd_ws_get_device_mac_address(unsigned char* device_mac)
 	}
 	else
 	{
-		WFD_SERVER_LOG(WFD_LOG_ERROR, "Extracting value failed\n");
+		WDP_LOGE( "Extracting value failed\n");
 		return -1;
 	}
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
  	return 0;
 }
 
 int wfd_ws_set_oem_loglevel(int is_increase)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	char cmd[16] = {0, };
 	char res_buffer[1024]={0,};
@@ -3698,56 +3698,56 @@ int wfd_ws_set_oem_loglevel(int is_increase)
  
 	snprintf(cmd, sizeof(cmd), "%s %d", CMD_LOG_LEVEL, is_increase);
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer,  res_buffer_len);
-	WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request(LOG_LEVEL) result=[%d]\n", result);
+	WDP_LOGE( "__send_wpa_request(LOG_LEVEL) result=[%d]\n", result);
 
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
 	{
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
  	return true;
 }
 
 int wfd_ws_get_assoc_sta_mac(unsigned char *mac_addr)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	memcpy(mac_addr, g_assoc_sta_mac, 6);
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
 	return true;
 }
 
 int wfd_ws_get_disassoc_sta_mac(unsigned char *mac_addr)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 	memcpy(mac_addr, g_disassoc_sta_mac, 6);
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
 	return true;
 }
 
 int wfd_ws_get_requestor_mac(unsigned char* mac_addr)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	memcpy(mac_addr, g_incomming_peer_mac_address, 6);
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
 	return true;
 }
 
 int wfd_ws_get_operating_channel(void)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	char cmd[16] = {0, };
 	char res_buffer[1024]={0,};
@@ -3760,50 +3760,50 @@ int wfd_ws_get_operating_channel(void)
 
 	strncpy(cmd, CMD_STATUS_P2P, sizeof(cmd));
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-	WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(STATUS P2P) result=[%d]\n", result);
+	WDP_LOGD( "__send_wpa_request(STATUS P2P) result=[%d]\n", result);
 
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
 	{
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
 	char* ptr = strstr(res_buffer, "frequency=");
 	if (ptr==NULL)
 	{
-		WFD_SERVER_LOG( WFD_LOG_LOW, "Can't find frequency field...\n");
-		__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGD( "Can't find frequency field...\n");
+		__WDP_LOG_FUNC_EXIT__;
 		return false;
 	}
 
 	if (__get_item_value(ptr, item, freq_value) == NULL)
 	{
-		WFD_SERVER_LOG( WFD_LOG_LOW, "Can't get value of frequency...\n");
-		__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGD( "Can't get value of frequency...\n");
+		__WDP_LOG_FUNC_EXIT__;
 		return false;
 	}
 
 	if (strcmp(item, "frequency")!=0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_LOW, "Can't get frequency.... item=[%s]\n", item);
-		__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGD( "Can't get frequency.... item=[%s]\n", item);
+		__WDP_LOG_FUNC_EXIT__;
 		return false;
 	}
 
-	WFD_SERVER_LOG( WFD_LOG_LOW, "freq_value=[%s]\n", freq_value);
+	WDP_LOGD( "freq_value=[%s]\n", freq_value);
 
 	channel = __convert_freq_to_channel(freq_value);
 
-	WFD_SERVER_LOG( WFD_LOG_LOW, "channel=[%d]\n", channel);
+	WDP_LOGD( "channel=[%d]\n", channel);
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
 	return channel;
 
 }
@@ -3814,7 +3814,7 @@ int wfd_ws_get_operating_channel(void)
 
 int wfd_ws_dsp_init(void)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	char cmd[32] = {0, };
 	char res_buffer[1024]={0,};
@@ -3830,17 +3830,17 @@ int wfd_ws_dsp_init(void)
 	/* param : enable*/
 	snprintf(cmd, sizeof(cmd), "%s enable %d", CMD_WFD_SET, enable);
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-	WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(CMD_WFD_SET) result=[%d]\n", result);
+	WDP_LOGD( "__send_wpa_request(CMD_WFD_SET) result=[%d]\n", result);
 
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED[param : enable]!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED[param : enable]!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
 	{
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
@@ -3850,17 +3850,17 @@ int wfd_ws_dsp_init(void)
 
 	snprintf(cmd, sizeof(cmd), "%s dev_info %s", CMD_WFD_SET, dev_info);
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-	WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(CMD_WFD_SET) result=[%d]\n", result);
+	WDP_LOGD( "__send_wpa_request(CMD_WFD_SET) result=[%d]\n", result);
 
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED[param : dev_info]!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED[param : dev_info]!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
 	{
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
@@ -3870,17 +3870,17 @@ int wfd_ws_dsp_init(void)
 
 	snprintf(cmd, sizeof(cmd), "%s ctrl_port %d", CMD_WFD_SET, ctrl_port);
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-	WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(CMD_WFD_SET) result=[%d]\n", result);
+	WDP_LOGD( "__send_wpa_request(CMD_WFD_SET) result=[%d]\n", result);
 
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED[param : ctrl_port]!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED[param : ctrl_port]!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
 	{
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
@@ -3890,17 +3890,17 @@ int wfd_ws_dsp_init(void)
 
 	snprintf(cmd, sizeof(cmd), "%s max_tput %d", CMD_WFD_SET, max_tput);
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-	WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(CMD_WFD_SET) result=[%d]\n", result);
+	WDP_LOGD( "__send_wpa_request(CMD_WFD_SET) result=[%d]\n", result);
 
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED[param : max_tput]!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED[param : max_tput]!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
 	{
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
@@ -3910,28 +3910,28 @@ int wfd_ws_dsp_init(void)
 
 	snprintf(cmd, sizeof(cmd), "%s cpled_sink_status %s", CMD_WFD_SET, cpled_sink_status);
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-	WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(CMD_WFD_SET) result=[%d]\n", result);
+	WDP_LOGD( "__send_wpa_request(CMD_WFD_SET) result=[%d]\n", result);
 
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED[param : cpled_sink_status]!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED[param : cpled_sink_status]!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
 	{
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
 	return true;
 }
 
 
 int wfd_ws_get_persistent_group_info(wfd_persistent_group_info_s ** persistent_group_list, int* persistent_group_num)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 	
 	char cmd[16] = {0, };
 	char mac_str[18] = {0, };
@@ -3950,13 +3950,13 @@ int wfd_ws_get_persistent_group_info(wfd_persistent_group_info_s ** persistent_g
 	group is to be reinvoked. */
 	strncpy(cmd, CMD_GET_LIST_NETWORKS, sizeof(cmd));
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-	WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(LIST_NETWORKS) result=[%d]\n", result);
+	WDP_LOGD( "__send_wpa_request(LIST_NETWORKS) result=[%d]\n", result);
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED!!\n");
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
 		*persistent_group_num = 0;
 		*persistent_group_list = NULL;
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
@@ -3964,20 +3964,20 @@ int wfd_ws_get_persistent_group_info(wfd_persistent_group_info_s ** persistent_g
 	{
 		*persistent_group_num = 0;
 		*persistent_group_list = NULL;
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
 	__parsing_persistent_group(res_buffer, ws_persistent_group_list, persistent_group_num);
 
-	WFD_SERVER_LOG(WFD_LOG_LOW, "Persistent Group Count=%d\n", *persistent_group_num);
+	WDP_LOGD( "Persistent Group Count=%d\n", *persistent_group_num);
 	for(i=0;i<(*persistent_group_num);i++)
 	{
-		WFD_SERVER_LOG(WFD_LOG_LOW, "----persistent group [%d]----\n", i);		
-		WFD_SERVER_LOG(WFD_LOG_LOW, "network_id=%d\n", ws_persistent_group_list[i].network_id);
-		WFD_SERVER_LOG(WFD_LOG_LOW, "ssid=%s\n", ws_persistent_group_list[i].ssid);
-		WFD_SERVER_LOG(WFD_LOG_LOW, "bssid=%s\n", ws_persistent_group_list[i].bssid);
-		WFD_SERVER_LOG(WFD_LOG_LOW, "flags=%s\n", ws_persistent_group_list[i].flags);
+		WDP_LOGD( "----persistent group [%d]----\n", i);		
+		WDP_LOGD( "network_id=%d\n", ws_persistent_group_list[i].network_id);
+		WDP_LOGD( "ssid=%s\n", ws_persistent_group_list[i].ssid);
+		WDP_LOGD( "bssid=%s\n", ws_persistent_group_list[i].bssid);
+		WDP_LOGD( "flags=%s\n", ws_persistent_group_list[i].flags);
 
 
 // TODO: should filer by [PERSISTENT] value of flags.
@@ -3992,14 +3992,14 @@ int wfd_ws_get_persistent_group_info(wfd_persistent_group_info_s ** persistent_g
 
 	*persistent_group_list = &wfd_persistent_group_list[0];
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
  	return true;
 
 }
 
 int wfd_ws_remove_persistent_group(wfd_persistent_group_info_s *persistent_group)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 	char cmd[32] = {0, };
 	char res_buffer[1024] = {0,};
 	int res_buffer_len = sizeof(res_buffer);
@@ -4015,61 +4015,61 @@ int wfd_ws_remove_persistent_group(wfd_persistent_group_info_s *persistent_group
 
 	strncpy(cmd, CMD_GET_LIST_NETWORKS, sizeof(cmd));
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-	WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(LIST_NETWORKS) result=[%d]\n", result);
+	WDP_LOGD( "__send_wpa_request(LIST_NETWORKS) result=[%d]\n", result);
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
 	{
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
 	__parsing_persistent_group(res_buffer, ws_persistent_group_list, &persistent_group_num);
 
-	WFD_SERVER_LOG(WFD_LOG_LOW, "Persistent Group Count=%d\n", persistent_group_num);
+	WDP_LOGD( "Persistent Group Count=%d\n", persistent_group_num);
 	for(i=0;i<persistent_group_num;i++)
 	{
-		WFD_SERVER_LOG(WFD_LOG_LOW, "----persistent group [%d]----\n", i);		
-		WFD_SERVER_LOG(WFD_LOG_LOW, "network_id=%d\n", ws_persistent_group_list[i].network_id);
-		WFD_SERVER_LOG(WFD_LOG_LOW, "ssid=%s\n", ws_persistent_group_list[i].ssid);
-		WFD_SERVER_LOG(WFD_LOG_LOW, "bssid=%s\n", ws_persistent_group_list[i].bssid);
-		WFD_SERVER_LOG(WFD_LOG_LOW, "flags=%s\n", ws_persistent_group_list[i].flags);
+		WDP_LOGD( "----persistent group [%d]----\n", i);		
+		WDP_LOGD( "network_id=%d\n", ws_persistent_group_list[i].network_id);
+		WDP_LOGD( "ssid=%s\n", ws_persistent_group_list[i].ssid);
+		WDP_LOGD( "bssid=%s\n", ws_persistent_group_list[i].bssid);
+		WDP_LOGD( "flags=%s\n", ws_persistent_group_list[i].flags);
 
 // TODO: should filer by [PERSISTENT] value of flags.
 
 
-			WFD_SERVER_LOG(WFD_LOG_LOW, "persistent_group->ssid [%s]----\n", persistent_group->ssid);
-			WFD_SERVER_LOG(WFD_LOG_LOW, "ws_persistent_group_list[i].ssid [%s]----\n", ws_persistent_group_list[i].ssid);
-			WFD_SERVER_LOG(WFD_LOG_LOW, "go_mac_str [%s]----\n", go_mac_str);
-			WFD_SERVER_LOG(WFD_LOG_LOW, "ws_persistent_group_list[i].bssid [%s]----\n", ws_persistent_group_list[i].bssid);
+			WDP_LOGD( "persistent_group->ssid [%s]----\n", persistent_group->ssid);
+			WDP_LOGD( "ws_persistent_group_list[i].ssid [%s]----\n", ws_persistent_group_list[i].ssid);
+			WDP_LOGD( "go_mac_str [%s]----\n", go_mac_str);
+			WDP_LOGD( "ws_persistent_group_list[i].bssid [%s]----\n", ws_persistent_group_list[i].bssid);
 
 		if (strcmp(persistent_group->ssid, ws_persistent_group_list[i].ssid) == 0
 			&& strcmp(go_mac_str, ws_persistent_group_list[i].bssid) == 0)
 		{
 		
-			WFD_SERVER_LOG(WFD_LOG_LOW, "----Found persistent group [%d]----\n", i);
+			WDP_LOGD( "----Found persistent group [%d]----\n", i);
 			
 			memset(cmd, 0x0, sizeof(cmd));
 			memset(res_buffer, 0x0, sizeof(res_buffer));
 
 			snprintf(cmd, sizeof(cmd), "%s %d", CMD_REMOVE_NETWORK, ws_persistent_group_list[i].network_id);
 			result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-			WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(CMD_REMOVE_NETWORK) result=[%d]\n", result);
+			WDP_LOGD( "__send_wpa_request(CMD_REMOVE_NETWORK) result=[%d]\n", result);
 
 			if (result < 0)
 			{
-				WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED[CMD_REMOVE_NETWORK]!!\n");
-			 	__WFD_SERVER_FUNC_EXIT__;
+				WDP_LOGE( "__send_wpa_request FAILED[CMD_REMOVE_NETWORK]!!\n");
+			 	__WDP_LOG_FUNC_EXIT__;
 			 	return false;
 			}
 			if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
 			{
-			 	__WFD_SERVER_FUNC_EXIT__;
+			 	__WDP_LOG_FUNC_EXIT__;
 			 	return false;
 			}
 
@@ -4081,13 +4081,13 @@ int wfd_ws_remove_persistent_group(wfd_persistent_group_info_s *persistent_group
 
 
 	
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
  	return true;
 }
 
 int wfd_ws_set_persistent_reconnect(bool enabled)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	char cmd[128] = {0, };
 	char res_buffer[1024]={0,};
@@ -4096,28 +4096,28 @@ int wfd_ws_set_persistent_reconnect(bool enabled)
 
 	snprintf(cmd, sizeof(cmd), "%s persistent_reconnect %d", CMD_SET_PARAM, enabled);
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-	WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(SET persistent_reconnect %d) result=[%d]\n", enabled, result);
+	WDP_LOGD( "__send_wpa_request(SET persistent_reconnect %d) result=[%d]\n", enabled, result);
 
 	if (result < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED!!\n");
-	 	__WFD_SERVER_FUNC_EXIT__;
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
 	{
-	 	__WFD_SERVER_FUNC_EXIT__;
+	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
  	return true;
 }
 
 /* for sending connection request in case Persistent mode enabled */
 int wfd_ws_connect_for_persistent_group(unsigned char mac_addr[6], wifi_direct_wps_type_e wps_config)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
 	char cmd[50] = {0, };
 	char mac_str[18] = {0, };
@@ -4126,15 +4126,15 @@ int wfd_ws_connect_for_persistent_group(unsigned char mac_addr[6], wifi_direct_w
 	int result;
 
 	wfd_server_control_t * wfd_server = wfd_server_get_control();
-	WFD_SERVER_LOG(WFD_LOG_LOW, "wfd_server->current_peer.is_group_owner=[%d]\n", wfd_server->current_peer.is_group_owner);
-	WFD_SERVER_LOG(WFD_LOG_LOW, "wfd_server->current_peer.is_persistent_go=[%d]\n", wfd_server->current_peer.is_persistent_go);
+	WDP_LOGD( "wfd_server->current_peer.is_group_owner=[%d]\n", wfd_server->current_peer.is_group_owner);
+	WDP_LOGD( "wfd_server->current_peer.is_persistent_go=[%d]\n", wfd_server->current_peer.is_persistent_go);
 
 	int persistent_group_count = 0;
 	wfd_persistent_group_info_s* plist;
 	int i;
 	int network_id;
 
-	WFD_SERVER_LOG( WFD_LOG_LOW, "[persistent mode!!!]\n");
+	WDP_LOGD( "[persistent mode!!!]\n");
 	snprintf(mac_str, 18, MACSTR, MAC2STR(mac_addr));
 
 #if 0	// wpa_supplicant evaluates joining procedure automatically.
@@ -4148,7 +4148,7 @@ int wfd_ws_connect_for_persistent_group(unsigned char mac_addr[6], wifi_direct_w
 		snprintf(mac_str, 18, MACSTR, MAC2STR(mac_addr));
 		snprintf(cmd, sizeof(cmd),"%s %s %s join", CMD_CONNECT, mac_str, __convert_wps_config_methods_value(wps_config));
 		result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-		WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(CMD_CONNECT join) result=[%d]\n", result);
+		WDP_LOGD( "__send_wpa_request(CMD_CONNECT join) result=[%d]\n", result);
 	}
 	else /* Creating or reinvoking my persistent group and send invite req. */
 	{
@@ -4163,15 +4163,15 @@ int wfd_ws_connect_for_persistent_group(unsigned char mac_addr[6], wifi_direct_w
 		{
 			if (wfd_ws_create_group(NULL) != true)
 			{
-				WFD_SERVER_LOG( WFD_LOG_ASSERT, "wfd_ws_create_group FAILED!!\n");
-			 	__WFD_SERVER_FUNC_EXIT__;
+				WDP_LOGE( "wfd_ws_create_group FAILED!!\n");
+			 	__WDP_LOG_FUNC_EXIT__;
 			 	return false;
 			}
 
 			if (wfd_ws_send_invite_request(mac_addr) != true)
 			{
-				WFD_SERVER_LOG( WFD_LOG_ASSERT, "wfd_ws_send_invite_request FAILED!!\n");
-			 	__WFD_SERVER_FUNC_EXIT__;
+				WDP_LOGE( "wfd_ws_send_invite_request FAILED!!\n");
+			 	__WDP_LOG_FUNC_EXIT__;
 			 	return false;
 			}
 		}
@@ -4179,15 +4179,15 @@ int wfd_ws_connect_for_persistent_group(unsigned char mac_addr[6], wifi_direct_w
 		{
 			if (__send_invite_request_with_network_id(network_id, mac_addr) != true)
 			{
-				WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_invite_request_with_network_id FAILED!!\n");
-			 	__WFD_SERVER_FUNC_EXIT__;
+				WDP_LOGE( "__send_invite_request_with_network_id FAILED!!\n");
+			 	__WDP_LOG_FUNC_EXIT__;
 			 	return false;
 			}
 
 			if (__wfd_ws_reinvoke_persistent_group(network_id) != true)
 			{
-				WFD_SERVER_LOG( WFD_LOG_ASSERT, "__wfd_ws_reinvoke_persistent_group FAILED!!\n");
-			 	__WFD_SERVER_FUNC_EXIT__;
+				WDP_LOGE( "__wfd_ws_reinvoke_persistent_group FAILED!!\n");
+			 	__WDP_LOG_FUNC_EXIT__;
 			 	return false;
 			}
 		}
@@ -4199,13 +4199,13 @@ int wfd_ws_connect_for_persistent_group(unsigned char mac_addr[6], wifi_direct_w
 			/* checking already created persistent group list */
 			for(i=0; i<persistent_group_count; i++)
 			{
-				WFD_SERVER_LOG( WFD_LOG_LOW, "plist[%d].go_mac_address=[%s]\n", i,plist[i].go_mac_address);
+				WDP_LOGD( "plist[%d].go_mac_address=[%s]\n", i,plist[i].go_mac_address);
 				if (strcmp(plist[i].go_mac_address, mac_str) == 0)
 				{
-					WFD_SERVER_LOG( WFD_LOG_LOW, "Found peer in persistent group list [network id : %d]\n", plist[i].network_id);
+					WDP_LOGD( "Found peer in persistent group list [network id : %d]\n", plist[i].network_id);
 					snprintf(cmd, sizeof(cmd), "%s persistent=%d", CMD_CREATE_GROUP, plist[i].network_id);
 					result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-					WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(P2P_GROUP_ADD persistent=%d) result=[%d]\n", plist[i].network_id, result);
+					WDP_LOGD( "__send_wpa_request(P2P_GROUP_ADD persistent=%d) result=[%d]\n", plist[i].network_id, result);
 					break;
 				}
 			}
@@ -4215,18 +4215,18 @@ int wfd_ws_connect_for_persistent_group(unsigned char mac_addr[6], wifi_direct_w
 				/* Persistent group mode */
 				snprintf(cmd, sizeof(cmd), "%s %s %s", CMD_CREATE_GROUP, "persistent", FREQUENCY_2G);
 				result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-				WFD_SERVER_LOG( WFD_LOG_LOW, "__send_wpa_request(P2P_GROUP_ADD) result=[%d]\n", result);
+				WDP_LOGD( "__send_wpa_request(P2P_GROUP_ADD) result=[%d]\n", result);
 
 				if (result < 0)
 				{
-					WFD_SERVER_LOG( WFD_LOG_ASSERT, "__send_wpa_request FAILED!!\n");
-				 	__WFD_SERVER_FUNC_EXIT__;
+					WDP_LOGE( "__send_wpa_request FAILED!!\n");
+				 	__WDP_LOG_FUNC_EXIT__;
 				 	return false;
 				}
 
 				if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
 				{
-				 	__WFD_SERVER_FUNC_EXIT__;
+				 	__WDP_LOG_FUNC_EXIT__;
 				 	return false;
 				}
 
@@ -4236,17 +4236,17 @@ int wfd_ws_connect_for_persistent_group(unsigned char mac_addr[6], wifi_direct_w
 		}
 		else
 		{
-			WFD_SERVER_LOG( WFD_LOG_ERROR, "Error!! wfd_ws_get_persistent_group_info() failed..\n");
-			__WFD_SERVER_FUNC_EXIT__;
+			WDP_LOGE( "Error!! wfd_ws_get_persistent_group_info() failed..\n");
+			__WDP_LOG_FUNC_EXIT__;
 			return false;
 		}
 #endif
 
 	}
 
-	WFD_SERVER_LOG( WFD_LOG_LOW, "Connecting... peer-MAC [%s]\n", mac_str);
+	WDP_LOGD( "Connecting... peer-MAC [%s]\n", mac_str);
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDP_LOG_FUNC_EXIT__;
  	return true;
 }
 

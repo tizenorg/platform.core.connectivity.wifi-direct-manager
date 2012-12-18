@@ -53,18 +53,18 @@ enum {
 	/* Check wifi state again */
 	if (vconf_get_int(VCONFKEY_WIFI_STATE, &wifi_state) < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "Error reading vconf (%s)\n", VCONFKEY_WIFI_STATE);
+		WDS_LOGF( "Error reading vconf (%s)\n", VCONFKEY_WIFI_STATE);
 		return -1;
 	}
 	else
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "VCONFKEY_WIFI_STATE(%s) : %d\n", VCONFKEY_WIFI_STATE, wifi_state);
+		WDS_LOGF( "VCONFKEY_WIFI_STATE(%s) : %d\n", VCONFKEY_WIFI_STATE, wifi_state);
 		if (wifi_state > VCONFKEY_WIFI_OFF)
 		{
-			WFD_SERVER_LOG(WFD_LOG_ERROR, "Sorry. Wi-Fi is on\n");
+			WDS_LOGE( "Sorry. Wi-Fi is on\n");
 			return 0;
 		}
-		WFD_SERVER_LOG( WFD_LOG_LOW, "OK. Wi-Fi is off\n");
+		WDS_LOGD( "OK. Wi-Fi is off\n");
 	}
 	return 1;
 }
@@ -76,20 +76,20 @@ int wfd_check_mobile_ap_status()
 	/* Check wifi state again */
 	if (vconf_get_int(VCONFKEY_MOBILE_HOTSPOT_MODE, &mobile_ap_state) < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "Error reading vconf (%s)\n", VCONFKEY_MOBILE_HOTSPOT_MODE);
+		WDS_LOGF( "Error reading vconf (%s)\n", VCONFKEY_MOBILE_HOTSPOT_MODE);
 		return -1;
 	}
 	else
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "VCONFKEY_WIFI_STATE(%s) : %d\n", VCONFKEY_MOBILE_HOTSPOT_MODE, mobile_ap_state);
+		WDS_LOGF( "VCONFKEY_WIFI_STATE(%s) : %d\n", VCONFKEY_MOBILE_HOTSPOT_MODE, mobile_ap_state);
 		if (mobile_ap_state != VCONFKEY_MOBILE_HOTSPOT_MODE_NONE)
 		{
-			WFD_SERVER_LOG( WFD_LOG_ASSERT, "Sorry. Mobile AP is on\n");
+			WDS_LOGF( "Sorry. Mobile AP is on\n");
 			return 0;
 		}
 		else
 		{
-			WFD_SERVER_LOG( WFD_LOG_ASSERT, "OK. Mobile AP is off\n");
+			WDS_LOGF( "OK. Mobile AP is off\n");
 		}
 	}
 	return 1;
@@ -98,11 +98,11 @@ int wfd_check_mobile_ap_status()
 
 int wfd_set_wifi_direct_state(int state)
 {
-	WFD_SERVER_LOG( WFD_LOG_ASSERT, "VCONFKEY_WIFI_DIRECT_STATE(%s) : %d\n", VCONFKEY_WIFI_DIRECT_STATE, state);
+	WDS_LOGF( "VCONFKEY_WIFI_DIRECT_STATE(%s) : %d\n", VCONFKEY_WIFI_DIRECT_STATE, state);
 
 	if (vconf_set_int(VCONFKEY_WIFI_DIRECT_STATE, state) < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ERROR, "Error setting vconf (%s)\n", VCONFKEY_WIFI_DIRECT_STATE);
+		WDS_LOGE( "Error setting vconf (%s)\n", VCONFKEY_WIFI_DIRECT_STATE);
 		return -1;
 	}
 
@@ -115,48 +115,48 @@ int wfd_check_wifi_direct_state()
 
 	if (vconf_get_int(VCONFKEY_WIFI_DIRECT_STATE, &wifi_direct_state) < 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "Error reading vconf (%s)\n", VCONFKEY_WIFI_DIRECT_STATE);
+		WDS_LOGF( "Error reading vconf (%s)\n", VCONFKEY_WIFI_DIRECT_STATE);
 		return -1;
 	}
 	else
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "VCONFKEY_WIFI_DIRECT_STATE(%s) : %d\n", VCONFKEY_WIFI_DIRECT_STATE, wifi_direct_state);
+		WDS_LOGF( "VCONFKEY_WIFI_DIRECT_STATE(%s) : %d\n", VCONFKEY_WIFI_DIRECT_STATE, wifi_direct_state);
 
 		switch(wifi_direct_state)
 		{
 		case VCONFKEY_WIFI_DIRECT_DEACTIVATED:
 		{
-			WFD_SERVER_LOG( WFD_LOG_LOW, "Wi-Fi direct is off\n");
+			WDS_LOGD( "Wi-Fi direct is off\n");
 		}
 		break;
 
 		case VCONFKEY_WIFI_DIRECT_ACTIVATED:
 		{
-			WFD_SERVER_LOG( WFD_LOG_LOW, "Wi-Fi direct is on\n");
+			WDS_LOGD( "Wi-Fi direct is on\n");
 		}
 		break;
 
 		case VCONFKEY_WIFI_DIRECT_DISCOVERING:
 		{
-			WFD_SERVER_LOG( WFD_LOG_LOW, "Wi-Fi direct is discovering\n");
+			WDS_LOGD( "Wi-Fi direct is discovering\n");
 		}
 		break;
 
 		case VCONFKEY_WIFI_DIRECT_CONNECTED:
 		{
-			WFD_SERVER_LOG( WFD_LOG_LOW, "Wi-Fi direct is connected\n");
+			WDS_LOGD( "Wi-Fi direct is connected\n");
 		}
 		break;
 
 		case VCONFKEY_WIFI_DIRECT_GROUP_OWNER:
 		{
-			WFD_SERVER_LOG( WFD_LOG_LOW, "Wi-Fi direct is group owner\n");
+			WDS_LOGD( "Wi-Fi direct is group owner\n");
 		}
 		break;
 
 		default:
 		{
-			WFD_SERVER_LOG( WFD_LOG_ASSERT, "ERROR:Wi-Fi direct is unkown state\n");
+			WDS_LOGF( "ERROR:Wi-Fi direct is unkown state\n");
 			return -1;
 		}
 		break;
@@ -176,12 +176,12 @@ int wfd_get_phone_device_name(char* str, int len)
 
 	if (get_str == NULL)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "Error reading vconf (%s)\n", VCONFKEY_SETAPPL_DEVICE_NAME_STR);
+		WDS_LOGF( "Error reading vconf (%s)\n", VCONFKEY_SETAPPL_DEVICE_NAME_STR);
 		return -1;
 	}
 	else
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "VCONFKEY_WIFI_STATE(%s) : %d\n", VCONFKEY_SETAPPL_DEVICE_NAME_STR, get_str);
+		WDS_LOGF( "VCONFKEY_WIFI_STATE(%s) : %d\n", VCONFKEY_SETAPPL_DEVICE_NAME_STR, get_str);
 		strncpy(str, get_str, len);
 		return 0;
 	}
@@ -212,7 +212,7 @@ void wfd_set_device_name()
 
 void __wfd_device_name_change_cb(keynode_t *key, void* data)
 {
-	WFD_SERVER_LOG(WFD_LOG_LOW, "device name has been changed. change ssid (friendly name)..\n");
+	WDS_LOGD( "device name has been changed. change ssid (friendly name)..\n");
 	wfd_set_device_name();
 }
 
@@ -226,43 +226,43 @@ void __wfd_server_print_entry_list(wfd_discovery_entry_s * list, int num)
 {
 	int i = 0;
 
-	WFD_SERVER_LOG( WFD_LOG_LOW, "------------------------------------------\n");
+	WDS_LOGD( "------------------------------------------\n");
 	for(i = 0; i < num; i++)
 	{
-		WFD_SERVER_LOG( WFD_LOG_LOW, "== Peer index : %d ==\n", i);
-		WFD_SERVER_LOG( WFD_LOG_LOW, "is Group Owner ? %s\n", list[i].is_group_owner ? "YES" : "NO");
-		WFD_SERVER_LOG( WFD_LOG_LOW, "is Connected ? %s\n", list[i].is_connected ? "YES" : "NO");
-		WFD_SERVER_LOG( WFD_LOG_LOW, "device_name : %s\n", list[i].device_name);
-		WFD_SERVER_LOG( WFD_LOG_LOW, "MAC address : " MACSTR "\n", MAC2STR(list[i].mac_address));
-		WFD_SERVER_LOG( WFD_LOG_LOW, "Device type [%d/%d] ==\n", list[i].category, list[i].subcategory);
-		WFD_SERVER_LOG( WFD_LOG_LOW, "wps cfg method [%d] ==\n", list[i].wps_cfg_methods);
+		WDS_LOGD( "== Peer index : %d ==\n", i);
+		WDS_LOGD( "is Group Owner ? %s\n", list[i].is_group_owner ? "YES" : "NO");
+		WDS_LOGD( "is Connected ? %s\n", list[i].is_connected ? "YES" : "NO");
+		WDS_LOGD( "device_name : %s\n", list[i].device_name);
+		WDS_LOGD( "MAC address : " MACSTR "\n", MAC2STR(list[i].mac_address));
+		WDS_LOGD( "Device type [%d/%d] ==\n", list[i].category, list[i].subcategory);
+		WDS_LOGD( "wps cfg method [%d] ==\n", list[i].wps_cfg_methods);
 
 	}
-	WFD_SERVER_LOG( WFD_LOG_LOW, "------------------------------------------\n");
+	WDS_LOGD( "------------------------------------------\n");
 }
 
 void __wfd_server_print_connected_peer_info(wfd_connected_peer_info_s* list, int num)
 {
 	int i = 0;
 
-	WFD_SERVER_LOG( WFD_LOG_LOW, "------------------------------------------\n");
+	WDS_LOGD( "------------------------------------------\n");
 	for(i = 0; i < num; i++)
 	{
-		WFD_SERVER_LOG(WFD_LOG_LOW, "CONN[%d] device_name=[%s]\n", 
+		WDS_LOGD( "CONN[%d] device_name=[%s]\n", 
 				i,
 				list[i].device_name);
-		WFD_SERVER_LOG(WFD_LOG_LOW, "         cat=[%d] svc=[%d] isp2p=[%d] channel=[%d]\n",
+		WDS_LOGD( "         cat=[%d] svc=[%d] isp2p=[%d] channel=[%d]\n",
 				list[i].category,
 				list[i].services,
 				list[i].is_p2p,
 				list[i].channel);				
-		WFD_SERVER_LOG( WFD_LOG_LOW, "         mac dev/Intf=[" MACSTR "/" MACSTR "]\n", 
+		WDS_LOGD( "         mac dev/Intf=[" MACSTR "/" MACSTR "]\n", 
 				MAC2STR(list[i].mac_address),
 				MAC2STR(list[i].intf_mac_address));
-		WFD_SERVER_LOG( WFD_LOG_LOW, "         IP =["IPSTR"]\n", 
+		WDS_LOGD( "         IP =["IPSTR"]\n", 
 				IP2STR(list[i].ip_address));
 	}
-	WFD_SERVER_LOG( WFD_LOG_LOW, "------------------------------------------\n");
+	WDS_LOGD( "------------------------------------------\n");
 }
 
 wfd_server_client_t * wfd_server_find_client(int client_id)
@@ -270,25 +270,25 @@ wfd_server_client_t * wfd_server_find_client(int client_id)
 	int i = 0;
 	wfd_server_control_t * wfd_server = wfd_server_get_control();
 
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	for(i = 0; i < WFD_MAX_CLIENTS; i++)
 	{
 		if(wfd_server->client[i].client_id == client_id)
 		{
-			WFD_SERVER_LOG( WFD_LOG_LOW, "index [%d] client id [%d]\n", i, wfd_server->client[i].client_id);
+			WDS_LOGD( "index [%d] client id [%d]\n", i, wfd_server->client[i].client_id);
 			return &(wfd_server->client[i]);
 		}
 	}
 
-	WFD_SERVER_LOG( WFD_LOG_ERROR, "No Matching client!! client id [%d]\n", client_id);
+	WDS_LOGE( "No Matching client!! client id [%d]\n", client_id);
 	return NULL;
 }
 
 int wfd_server_find_peer_by_macaddr(wfd_discovery_entry_s *plist, int entry_size, unsigned char macaddr[6])
 {
 	int i = 0;
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	if (plist == NULL)
 		return -1;
@@ -304,7 +304,7 @@ int wfd_server_find_peer_by_macaddr(wfd_discovery_entry_s *plist, int entry_size
 		}
 	}
 
-	WFD_SERVER_LOG( WFD_LOG_ASSERT, "No Matching client!! client mac addr\n");
+	WDS_LOGF( "No Matching client!! client mac addr\n");
 
 	return -3;
 }
@@ -316,32 +316,32 @@ int wfd_server_send_response(int sockfd, void * data, int len)
 	wfd_server_control_t * wfd_server = wfd_server_get_control();
 	wifi_direct_client_response_s*	resp = (wifi_direct_client_response_s*) data;
 
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
-	WFD_SERVER_LOG( WFD_LOG_LOW, "Send sync resp cmd=[%d], result=[%d], len=[%d]\n", resp->cmd, resp->result, len);
+	WDS_LOGD( "Send sync resp cmd=[%d], result=[%d], len=[%d]\n", resp->cmd, resp->result, len);
 
 	wfd_server->sync_sockfd = sockfd;
 
 	if (wfd_server_is_fd_writable(sockfd) <= 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "socketfd[%d] write is not possible!! \n", sockfd);
+		WDS_LOGF( "socketfd[%d] write is not possible!! \n", sockfd);
 		return WIFI_DIRECT_ERROR_COMMUNICATION_FAILED;
 	}
 
 	ret_val = write(sockfd, (char*)data, len);
 	if(ret_val <= 0)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "socket write FAILED!!! [%s]\n", strerror(errno));
+		WDS_LOGF( "socket write FAILED!!! [%s]\n", strerror(errno));
 		return WIFI_DIRECT_ERROR_COMMUNICATION_FAILED;
 	}
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDS_LOG_FUNC_EXIT__;
 	return WIFI_DIRECT_ERROR_NONE;	
 }
 
 void wfd_server_process_client_request(wifi_direct_client_request_s * client_req)
 {
-	__WFD_SERVER_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	int ret = WIFI_DIRECT_ERROR_NONE;
 	wifi_direct_client_response_s	resp;
@@ -351,11 +351,11 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 
 	if(client == NULL)
 	{
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "Invalid client id [%d]\n", client_req->client_id);
+		WDS_LOGF( "Invalid client id [%d]\n", client_req->client_id);
 		return ;
 	}
 
-	WFD_SERVER_LOG( WFD_LOG_LOW, "Requested Cmd [%d, %s]\n", client_req->cmd, wfd_server_print_cmd(client_req->cmd));
+	WDS_LOGD( "Requested Cmd [%d, %s]\n", client_req->cmd, wfd_server_print_cmd(client_req->cmd));
 
 	memset(&resp, 0, sizeof(wifi_direct_client_response_s));
 	resp.client_id = client_req->client_id;
@@ -364,9 +364,9 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 
 	if (wfd_server_check_valid(client_req->cmd) == false) {
 		resp.result = WIFI_DIRECT_ERROR_NOT_PERMITTED;
-		WFD_SERVER_LOG( WFD_LOG_HIGH, "Invalid command [%d] at state=[%d]\n", client_req->cmd, wfd_server->state);
+		WDS_LOGI( "Invalid command [%d] at state=[%d]\n", client_req->cmd, wfd_server->state);
 		wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s));
-		__WFD_SERVER_FUNC_EXIT__;
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
@@ -422,7 +422,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 
 			res = wfd_oem_activate();
 
-			WFD_SERVER_LOG(WFD_LOG_ASSERT, "Device handle from oem res=[%d]\n", res);
+			WDS_LOGF( "Device handle from oem res=[%d]\n", res);
 
 			if (res == false)
 			{
@@ -443,7 +443,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 
 			__wfd_server_send_client_event(&noti);
 
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
@@ -464,7 +464,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		noti.error = WIFI_DIRECT_ERROR_NONE;
 		__wfd_server_send_client_event(&noti);
 
-		__WFD_SERVER_FUNC_EXIT__;
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 	break;
@@ -475,7 +475,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		int timeout = client_req->data.timeout;
 		wifi_direct_state_e state = wfd_server_get_state();
 
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "Flag of Listen only : %s timeout[%d]\n", listen_only ? "ON" : "OFF", timeout);
+		WDS_LOGF( "Flag of Listen only : %s timeout[%d]\n", listen_only ? "ON" : "OFF", timeout);
 
 		if (wfd_oem_start_discovery(listen_only, timeout)==true)
 		{
@@ -496,7 +496,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 
 		wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s));
 
-		__WFD_SERVER_FUNC_EXIT__;
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 	break;
@@ -506,16 +506,16 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		ret = wfd_oem_cancel_discovery();
 		if (ret == false)
 		{
-			WFD_SERVER_LOG( WFD_LOG_ERROR, "Error!! wfd_oem_cancel_discovery() failed..\n");
+			WDS_LOGE( "Error!! wfd_oem_cancel_discovery() failed..\n");
 			resp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 			wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s));
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 
 		resp.result = WIFI_DIRECT_ERROR_NONE;
 		wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s));
-		__WFD_SERVER_FUNC_EXIT__;
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 	break;
@@ -532,25 +532,25 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 			ret = wfd_oem_get_discovery_result(&plist, &peer_count);
 			if (ret == false)
 			{
-				WFD_SERVER_LOG( WFD_LOG_ERROR, "Error!! wfd_oem_get_discovery_result() failed..\n");
+				WDS_LOGE( "Error!! wfd_oem_get_discovery_result() failed..\n");
 				resp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 				wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s));
-				__WFD_SERVER_FUNC_EXIT__;
+				__WDS_LOG_FUNC_EXIT__;
 				return;
 			}
 		}
 
 		total_msg_len = sizeof(wifi_direct_client_response_s) + (sizeof(wfd_discovery_entry_s) * peer_count);
 
-		WFD_SERVER_LOG( WFD_LOG_LOW, "Peer count : %d, total message size : %d\n", peer_count, total_msg_len);
+		WDS_LOGD( "Peer count : %d, total message size : %d\n", peer_count, total_msg_len);
 
 		char * msg = (char*)malloc(total_msg_len);
 		if(msg == NULL)
 		{
-			WFD_SERVER_LOG( WFD_LOG_ASSERT, "Memory Allocation is FAILED!!!!!![%d]\n");
+			WDS_LOGF( "Memory Allocation is FAILED!!!!!![%d]\n");
 			resp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 			wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s));
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 
@@ -563,7 +563,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 
 		__wfd_server_print_entry_list((wfd_discovery_entry_s*)plist, peer_count);
 		wfd_server_send_response(client->sync_sockfd, msg, total_msg_len);
-		__WFD_SERVER_FUNC_EXIT__;
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 	break;
@@ -592,7 +592,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		}
 #endif
 		wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s));
-		__WFD_SERVER_FUNC_EXIT__;
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 	break;
@@ -605,10 +605,10 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		int max_client;
 
 		max_client = wfd_server->config_data.max_clients;
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "max_client [%d] connected_peer_count[%d]\n", max_client, wfd_server->connected_peer_count);
+		WDS_LOGF( "max_client [%d] connected_peer_count[%d]\n", max_client, wfd_server->connected_peer_count);
 		if (wfd_server->connected_peer_count >= max_client)
 		{
-			WFD_SERVER_LOG( WFD_LOG_ASSERT, "Error... available number of clients is full!!\n");
+			WDS_LOGF( "Error... available number of clients is full!!\n");
 			resp.result = WIFI_DIRECT_ERROR_TOO_MANY_CLIENT;
 			wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s));
 		}
@@ -622,25 +622,25 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 			wfd_server_remember_connecting_peer(client_req->data.mac_addr);
 
 			wps_config = wfd_server->config_data.wps_config;
-			WFD_SERVER_LOG( WFD_LOG_HIGH, "wps_config : %d\n", wps_config);
+			WDS_LOGI( "wps_config : %d\n", wps_config);
 
 			if (wfd_server->config_data.want_persistent_group == true)
 			{
 				/* skip prov_disco_req() in persistent mode. reinvoke stored persistent group or create new persistent group */
 				ret = wfd_oem_connect_for_persistent_group(client_req->data.mac_addr, wps_config);
-				WFD_SERVER_LOG(WFD_LOG_HIGH, "wfd_oem_connect_for_persistent_group: ret = %d\n", ret);
+				WDS_LOGI( "wfd_oem_connect_for_persistent_group: ret = %d\n", ret);
 			}
 			else
 			{
 				if (wfd_oem_is_groupowner() == true)
 				{
 					ret = wfd_oem_send_invite_request(client_req->data.mac_addr);
-					WFD_SERVER_LOG(WFD_LOG_HIGH, "Invite request: ret = %d\n", ret);
+					WDS_LOGI( "Invite request: ret = %d\n", ret);
 				}
 				else
 				{
 					ret = wfd_oem_send_provision_discovery_request(client_req->data.mac_addr, wps_config, wfd_server->current_peer.is_group_owner);
-					WFD_SERVER_LOG(WFD_LOG_HIGH, "ProvisionDiscovery request: ret = %d\n", ret);
+					WDS_LOGI( "ProvisionDiscovery request: ret = %d\n", ret);
 				}
 			}
 
@@ -665,7 +665,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 					wfd_server_set_state(WIFI_DIRECT_STATE_ACTIVATED);
 				}
 
-				WFD_SERVER_LOG( WFD_LOG_ASSERT, "Error... fail to connect\n");
+				WDS_LOGF( "Error... fail to connect\n");
 				
 				noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
 				noti.error = WIFI_DIRECT_ERROR_OPERATION_FAILED;
@@ -675,7 +675,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		}
 
 
-		__WFD_SERVER_FUNC_EXIT__;
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 	break;
@@ -696,7 +696,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		{
 			wfd_server_set_state(WIFI_DIRECT_STATE_ACTIVATED);
 			
-			WFD_SERVER_LOG( WFD_LOG_ASSERT, "Error... wfd_oem_disconnect() failed\n");
+			WDS_LOGF( "Error... wfd_oem_disconnect() failed\n");
 			noti.event = WIFI_DIRECT_CLI_EVENT_DISCONNECTION_RSP;
 			noti.error = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 			__wfd_server_send_client_event(&noti);
@@ -712,7 +712,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 #if 0		
 		if (peer == NULL)
 		{
-			WFD_SERVER_LOG( WFD_LOG_ASSERT, "Connected Peer not found!\n");
+			WDS_LOGF( "Connected Peer not found!\n");
 			resp.result = WIFI_DIRECT_ERROR_INVALID_PARAMETER;
 			wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s));
 			break;
@@ -729,7 +729,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 			{
 				if ( NULL == wfd_server->current_peer.intf_mac_address )
 				{
-					WFD_SERVER_LOG( WFD_LOG_ASSERT, "[wfd_server->current_peer.intf_mac_address] is NULL!\n");
+					WDS_LOGF( "[wfd_server->current_peer.intf_mac_address] is NULL!\n");
 					resp.result = WIFI_DIRECT_ERROR_INVALID_PARAMETER;
 					wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s));
 					break;
@@ -741,7 +741,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 				}
 				else
 				{
-					WFD_SERVER_LOG( WFD_LOG_ASSERT, "Error... wfd_oem_disconnect() failed\n");
+					WDS_LOGF( "Error... wfd_oem_disconnect() failed\n");
 					noti.event =WIFI_DIRECT_CLI_EVENT_DISCONNECTION_RSP;
 					noti.error = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 					__wfd_server_send_client_event(&noti);
@@ -755,7 +755,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 				}
 				else
 				{
-					WFD_SERVER_LOG( WFD_LOG_ASSERT, "Error... wfd_oem_disconnect() failed\n");
+					WDS_LOGF( "Error... wfd_oem_disconnect() failed\n");
 					noti.event =WIFI_DIRECT_CLI_EVENT_DISCONNECTION_RSP;
 					noti.error = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 					__wfd_server_send_client_event(&noti);
@@ -777,7 +777,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 			{
 				wfd_server_set_state(WIFI_DIRECT_STATE_ACTIVATED);
 
-				WFD_SERVER_LOG( WFD_LOG_ASSERT, "Error... wfd_oem_disconnect() failed\n");
+				WDS_LOGF( "Error... wfd_oem_disconnect() failed\n");
 				noti.event = WIFI_DIRECT_CLI_EVENT_DISCONNECTION_RSP;
 				noti.error = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 				__wfd_server_send_client_event(&noti);
@@ -792,7 +792,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 	case WIFI_DIRECT_CMD_GET_LINK_STATUS:
 	{
 		int status = wfd_server_get_state();
-		WFD_SERVER_LOG( WFD_LOG_LOW, "Link Status [%s]\n", wfd_print_state(status));
+		WDS_LOGD( "Link Status [%s]\n", wfd_print_state(status));
 		resp.param1 = status;
 		resp.result = WIFI_DIRECT_ERROR_NONE;
 		wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s));
@@ -807,10 +807,10 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		int max_client;
 
 		max_client = wfd_server->config_data.max_clients;
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "max_client [%d] connected_peer_count[%d]\n", max_client, wfd_server->connected_peer_count);
+		WDS_LOGF( "max_client [%d] connected_peer_count[%d]\n", max_client, wfd_server->connected_peer_count);
 		if (wfd_server->connected_peer_count >= max_client)
 		{
-			WFD_SERVER_LOG( WFD_LOG_ASSERT, "Error... available number of clients is full!!\n");
+			WDS_LOGF( "Error... available number of clients is full!!\n");
 			resp.result = WIFI_DIRECT_ERROR_TOO_MANY_CLIENT;
 			wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s));
 		}
@@ -818,7 +818,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		{
 			wps_config = wfd_server->config_data.wps_config;
 
-			WFD_SERVER_LOG( WFD_LOG_LOW, "Connect to peer %02x:%02x:%02x:%02x:%02x:%02x\n",
+			WDS_LOGD( "Connect to peer %02x:%02x:%02x:%02x:%02x:%02x\n",
 					client_req->data.mac_addr[0],
 					client_req->data.mac_addr[1],
 					client_req->data.mac_addr[2],
@@ -846,7 +846,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 			else
 			{
 				wfd_server_set_state(WIFI_DIRECT_STATE_ACTIVATED);
-				WFD_SERVER_LOG( WFD_LOG_ASSERT, "Error: wfd_oem_connect() failed..\n");
+				WDS_LOGF( "Error: wfd_oem_connect() failed..\n");
 				snprintf(noti.param1, sizeof(noti.param1), MACSTR, MAC2STR(client_req->data.mac_addr));
 				
 				noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
@@ -870,13 +870,13 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(resp)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 		if (wfd_server_send_response(client->sync_sockfd,  &wfd_server->config_data, sizeof(wfd_config_data_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 		return;
@@ -889,7 +889,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if(wfd_server_read_socket_event(client->sync_sockfd, (char*)&config, sizeof(wfd_config_data_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 
@@ -902,7 +902,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
@@ -926,7 +926,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
@@ -939,7 +939,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
@@ -953,7 +953,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
@@ -978,7 +978,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
@@ -995,7 +995,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
@@ -1008,13 +1008,13 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if(wfd_server_read_socket_event(client->sync_sockfd, (char*)device_name, WIFI_DIRECT_MAX_DEVICE_NAME_LEN) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 		if ( NULL != device_name )
-			WFD_SERVER_LOG( WFD_LOG_HIGH, "device_name = [%s]\n", device_name);
+			WDS_LOGI( "device_name = [%s]\n", device_name);
 		else
-			WFD_SERVER_LOG( WFD_LOG_ASSERT, "device_name is NULL !!\n");
+			WDS_LOGF( "device_name is NULL !!\n");
 
 		memset(wfd_server->config_data.device_name, 0, WIFI_DIRECT_MAX_DEVICE_NAME_LEN+1);
 		strncpy(wfd_server->config_data.device_name, device_name, WIFI_DIRECT_MAX_DEVICE_NAME_LEN);
@@ -1028,7 +1028,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
@@ -1043,7 +1043,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
@@ -1058,13 +1058,13 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if(wfd_server_read_socket_event(client->sync_sockfd, (char*)pin, WIFI_DIRECT_WPS_PIN_LEN) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 		if ( NULL != pin )
-			WFD_SERVER_LOG( WFD_LOG_ASSERT, "PIN = [%s]\n", pin);
+			WDS_LOGF( "PIN = [%s]\n", pin);
 		else
-			WFD_SERVER_LOG( WFD_LOG_ASSERT, "PIN is NULL !!\n");
+			WDS_LOGF( "PIN is NULL !!\n");
 
 		ret = wfd_oem_set_wps_pin(pin);
 
@@ -1076,7 +1076,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
@@ -1090,18 +1090,18 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if (wfd_oem_get_wps_pin(pin, sizeof(pin)) == false)
 		{
 			resp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			WFD_SERVER_LOG( WFD_LOG_ERROR, "wfd_oem_get_wps_pin() failed!\n");
+			WDS_LOGE( "wfd_oem_get_wps_pin() failed!\n");
 		}
 		else
 		{
-			WFD_SERVER_LOG( WFD_LOG_LOW, "pin [%s]\n", pin);
+			WDS_LOGD( "pin [%s]\n", pin);
 			sprintf(resp.param2, pin);
 			resp.result = WIFI_DIRECT_ERROR_NONE;
 		}
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
@@ -1113,7 +1113,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if (wfd_oem_generate_wps_pin() == false)
 		{
 			resp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			WFD_SERVER_LOG( WFD_LOG_ERROR, "wfd_oem_generate_wps_pin() failed!\n");
+			WDS_LOGE( "wfd_oem_generate_wps_pin() failed!\n");
 		}
 		else
 		{
@@ -1122,7 +1122,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
@@ -1135,13 +1135,13 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if(wfd_server_read_socket_event(client->sync_sockfd, (char*)ssid, WIFI_DIRECT_MAX_SSID_LEN) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 		if ( NULL != ssid )
-			WFD_SERVER_LOG( WFD_LOG_ASSERT, "ssid = [%s]\n", ssid);
+			WDS_LOGF( "ssid = [%s]\n", ssid);
 		else
-			WFD_SERVER_LOG( WFD_LOG_ASSERT, "ssid is NULL !!\n");
+			WDS_LOGF( "ssid is NULL !!\n");
 
 		ret = wfd_oem_set_ssid(ssid);
 
@@ -1153,7 +1153,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
@@ -1168,13 +1168,13 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if(wfd_server_read_socket_event(client->sync_sockfd, (char*)new_wpa, 64) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 		if ( NULL != new_wpa )
-			WFD_SERVER_LOG( WFD_LOG_ASSERT, "new_wpa = [%s]\n", new_wpa);
+			WDS_LOGF( "new_wpa = [%s]\n", new_wpa);
 		else
-			WFD_SERVER_LOG( WFD_LOG_ASSERT, "new_wpa is NULL !!\n");
+			WDS_LOGF( "new_wpa is NULL !!\n");
 
 		if (wfd_oem_set_wpa_passphrase(new_wpa) == false)
 			resp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
@@ -1182,7 +1182,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
@@ -1191,13 +1191,13 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 	case WIFI_DIRECT_CMD_GET_SUPPORTED_WPS_MODE:
 	{
 		int wps_mode = wfd_oem_get_supported_wps_mode();
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "supported wps mode (%d)\n", wps_mode);
+		WDS_LOGF( "supported wps mode (%d)\n", wps_mode);
 		resp.param1 = wps_mode;
 		resp.result = WIFI_DIRECT_ERROR_NONE;
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
@@ -1209,11 +1209,11 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if(wfd_server_read_socket_event(client->sync_sockfd, (char*)&wps_mode, sizeof(wifi_direct_wps_type_e)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "wps_mode (%d)\n", wps_mode);
+		WDS_LOGF( "wps_mode (%d)\n", wps_mode);
 
 		resp.param1 = wfd_server_get_state();
 		resp.result = ret;
@@ -1224,7 +1224,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
@@ -1248,7 +1248,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 			val = wfd_oem_get_connected_peers_info(&tmp_plist, &peer_count);
 			if (val == false)
 			{
-				WFD_SERVER_LOG( WFD_LOG_ERROR, "Error!! wfd_oem_get_connected_peers_info() failed..\n");
+				WDS_LOGE( "Error!! wfd_oem_get_connected_peers_info() failed..\n");
 				peer_count = 0;
 				tmp_plist = NULL;
 				ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
@@ -1258,7 +1258,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 				tmplist = wfd_server_get_connected_peer_by_interface_mac(tmp_plist[0].intf_mac_address);
 				if (tmplist == NULL)
 				{
-					WFD_SERVER_LOG(WFD_LOG_ERROR, "Error!! Can't find connected peer info of mac=[" MACSTR "]\n",
+					WDS_LOGE( "Error!! Can't find connected peer info of mac=[" MACSTR "]\n",
 							MAC2STR(tmp_plist[0].intf_mac_address));
 					peer_count = 0;
 					ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
@@ -1285,7 +1285,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 			val = wfd_oem_get_connected_peers_info(&plist, &peer_count);
 			if (val == false)
 			{
-				WFD_SERVER_LOG( WFD_LOG_ERROR, "Error!! wfd_oem_get_connected_peers_info() failed..\n");
+				WDS_LOGE( "Error!! wfd_oem_get_connected_peers_info() failed..\n");
 				ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 			}
 			else
@@ -1301,7 +1301,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 					}
 					else
 					{
-						WFD_SERVER_LOG(WFD_LOG_ERROR, "Error, Cant' find connected peer by int_addr" MACSTR "!!\n",
+						WDS_LOGE( "Error, Cant' find connected peer by int_addr" MACSTR "!!\n",
 								MAC2STR(plist[i].intf_mac_address));
 						// continue...
 					}
@@ -1312,23 +1312,23 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		{
 			plist = NULL;
 			peer_count = 0;
-			WFD_SERVER_LOG(WFD_LOG_ERROR, "state != WIFI_DIRECT_STATE_CONNECTED\n");
+			WDS_LOGE( "state != WIFI_DIRECT_STATE_CONNECTED\n");
 			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
 		}
 
 		total_msg_len = sizeof(wifi_direct_client_response_s) + (sizeof(wfd_connected_peer_info_s) * peer_count);
 
-		WFD_SERVER_LOG( WFD_LOG_LOW, "Peer count : %d, total message size : %d\n", peer_count, total_msg_len);
+		WDS_LOGD( "Peer count : %d, total message size : %d\n", peer_count, total_msg_len);
 
 		char * msg = (char*)malloc(total_msg_len);
 		if(msg == NULL)
 		{
-			WFD_SERVER_LOG( WFD_LOG_ASSERT, "Memory Allocation is FAILED!!!!!![%d]\n");
+			WDS_LOGF( "Memory Allocation is FAILED!!!!!![%d]\n");
 			resp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 			if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
 			{
 				wfd_server_reset_client(client->sync_sockfd);
-				__WFD_SERVER_FUNC_EXIT__;
+				__WDS_LOG_FUNC_EXIT__;
 				return;
 			}
 			break;
@@ -1352,7 +1352,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if (wfd_server_send_response(client->sync_sockfd, msg, total_msg_len) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 
@@ -1375,7 +1375,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
@@ -1388,10 +1388,10 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		ret = wfd_oem_get_go_intent(&intent);
 		if (ret == false)
 		{
-			WFD_SERVER_LOG( WFD_LOG_ERROR, "Error!! wfd_oem_get_go_intent() failed..\n");
+			WDS_LOGE( "Error!! wfd_oem_get_go_intent() failed..\n");
 			resp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 			wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s));
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 
@@ -1401,7 +1401,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
@@ -1413,20 +1413,20 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if(wfd_server_read_socket_event(client->sync_sockfd, (char*)&intent, sizeof(int)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "intent (%d)\n", intent);
+		WDS_LOGF( "intent (%d)\n", intent);
 
 		ret = wfd_oem_set_go_intent(intent);
 
 		if (ret == false)
 		{
-			WFD_SERVER_LOG( WFD_LOG_ERROR, "Error!! wfd_oem_set_go_intent() failed..\n");
+			WDS_LOGE( "Error!! wfd_oem_set_go_intent() failed..\n");
 			resp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 			wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s));
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 
@@ -1439,7 +1439,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 		
@@ -1452,17 +1452,17 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if(wfd_server_read_socket_event(client->sync_sockfd, (char*)&max_client, sizeof(int)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "max_client (%d)\n", max_client);
+		WDS_LOGF( "max_client (%d)\n", max_client);
 
 		resp.param1 = wfd_server_get_state();
 
 		if (max_client > WFD_MAC_ASSOC_STA)
 		{
-			WFD_SERVER_LOG( WFD_LOG_ASSERT, "ERROR : Max client number shold be under [%d]\n", WFD_MAC_ASSOC_STA);
+			WDS_LOGF( "ERROR : Max client number shold be under [%d]\n", WFD_MAC_ASSOC_STA);
 			resp.result = WIFI_DIRECT_ERROR_INVALID_PARAMETER;
 		}
 		else
@@ -1474,7 +1474,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
@@ -1486,13 +1486,13 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 
 		max_client = wfd_server->config_data.max_clients;
 		
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "max_client (%d)\n", max_client);
+		WDS_LOGF( "max_client (%d)\n", max_client);
 		resp.param1 = max_client;
 		resp.result = WIFI_DIRECT_ERROR_NONE;
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
@@ -1508,10 +1508,10 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 
 		if (ret == false)
 		{
-			WFD_SERVER_LOG( WFD_LOG_ERROR, "Error!! wfd_oem_get_device_mac_address() failed..\n");
+			WDS_LOGE( "Error!! wfd_oem_get_device_mac_address() failed..\n");
 			resp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 			wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s));
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 
@@ -1520,7 +1520,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
@@ -1534,7 +1534,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
@@ -1546,11 +1546,11 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if(wfd_server_read_socket_event(client->sync_sockfd, (char*)&autoconnection_mode, sizeof(bool)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "autoconnection_mode (%d)\n", autoconnection_mode);
+		WDS_LOGF( "autoconnection_mode (%d)\n", autoconnection_mode);
 
 		resp.param1 = wfd_server_get_state();
 		resp.result = ret;
@@ -1561,7 +1561,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
@@ -1575,7 +1575,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
@@ -1597,7 +1597,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
@@ -1611,7 +1611,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
@@ -1628,7 +1628,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
@@ -1637,13 +1637,13 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 	case WIFI_DIRECT_CMD_GET_OWN_GROUP_CHANNEL:
 	{
 		int operating_channel = wfd_oem_get_operating_channel();
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "operating_channel (%d)\n", operating_channel);
+		WDS_LOGF( "operating_channel (%d)\n", operating_channel);
 		resp.param1 = operating_channel;
 		resp.result = WIFI_DIRECT_ERROR_NONE;
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
@@ -1655,10 +1655,10 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		ret = wfd_oem_set_persistent_group_enabled(true);
 		if (ret == false)
 		{
-			WFD_SERVER_LOG( WFD_LOG_ERROR, "Error!! wfd_oem_set_persistent_group_enabled() failed..\n");
+			WDS_LOGE( "Error!! wfd_oem_set_persistent_group_enabled() failed..\n");
 			resp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 			wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s));
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 
@@ -1666,7 +1666,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
@@ -1678,10 +1678,10 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		ret = wfd_oem_set_persistent_group_enabled(false);
 		if (ret == false)
 		{
-			WFD_SERVER_LOG( WFD_LOG_ERROR, "Error!! wfd_oem_set_persistent_group_enabled() failed..\n");
+			WDS_LOGE( "Error!! wfd_oem_set_persistent_group_enabled() failed..\n");
 			resp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 			wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s));
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 
@@ -1689,7 +1689,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
@@ -1703,7 +1703,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
@@ -1719,24 +1719,24 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		ret = wfd_oem_get_persistent_group_info(&plist, &persistent_group_count);
 		if (ret == false)
 		{
-			WFD_SERVER_LOG( WFD_LOG_ERROR, "Error!! wfd_oem_get_persistent_group_info() failed..\n");
+			WDS_LOGE( "Error!! wfd_oem_get_persistent_group_info() failed..\n");
 			resp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 			wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s));
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 
 		total_msg_len = sizeof(wifi_direct_client_response_s) + (sizeof(wfd_persistent_group_info_s) * persistent_group_count);
 
-		WFD_SERVER_LOG( WFD_LOG_LOW, "persistent_group_count : %d, total message size : %d\n", persistent_group_count, total_msg_len);
+		WDS_LOGD( "persistent_group_count : %d, total message size : %d\n", persistent_group_count, total_msg_len);
 
 		char * msg = (char*)malloc(total_msg_len);
 		if(msg == NULL)
 		{
-			WFD_SERVER_LOG( WFD_LOG_ASSERT, "Memory Allocation is FAILED!!!!!![%d]\n");
+			WDS_LOGF( "Memory Allocation is FAILED!!!!!![%d]\n");
 			resp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 			wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s));
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 
@@ -1748,7 +1748,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		memcpy(msg + sizeof(wifi_direct_client_response_s), plist, sizeof(wfd_persistent_group_info_s) * persistent_group_count);
 
 		wfd_server_send_response(client->sync_sockfd, msg, total_msg_len);
-		__WFD_SERVER_FUNC_EXIT__;
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 	break;
@@ -1760,17 +1760,17 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if(wfd_server_read_socket_event(client->sync_sockfd, (char*)&persistent_group, sizeof(wfd_persistent_group_info_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 
 		ret = wfd_oem_remove_persistent_group(&persistent_group);
 		if (ret == false)
 		{
-			WFD_SERVER_LOG( WFD_LOG_ERROR, "Error!! wfd_oem_remove_persistent_group() failed..\n");
+			WDS_LOGE( "Error!! wfd_oem_remove_persistent_group() failed..\n");
 			resp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 			wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s));
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 
@@ -1778,25 +1778,25 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
 	break;
 
 	default:
-		WFD_SERVER_LOG( WFD_LOG_ASSERT, "Error!!! Invalid cmd = [%d] \n", client_req->cmd);
+		WDS_LOGF( "Error!!! Invalid cmd = [%d] \n", client_req->cmd);
 		resp.result = WIFI_DIRECT_ERROR_NOT_PERMITTED;
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
-			__WFD_SERVER_FUNC_EXIT__;
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 		break;
 	}
 
-	__WFD_SERVER_FUNC_EXIT__;
+	__WDS_LOG_FUNC_EXIT__;
 }
 
 

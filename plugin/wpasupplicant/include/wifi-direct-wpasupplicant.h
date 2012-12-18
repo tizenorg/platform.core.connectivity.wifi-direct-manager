@@ -7,6 +7,43 @@
 #include <string.h>
 #include <net/ethernet.h>
 
+#ifdef USE_DLOG
+#include <dlog.h>
+
+#define LOG_TAG "WIFI_DIRECT_PLUGIN"
+
+#define WDP_LOGV(format, args...) LOGV(format, ##args)
+#define WDP_LOGD(format, args...) LOGD(format, ##args)
+#define WDP_LOGI(format, args...) LOGI(format, ##args)
+#define WDP_LOGW(format, args...) LOGW(format, ##args)
+#define WDP_LOGE(format, args...) LOGE(format, ##args)
+#define WDP_LOGF(format, args...) LOGF(format, ##args)
+
+#define __WDP_LOG_FUNC_ENTER__ LOGV("Enter")
+#define __WDP_LOG_FUNC_EXIT__ LOGV("Quit")
+
+#else /** _DLOG_UTIL */
+
+#define WDP_LOGV(format, args...) \
+	printf("[V/WIFI_DIRECT_PLUGIN] %s: %s()(%4d)> "format, __FILE__, __FUNCTION__, __LINE__, ##args)
+#define WDP_LOGD(format, args...) \
+	printf("[D/WIFI_DIRECT_PLUGIN] %s: %s()(%4d)> "format, __FILE__, __FUNCTION__, __LINE__, ##args)
+#define WDP_LOGI(format, args...) \
+	printf("[I/WIFI_DIRECT_PLUGIN] %s: %s()(%4d)> "format, __FILE__, __FUNCTION__, __LINE__, ##args)
+#define WDP_LOGW(format, args...) \
+	printf("[W/WIFI_DIRECT_PLUGIN] %s: %s()(%4d)> "format, __FILE__, __FUNCTION__, __LINE__, ##args)
+#define WDP_LOGE(format, args...) \
+	printf("[E/WIFI_DIRECT_PLUGIN] %s: %s()(%4d)> "format, __FILE__, __FUNCTION__, __LINE__, ##args)
+#define WDP_LOGF(format, args...) \
+	printf("[F/WIFI_DIRECT_PLUGIN] %s: %s()(%4d)> "format, __FILE__, __FUNCTION__, __LINE__, ##args)
+
+#define __WDP_LOG_FUNC_ENTER__ \
+	printf("[V/WIFI_DIRECT_PLUGIN] %s: %s()(%4d)> Enter", __FILE__, __FUNCTION__, __LINE__)
+#define __WDP_LOG_FUNC_EXIT__ \
+	printf("[V/WIFI_DIRECT_PLUGIN] %s: %s()(%4d)> Exit", __FILE__, __FUNCTION__, __LINE__)
+
+#endif /** _DLOG_UTIL */
+
 #define DEFAULT_IF_NAME "p2p-wlan0-0"
 #define DEFAULT_IF_NAME_LEN 12
 //#define DEFAULT_SSID_NAME "BcmDevice00"
