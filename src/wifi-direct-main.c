@@ -85,18 +85,15 @@ char *wfd_server_print_cmd(wifi_direct_cmd_e cmd)
 		return "WIFI_DIRECT_CMD_CANCEL_DISCOVERY";
 	case WIFI_DIRECT_CMD_GET_DISCOVERY_RESULT:
 		return "WIFI_DIRECT_CMD_GET_DISCOVERY_RESULT";
-	case WIFI_DIRECT_CMD_SEND_PROVISION_DISCOVERY_REQ:
-		return "WIFI_DIRECT_CMD_SEND_PROVISION_DISCOVERY_REQ";
 	case WIFI_DIRECT_CMD_GET_LINK_STATUS:
 		return "WIFI_DIRECT_CMD_GET_LINK_STATUS";
 	case WIFI_DIRECT_CMD_CONNECT:
 		return "WIFI_DIRECT_CMD_CONNECT";
+
 	case WIFI_DIRECT_CMD_DISCONNECT_ALL:
 		return "WIFI_DIRECT_CMD_DISCONNECT_ALL";
 	case WIFI_DIRECT_CMD_CREATE_GROUP:
 		return "WIFI_DIRECT_CMD_CREATE_GROUP";
-	case WIFI_DIRECT_CMD_ACTIVATE_PUSHBUTTON:
-		return "WIFI_DIRECT_CMD_ACTIVATE_PUSHBUTTON";
 	case WIFI_DIRECT_CMD_IS_GROUPOWNER:
 		return "WIFI_DIRECT_CMD_IS_GROUPOWNER";
 	case WIFI_DIRECT_CMD_GET_SSID:
@@ -107,10 +104,21 @@ char *wfd_server_print_cmd(wifi_direct_cmd_e cmd)
 		return "WIFI_DIRECT_CMD_GET_IP_ADDR";
 	case WIFI_DIRECT_CMD_GET_CONFIG:
 		return "WIFI_DIRECT_CMD_GET_CONFIG";
+	case WIFI_DIRECT_CMD_SET_CONFIG:
+		return "WIFI_DIRECT_CMD_SET_CONFIG";
+	case WIFI_DIRECT_CMD_SEND_PROVISION_DISCOVERY_REQ:
+		return "WIFI_DIRECT_CMD_SEND_PROVISION_DISCOVERY_REQ";
+	case WIFI_DIRECT_CMD_SEND_CONNECT_REQ:
+		return "WIFI_DIRECT_CMD_SEND_CONNECT_REQ";
+
+	case WIFI_DIRECT_CMD_ACTIVATE_PUSHBUTTON:
+		return "WIFI_DIRECT_CMD_ACTIVATE_PUSHBUTTON";
 	case WIFI_DIRECT_CMD_SET_WPS_PIN:
 		return "WIFI_DIRECT_CMD_SET_WPS_PIN";
 	case WIFI_DIRECT_CMD_GET_WPS_PIN:
 		return "WIFI_DIRECT_CMD_GET_WPS_PIN";
+	case WIFI_DIRECT_CMD_GENERATE_WPS_PIN:
+		return "WIFI_DIRECT_CMD_GENERATE_WPS_PIN";
 	case WIFI_DIRECT_CMD_GET_INCOMMING_PEER_INFO:
 		return "WIFI_DIRECT_CMD_GET_INCOMMING_PEER_INFO";
 	case WIFI_DIRECT_CMD_SET_WPA:
@@ -123,13 +131,27 @@ char *wfd_server_print_cmd(wifi_direct_cmd_e cmd)
 		return "WIFI_DIRECT_CMD_GET_CONNECTED_PEERS_INFO";
 	case WIFI_DIRECT_CMD_CANCEL_GROUP:
 		return "WIFI_DIRECT_CMD_CANCEL_GROUP";
+
 	case WIFI_DIRECT_CMD_DISCONNECT:
 		return "WIFI_DIRECT_CMD_DISCONNECT";
-	case WIFI_DIRECT_CMD_GET_GO_INTENT:
-		return "WIFI_DIRECT_CMD_GET_GO_INTENT";
 	case WIFI_DIRECT_CMD_SET_GO_INTENT:
 		return "WIFI_DIRECT_CMD_SET_GO_INTENT";
-	case WIFI_DIRECT_CMD_IS_DISCOVERABLE:
+	case WIFI_DIRECT_CMD_GET_GO_INTENT:
+		return "WIFI_DIRECT_CMD_GET_GO_INTENT";
+	case WIFI_DIRECT_CMD_GET_DEVICE_MAC:
+		return "WIFI_DIRECT_CMD_GET_DEVICE_MAC";
+	case WIFI_DIRECT_CMD_IS_AUTONOMOUS_GROUP:
+		return "WIFI_DIRECT_CMD_IS_AUTONOMOUS_GROUP";
+	case WIFI_DIRECT_CMD_SET_MAX_CLIENT:
+		return "WIFI_DIRECT_CMD_SET_MAX_CLIENT";
+	case WIFI_DIRECT_CMD_GET_MAX_CLIENT:
+		return "WIFI_DIRECT_CMD_GET_MAX_CLIENT";
+	case WIFI_DIRECT_CMD_SET_AUTOCONNECTION_MODE:
+		return "WIFI_DIRECT_CMD_SET_AUTOCONNECTION_MODE";
+	case WIFI_DIRECT_CMD_IS_AUTOCONNECTION_MODE:
+		return "WIFI_DIRECT_CMD_IS_AUTOCONNECTION_MODE";
+	case WIFI_DIRECT_CMD_IS_DISCOVERABLE:	// 40
+
 		return "WIFI_DIRECT_CMD_IS_DISCOVERABLE";
 	case WIFI_DIRECT_CMD_GET_OWN_GROUP_CHANNEL:
 		return "WIFI_DIRECT_CMD_GET_OWN_GROUP_CHANNEL";
@@ -260,27 +282,14 @@ static int wfd_server_create_socket(void)
 void wfd_load_plugin()
 {
 	void *handle;
-	char *filename;
 	struct utsname kernel_info;
 	int res;    
 
 	res = uname(&kernel_info);
 	if(res != 0)
-	{
 		WDS_LOGE("Failed to detect target type");
-	}
 	else
-	{
 		WDS_LOGD("Node name [%s], HW ID [%s]", kernel_info.nodename, kernel_info.machine);
-#if 0
-		if((strcmp(kernel_info.nodename, "U1SLP") == 0)
-			|| (strcmp(kernel_info.nodename, "U1HD") == 0) 
-			/*|| (strcmp(kernel_info.nodename, "TRATS") == 0)*/)
-			filename = "/usr/lib/wifi-direct-plugin-broadcom.so";		
-		else
-			filename = "/usr/lib/wifi-direct-plugin-wpasupplicant.so";
-#endif
-	}
 
 	handle = dlopen("/usr/lib/wifi-direct-plugin-wpasupplicant.so", RTLD_NOW);
 	if (!handle) {

@@ -1,6 +1,6 @@
 Name:       wifi-direct-manager
 Summary:    Wi-Fi Direct manger
-Version:    0.5.1
+Version:    0.5.2
 Release:    1
 Group:      TO_BE_FILLED
 License:    Samsung Proprietary License

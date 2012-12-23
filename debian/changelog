@@ -1,3 +1,11 @@
+wfi-direct-manager (0.5.2) precise; urgency=low
+
+  * Fix bug(WPS PIN Display not worked)
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.5.2
+
+ -- Gibyoung Kim <lastkgb.kim@samsung.com>  Sat, 22 Dec 2012 18:50:04 +0900
+
 wifi-direct-manager (0.5.1) precise; urgency=low
 
   * DLog macro is changed
