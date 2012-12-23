@@ -220,6 +220,8 @@ int wfd_set_device_name_from_phone_name()
 {
 	wfd_set_device_name();
 	vconf_notify_key_changed(VCONFKEY_SETAPPL_DEVICE_NAME_STR, __wfd_device_name_change_cb, NULL);
+
+	return 0;
 }
 
 void __wfd_server_print_entry_list(wfd_discovery_entry_s * list, int num)
@@ -599,8 +601,6 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 
 	case WIFI_DIRECT_CMD_CONNECT:
 	{
-		int peer_index = -1;
-		int peer_count = 0;
 		wifi_direct_wps_type_e	wps_config;
 		int max_client;
 
@@ -801,8 +801,6 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 
 	case WIFI_DIRECT_CMD_SEND_CONNECT_REQ:
 	{
-		int peer_index = -1;
-		int peer_count = 0;
 		wifi_direct_wps_type_e	wps_config;
 		int max_client;
 
@@ -962,8 +960,6 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 	case WIFI_DIRECT_CMD_GET_SSID:
 	{
 		char ssid[32+1];
-
-		wifi_direct_state_e state = wfd_server_get_state();
 
 		if (wfd_oem_get_ssid(ssid, 32)==false)
 		{

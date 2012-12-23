@@ -10,6 +10,7 @@
 #ifdef USE_DLOG
 #include <dlog.h>
 
+#undef LOG_TAG
 #define LOG_TAG "WIFI_DIRECT_PLUGIN"
 
 #define WDP_LOGV(format, args...) LOGV(format, ##args)
@@ -101,6 +102,7 @@ typedef void (*wfd_noti_cb) (int event_type);
 #define CMD_CREATE_GROUP "P2P_GROUP_ADD"
 #define CMD_CONNECT "P2P_CONNECT"
 #define CMD_DISPLAY_STRING "display"
+#define CMD_KEYPAD_STRING "keypad"
 #define CMD_WPS_PUSHBUTTON_START "WPS_PBC"
 #define CMD_GET_PEER_INFO "P2P_PEER"
 #define CMD_SET_PARAM "SET"

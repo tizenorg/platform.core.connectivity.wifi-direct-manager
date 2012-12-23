@@ -50,7 +50,6 @@ int g_oem_pipe[2];
 GList *g_conn_peer_addr;
 static unsigned char g_assoc_sta_mac[6];
 static unsigned char g_disassoc_sta_mac[6];
-
 char g_wps_pin[9];
 
 static struct wfd_oem_operations supplicant_ops =
@@ -264,14 +263,14 @@ int __create_ctrl_intf(char *ctrl_intf_name, char *path)
 
 		if (unlink(path) < 0)
 		{
-			WDP_LOGE( "unlink[ctrl_iface], Error=[%s]\n", strerror(errno));
+			WDP_LOGE("unlink[ctrl_iface], Error=[%s]", strerror(errno));
 			__WDP_LOG_FUNC_EXIT__;
 			return -1;
 		}
 
 		if (bind(sockfd, (struct sockaddr*)&servAddr, sizeof(servAddr)) < 0)
 		{
-			WDP_LOGE( "bind[PF_UNIX], Error=[%s]\n", strerror(errno));
+			WDP_LOGE("bind[PF_UNIX], Error=[%s]", strerror(errno));
 			__WDP_LOG_FUNC_EXIT__;
 			return -1;
 		}
@@ -793,7 +792,6 @@ int __parsing_persistent_group(char* buf, ws_network_info_s ws_persistent_group_
 	char* ptr = buf;
 	ws_network_info_s group;
 	int count;
-	int i;
 
 	memset(&group, 0, sizeof(ws_network_info_s));
 
@@ -1020,6 +1018,11 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 				strncpy(event->peer_intf_mac_address, event_str, sizeof(event->peer_intf_mac_address));
 
 				res = __extract_value_str(ptr, "dev_addr", event->peer_mac_address);
+				if (res < 0)
+					WDP_LOGD("Key %s is not found", "dev_addr");
+				else if (res == 0)
+					WDP_LOGD("Empty value");
+				else
 				WDP_LOGD( "connected peer mac address [%s]", event->peer_intf_mac_address);
 			}
 		break;
@@ -1049,6 +1052,11 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 				strncpy(event->peer_intf_mac_address, event_str, sizeof(event->peer_intf_mac_address));
 
 				res = __extract_value_str(ptr, "dev_addr", event->peer_mac_address);
+				if (res < 0)
+					WDP_LOGD("Key %s is not found", "dev_addr");
+				else if (res == 0)
+					WDP_LOGD("Empty value");
+				else
 				WDP_LOGD( "disconnected peer mac address [%s]", event->peer_intf_mac_address);
 			}
 		break;
@@ -1094,21 +1102,21 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 		break;
 		case WS_EVENT_GO_NEG_REQUEST:
 			{
-				WDP_LOGD( "WS EVENT : "
-						"[WS_EVENT_GO_NEG_REQUEST]\n");
-				wfd_server_control_t * wfd_server = wfd_server_get_control();
-				if (wfd_server->config_data.wps_config !=
-						WIFI_DIRECT_WPS_TYPE_PBC) {
-					int res = 0;
-					event->id = WS_EVENT_GO_NEG_REQUEST;
-					ptr = __get_event_str(ptr + 19, event_str);
-					strncpy(event->peer_intf_mac_address, event_str,
-							sizeof(event->peer_intf_mac_address));
+				WDP_LOGD( "WS EVENT : [WS_EVENT_GO_NEG_REQUEST]");
+				// TODO: check validity of event
+
+				wfd_server_control_t *wfd_server = wfd_server_get_control();
+				event->id = WS_EVENT_GO_NEG_REQUEST;
+				__extract_value_str(ptr, "P2P-GO-NEG-REQUEST", event->peer_intf_mac_address);
+
+				if (wfd_server->config_data.wps_config == WIFI_DIRECT_WPS_TYPE_PIN_DISPLAY) {
+					WDP_LOGD("WPS mode [PIN_DISPLAY]");
+				} else if (wfd_server->config_data.wps_config == WIFI_DIRECT_WPS_TYPE_PIN_KEYPAD) {
+					WDP_LOGD("WPS mode [PIN_KEYPAD]");
 					wfd_ws_connect_for_go_neg(g_incomming_peer_mac_address,
-							wfd_server->config_data.wps_config);
+												WIFI_DIRECT_WPS_TYPE_PIN_KEYPAD);
 				} else {
-					WDP_LOGD( "WS EVENT : "
-							"[WS_EVENT_GO_NEG_REQUEST] in PBC case\n");
+					WDP_LOGD("WPS mode [PBC]");
 				}
 			}
 		break;
@@ -1573,8 +1581,6 @@ static gboolean __ws_event_callback(GIOChannel * source,
 				g_conn_peer_addr = g_list_append(g_conn_peer_addr, strdup(event.peer_mac_address));
 				WDP_LOGD( "connected peer[%s] is added\n", event.peer_mac_address);
 
-				wfd_server_control_t * wfd_server = wfd_server_get_control();
-
 				/* We need to store current peer
 				because, persistent joining is excuted silencely without client event.*/
 				unsigned char la_mac_addr[6];
@@ -1603,7 +1609,7 @@ static gboolean __ws_event_callback(GIOChannel * source,
 
 		case WS_EVENT_TERMINATING:
 			system("/usr/bin/wlan.sh stop");
-			system("/usr/sbin/wpa_supp_p2p.sh stop");
+			system("/usr/sbin/p2p_supp.sh stop");
 			WDP_LOGE( "Device is Deactivated\n");
 		break;
 
@@ -2066,19 +2072,20 @@ int wfd_ws_activate()
 
 		// Sync Socket
 		g_control_sockfd = __create_ctrl_intf("p2p_ctrl_control", "/var/run/p2p_supplicant/wlan0");
-		if (g_control_sockfd > 0)
-		{
-			// Async Socket			
+		if (g_control_sockfd > 0) {
+			// Async Socket
 			g_monitor_sockfd = __create_ctrl_intf("p2p_ctrl_monitor", "/var/run/p2p_supplicant/wlan0");
 			if (g_monitor_sockfd > 0)
 			{
 				if (__wpa_ctrl_attach(g_monitor_sockfd) < 0)
 				{
-					WDP_LOGE( "Failed to attach p2p_supplicant!!! monitor_sockfd=[%d]\n", g_monitor_sockfd);
+					WDP_LOGE( "Failed to attach monitor socket! sockfd=[%d]", g_monitor_sockfd);
 					return false;
 				}
 				break;
 			}
+		} else {
+			WDP_LOGE( "Failed to attach control socket! sockfd=[%d]", g_control_sockfd);
 		}
 		count--;
 
@@ -2141,33 +2148,16 @@ int wfd_ws_deactivate()
 	memset(cmd, 0x0, 32);
 	memset(res_buffer, 0x0, 1024);
 
-
 	// close control interface
 	g_source_remove(g_source_id);
 	unlink("/tmp/wpa_ctrl_monitor");
 	if (g_monitor_sockfd >= 0)
 		close(g_monitor_sockfd);
-	unlink("/tmp/wpa_ctrl_control");
-	if (g_control_sockfd >= 0)
-		close(g_control_sockfd);
 
-	// interface_remove
-	snprintf(cmd, sizeof(cmd), "%s %s", CMD_INTERFACE_REMOVE, "p2p-wlan0-0");
-	result = __send_wpa_request(g_global_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-	WDP_LOGD( "__send_wpa_request(INTERFACE_REMOVE p2p-wlan0-0) result=[%d]\n", result);
-	if (result < 0)
-	{
-		WDP_LOGE( "__send_wpa_request FAILED!!\n");
-	 	__WDP_LOG_FUNC_EXIT__;
-	 	return false;
-	}
-	memset(cmd, 0x0, 32);
-	memset(res_buffer, 0x0, 1024);
-
-	// interface_remove
-	snprintf(cmd, sizeof(cmd), "%s %s", CMD_INTERFACE_REMOVE, "wlan0");
-	result = __send_wpa_request(g_global_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-	WDP_LOGD( "__send_wpa_request(INTERFACE_REMOVE wlan0) result=[%d]\n", result);
+	// terminate wpasupplicant
+	strncpy(cmd, CMD_TERMINATE, sizeof(cmd));
+	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
+	WDP_LOGD( "__send_wpa_request(CMD_TERMINATE) result=[%d]\n", result);
 	if (result < 0)
 	{
 		WDP_LOGE( "__send_wpa_request FAILED!!\n");
@@ -2176,20 +2166,21 @@ int wfd_ws_deactivate()
 	}
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
 	{
+		WDP_LOGE( "DETACH command Fail. result [%d], res_buffer [%s]\n", result, res_buffer);
 	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
+	memset(cmd, 0x0, 32);
+	memset(res_buffer, 0x0, 1024);
 
-	// close global interface
-	unlink("/tmp/wpa_ctrl_global");
-	if(g_global_sockfd >= 0)
-	    close(g_global_sockfd);
+	unlink("/tmp/wpa_ctrl_control");
+	if (g_control_sockfd >= 0)
+		close(g_control_sockfd);
 
 	wfd_ws_glist_reset_connected_peer();
 
 	// wlan.sh stop
 	system("/usr/bin/wlan.sh stop");
-	system("/usr/sbin/wpa_supp_p2p.sh stop");
 
 	__WDP_LOG_FUNC_EXIT__;
  	return true;
@@ -2267,10 +2258,12 @@ int wfd_ws_connect(unsigned char mac_addr[6], wifi_direct_wps_type_e wps_config)
 				mac_str, g_wps_pin);
 		if (wps_config == WIFI_DIRECT_WPS_TYPE_PBC) {
 			snprintf(cmd, sizeof(cmd), "%s %s %s", CMD_CONNECT,
-				mac_str, __convert_wps_config_methods_value(wps_config));
-		} else if (wps_config == WIFI_DIRECT_WPS_TYPE_PIN_DISPLAY 	||
-				wps_config == WIFI_DIRECT_WPS_TYPE_PIN_KEYPAD) {
-			WDP_LOGD( "CONFIG = [%d] \n", wps_config);
+					mac_str, __convert_wps_config_methods_value(wps_config));
+		} else if (wps_config == WIFI_DIRECT_WPS_TYPE_PIN_DISPLAY) {
+			snprintf(cmd, sizeof(cmd), "%s %s %s %s", CMD_CONNECT,
+					mac_str, g_wps_pin, CMD_KEYPAD_STRING);
+			WDP_LOGD( "COMMAND = [%s]\n", cmd);
+		} else if (wps_config == WIFI_DIRECT_WPS_TYPE_PIN_KEYPAD) {
 			snprintf(cmd, sizeof(cmd), "%s %s %s %s", CMD_CONNECT,
 					mac_str, g_wps_pin, CMD_DISPLAY_STRING);
 			WDP_LOGD( "COMMAND = [%s]\n", cmd);
@@ -2312,17 +2305,19 @@ int wfd_ws_connect_for_go_neg(unsigned char mac_addr[6],
 
 	WDP_LOGD( "CONNECT REQUEST FOR GO NEGOTIATION");
 
+	snprintf(mac_str, 18, MACSTR, MAC2STR(mac_addr));
+	snprintf(cmd, sizeof(cmd), "%s %s %s", CMD_CONNECT, mac_str,
+				g_wps_pin);
+
 	if (wps_config == WIFI_DIRECT_WPS_TYPE_PIN_KEYPAD ||
 			wps_config == WIFI_DIRECT_WPS_TYPE_PIN_DISPLAY) {
-		snprintf(mac_str, 18, MACSTR, MAC2STR(mac_addr));
 		WDP_LOGD( "CONFIG = [%d] \n", wps_config);
-		snprintf(cmd, sizeof(cmd), "%s %s %s", CMD_CONNECT, mac_str,
-				g_wps_pin);
-		WDP_LOGD( "COMMAND = [%s]****\n", cmd);
 	} else {
-		WDP_LOGD( "UNKNOWN CONFIG METHOD\n");
+		WDP_LOGE( "Not expected CONFIG METHOD\n");
 		return false;
 	}
+
+	WDP_LOGD( "COMMAND = [%s]****\n", cmd);
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer,
 			res_buffer_len);
 	if (result < 0)	{
@@ -2338,6 +2333,137 @@ int wfd_ws_connect_for_go_neg(unsigned char mac_addr[6],
 	__WDP_LOG_FUNC_EXIT__;
  	return true;
 }
+
+/* for sending connection request in case Persistent mode enabled */
+int wfd_ws_connect_for_persistent_group(unsigned char mac_addr[6], wifi_direct_wps_type_e wps_config)
+{
+	__WDP_LOG_FUNC_ENTER__;
+
+	char cmd[50] = {0, };
+	char mac_str[18] = {0, };
+	char res_buffer[1024]={0,};
+	int res_buffer_len = sizeof(res_buffer);
+	int result;
+
+	wfd_server_control_t * wfd_server = wfd_server_get_control();
+	WDP_LOGD( "wfd_server->current_peer.is_group_owner=[%d]\n", wfd_server->current_peer.is_group_owner);
+	WDP_LOGD( "wfd_server->current_peer.is_persistent_go=[%d]\n", wfd_server->current_peer.is_persistent_go);
+
+	int network_id;
+
+	WDP_LOGD( "[persistent mode!!!]\n");
+	snprintf(mac_str, 18, MACSTR, MAC2STR(mac_addr));
+
+	if (wfd_server->current_peer.is_group_owner)	/* join group */
+	{
+		snprintf(mac_str, 18, MACSTR, MAC2STR(mac_addr));
+		snprintf(cmd, sizeof(cmd),"%s %s %s join", CMD_CONNECT, mac_str, __convert_wps_config_methods_value(wps_config));
+		result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
+		WDP_LOGD( "__send_wpa_request(CMD_CONNECT join) result=[%d]\n", result);
+	}
+	else /* Creating or reinvoking my persistent group and send invite req. */
+	{
+#if 1
+		/*  First, searching for peer in persistent client list : in case, My device is GO */
+		network_id = __get_network_id_from_persistent_client_list_with_mac(mac_str);
+
+		if (network_id < 0)	/* If peer is not exist in client list, searching for peer in persistnet group GO list : in case, peer is GO */
+			network_id = __get_network_id_from_network_list_with_go_mac(mac_str);
+
+		if (network_id < 0)	/* If can not find peer anywhere, Create new persistent group */
+		{
+			if (wfd_ws_create_group(NULL) != true)
+			{
+				WDP_LOGE( "wfd_ws_create_group FAILED!!\n");
+			 	__WDP_LOG_FUNC_EXIT__;
+			 	return false;
+			}
+
+			if (wfd_ws_send_invite_request(mac_addr) != true)
+			{
+				WDP_LOGE( "wfd_ws_send_invite_request FAILED!!\n");
+			 	__WDP_LOG_FUNC_EXIT__;
+			 	return false;
+			}
+		}
+		else	/* Reinvoke persistent group and invite peer */
+		{
+			if (__send_invite_request_with_network_id(network_id, mac_addr) != true)
+			{
+				WDP_LOGE( "__send_invite_request_with_network_id FAILED!!\n");
+			 	__WDP_LOG_FUNC_EXIT__;
+			 	return false;
+			}
+
+			if (__wfd_ws_reinvoke_persistent_group(network_id) != true)
+			{
+				WDP_LOGE( "__wfd_ws_reinvoke_persistent_group FAILED!!\n");
+			 	__WDP_LOG_FUNC_EXIT__;
+			 	return false;
+			}
+		}
+#else
+		int persistent_group_count = 0;
+		wfd_persistent_group_info_s* plist;
+		int i;
+
+		result = wfd_ws_get_persistent_group_info(&plist, &persistent_group_count);
+		if (result == true)
+		{
+			/* checking already created persistent group list */
+			for(i=0; i<persistent_group_count; i++)
+			{
+				WDP_LOGD( "plist[%d].go_mac_address=[%s]\n", i,plist[i].go_mac_address);
+				if (strcmp(plist[i].go_mac_address, mac_str) == 0)
+				{
+					WDP_LOGD( "Found peer in persistent group list [network id : %d]\n", plist[i].network_id);
+					snprintf(cmd, sizeof(cmd), "%s persistent=%d", CMD_CREATE_GROUP, plist[i].network_id);
+					result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
+					WDP_LOGD( "__send_wpa_request(P2P_GROUP_ADD persistent=%d) result=[%d]\n", plist[i].network_id, result);
+					break;
+				}
+			}
+
+			if (i == persistent_group_count)	/* Can't find peer in persistent group list. Creation of new persistent group */
+			{
+				/* Persistent group mode */
+				snprintf(cmd, sizeof(cmd), "%s %s %s", CMD_CREATE_GROUP, "persistent", FREQUENCY_2G);
+				result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
+				WDP_LOGD( "__send_wpa_request(P2P_GROUP_ADD) result=[%d]\n", result);
+
+				if (result < 0)
+				{
+					WDP_LOGE( "__send_wpa_request FAILED!!\n");
+				 	__WDP_LOG_FUNC_EXIT__;
+				 	return false;
+				}
+
+				if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
+				{
+				 	__WDP_LOG_FUNC_EXIT__;
+				 	return false;
+				}
+
+				wfd_ws_send_invite_request(mac_addr);
+
+			}
+		}
+		else
+		{
+			WDP_LOGE( "Error!! wfd_ws_get_persistent_group_info() failed..\n");
+			__WDP_LOG_FUNC_EXIT__;
+			return false;
+		}
+#endif
+
+	}
+
+	WDP_LOGD( "Connecting... peer-MAC [%s]\n", mac_str);
+
+	__WDP_LOG_FUNC_EXIT__;
+ 	return true;
+}
+
 int wfd_ws_disconnect()
 {
 	__WDP_LOG_FUNC_ENTER__;
@@ -3934,7 +4060,6 @@ int wfd_ws_get_persistent_group_info(wfd_persistent_group_info_s ** persistent_g
 	__WDP_LOG_FUNC_ENTER__;
 	
 	char cmd[16] = {0, };
-	char mac_str[18] = {0, };
 	char res_buffer[1024] = {0,};
 	int res_buffer_len = sizeof(res_buffer);
 	int result = 0;
@@ -4113,140 +4238,3 @@ int wfd_ws_set_persistent_reconnect(bool enabled)
 	__WDP_LOG_FUNC_EXIT__;
  	return true;
 }
-
-/* for sending connection request in case Persistent mode enabled */
-int wfd_ws_connect_for_persistent_group(unsigned char mac_addr[6], wifi_direct_wps_type_e wps_config)
-{
-	__WDP_LOG_FUNC_ENTER__;
-
-	char cmd[50] = {0, };
-	char mac_str[18] = {0, };
-	char res_buffer[1024]={0,};
-	int res_buffer_len = sizeof(res_buffer);
-	int result;
-
-	wfd_server_control_t * wfd_server = wfd_server_get_control();
-	WDP_LOGD( "wfd_server->current_peer.is_group_owner=[%d]\n", wfd_server->current_peer.is_group_owner);
-	WDP_LOGD( "wfd_server->current_peer.is_persistent_go=[%d]\n", wfd_server->current_peer.is_persistent_go);
-
-	int persistent_group_count = 0;
-	wfd_persistent_group_info_s* plist;
-	int i;
-	int network_id;
-
-	WDP_LOGD( "[persistent mode!!!]\n");
-	snprintf(mac_str, 18, MACSTR, MAC2STR(mac_addr));
-
-#if 0	// wpa_supplicant evaluates joining procedure automatically.
-	if (wfd_server->current_peer.is_persistent_go)	/* Peer is persistent GO : join persistent group  */
-	{
-	}
-	else
-#endif
-	if (wfd_server->current_peer.is_group_owner)	/* join group */
-	{
-		snprintf(mac_str, 18, MACSTR, MAC2STR(mac_addr));
-		snprintf(cmd, sizeof(cmd),"%s %s %s join", CMD_CONNECT, mac_str, __convert_wps_config_methods_value(wps_config));
-		result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-		WDP_LOGD( "__send_wpa_request(CMD_CONNECT join) result=[%d]\n", result);
-	}
-	else /* Creating or reinvoking my persistent group and send invite req. */
-	{
-#if 1
-		/*  First, searching for peer in persistent client list : in case, My device is GO */
-		network_id = __get_network_id_from_persistent_client_list_with_mac(mac_str);
-
-		if (network_id < 0)	/* If peer is not exist in client list, searching for peer in persistnet group GO list : in case, peer is GO */
-			network_id = __get_network_id_from_network_list_with_go_mac(mac_str);
-
-		if (network_id < 0)	/* If can not find peer anywhere, Create new persistent group */
-		{
-			if (wfd_ws_create_group(NULL) != true)
-			{
-				WDP_LOGE( "wfd_ws_create_group FAILED!!\n");
-			 	__WDP_LOG_FUNC_EXIT__;
-			 	return false;
-			}
-
-			if (wfd_ws_send_invite_request(mac_addr) != true)
-			{
-				WDP_LOGE( "wfd_ws_send_invite_request FAILED!!\n");
-			 	__WDP_LOG_FUNC_EXIT__;
-			 	return false;
-			}
-		}
-		else	/* Reinvoke persistent group and invite peer */
-		{
-			if (__send_invite_request_with_network_id(network_id, mac_addr) != true)
-			{
-				WDP_LOGE( "__send_invite_request_with_network_id FAILED!!\n");
-			 	__WDP_LOG_FUNC_EXIT__;
-			 	return false;
-			}
-
-			if (__wfd_ws_reinvoke_persistent_group(network_id) != true)
-			{
-				WDP_LOGE( "__wfd_ws_reinvoke_persistent_group FAILED!!\n");
-			 	__WDP_LOG_FUNC_EXIT__;
-			 	return false;
-			}
-		}
-#else
-
-		result = wfd_ws_get_persistent_group_info(&plist, &persistent_group_count);
-		if (result == true)
-		{
-			/* checking already created persistent group list */
-			for(i=0; i<persistent_group_count; i++)
-			{
-				WDP_LOGD( "plist[%d].go_mac_address=[%s]\n", i,plist[i].go_mac_address);
-				if (strcmp(plist[i].go_mac_address, mac_str) == 0)
-				{
-					WDP_LOGD( "Found peer in persistent group list [network id : %d]\n", plist[i].network_id);
-					snprintf(cmd, sizeof(cmd), "%s persistent=%d", CMD_CREATE_GROUP, plist[i].network_id);
-					result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-					WDP_LOGD( "__send_wpa_request(P2P_GROUP_ADD persistent=%d) result=[%d]\n", plist[i].network_id, result);
-					break;
-				}
-			}
-
-			if (i == persistent_group_count)	/* Can't find peer in persistent group list. Creation of new persistent group */
-			{
-				/* Persistent group mode */
-				snprintf(cmd, sizeof(cmd), "%s %s %s", CMD_CREATE_GROUP, "persistent", FREQUENCY_2G);
-				result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-				WDP_LOGD( "__send_wpa_request(P2P_GROUP_ADD) result=[%d]\n", result);
-
-				if (result < 0)
-				{
-					WDP_LOGE( "__send_wpa_request FAILED!!\n");
-				 	__WDP_LOG_FUNC_EXIT__;
-				 	return false;
-				}
-
-				if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
-				{
-				 	__WDP_LOG_FUNC_EXIT__;
-				 	return false;
-				}
-
-				wfd_ws_send_invite_request(mac_addr);
-
-			}
-		}
-		else
-		{
-			WDP_LOGE( "Error!! wfd_ws_get_persistent_group_info() failed..\n");
-			__WDP_LOG_FUNC_EXIT__;
-			return false;
-		}
-#endif
-
-	}
-
-	WDP_LOGD( "Connecting... peer-MAC [%s]\n", mac_str);
-
-	__WDP_LOG_FUNC_EXIT__;
- 	return true;
-}
-
