@@ -101,6 +101,7 @@ typedef void (*wfd_noti_cb) (int event_type);
 #define CMD_SEND_INVITE_REQ "P2P_INVITE"
 #define CMD_CREATE_GROUP "P2P_GROUP_ADD"
 #define CMD_CONNECT "P2P_CONNECT"
+#define CMD_PBC_STRING "pbc"
 #define CMD_DISPLAY_STRING "display"
 #define CMD_KEYPAD_STRING "keypad"
 #define CMD_WPS_PUSHBUTTON_START "WPS_PBC"

@@ -1,3 +1,11 @@
+wfi-direct-manager (0.5.3) precise; urgency=low
+
+  * Fix bug(WPS PIN keypad not worked)
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.5.3
+
+ -- Gibyoung Kim <lastkgb.kim@samsung.com>  Sun, 23 Dec 2012 19:41:49 +0900
+
 wfi-direct-manager (0.5.2) precise; urgency=low
 
   * Fix bug(WPS PIN Display not worked)
