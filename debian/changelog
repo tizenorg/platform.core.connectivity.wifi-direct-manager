@@ -1,3 +1,11 @@
+wfi-direct-manager (0.5.4) precise; urgency=low
+
+  * Modify "Group create" bug when GO
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.5.4
+
+ -- sunil85.kim <isurit@sunil85.kim>  Thu, 17 Jan 2013 16:59:22 +0900
+
 wfi-direct-manager (0.5.3) precise; urgency=low
 
   * Fix bug(WPS PIN keypad not worked)

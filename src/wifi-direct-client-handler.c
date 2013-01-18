@@ -344,6 +344,7 @@ int wfd_server_send_response(int sockfd, void * data, int len)
 void wfd_server_process_client_request(wifi_direct_client_request_s * client_req)
 {
 	__WDS_LOG_FUNC_ENTER__;
+	WDS_LOGD("TEST");
 
 	int ret = WIFI_DIRECT_ERROR_NONE;
 	wifi_direct_client_response_s	resp;
@@ -784,11 +785,9 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 			}
 
 		}
-
-
 	}
-
 	break;
+
 	case WIFI_DIRECT_CMD_GET_LINK_STATUS:
 	{
 		int status = wfd_server_get_state();
@@ -831,6 +830,9 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 			// Response app first.
 			resp.result = WIFI_DIRECT_ERROR_NONE;
 			wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s));
+
+			if (wfd_oem_is_groupowner())
+				break;
 
 			if (wfd_oem_connect(client_req->data.mac_addr, wps_config))
 			{
