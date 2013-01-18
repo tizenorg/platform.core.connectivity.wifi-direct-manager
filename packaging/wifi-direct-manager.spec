@@ -29,15 +29,21 @@ wifi drect plugin for wpa supplicant
 %prep
 %setup -q
 
+%build
+
 %ifarch %{arm}
 export ARCH=arm
+%else
+
+%if 0%{?simulator}
+export ARCH=emul
 %else
 export ARCH=i586
 %endif
 
-%build
+%endif
 
-cmake . -DCMAKE_INSTALL_PREFIX=%{_prefix}
+cmake . -DCMAKE_INSTALL_PREFIX=%{_prefix} -DARCHITECTURE=$ARCH
 make %{?jobs:-j%jobs}
 
 %install
