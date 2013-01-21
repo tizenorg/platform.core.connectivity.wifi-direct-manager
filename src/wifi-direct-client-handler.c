@@ -236,9 +236,9 @@ void __wfd_server_print_entry_list(wfd_discovery_entry_s * list, int num)
 		WDS_LOGD( "is Connected ? %s\n", list[i].is_connected ? "YES" : "NO");
 		WDS_LOGD( "device_name : %s\n", list[i].device_name);
 		WDS_LOGD( "MAC address : " MACSTR "\n", MAC2STR(list[i].mac_address));
+		WDS_LOGD( "Iface address : " MACSTR "\n", MAC2STR(list[i].intf_mac_address));
 		WDS_LOGD( "Device type [%d/%d] ==\n", list[i].category, list[i].subcategory);
 		WDS_LOGD( "wps cfg method [%d] ==\n", list[i].wps_cfg_methods);
-
 	}
 	WDS_LOGD( "------------------------------------------\n");
 }
@@ -344,7 +344,6 @@ int wfd_server_send_response(int sockfd, void * data, int len)
 void wfd_server_process_client_request(wifi_direct_client_request_s * client_req)
 {
 	__WDS_LOG_FUNC_ENTER__;
-	WDS_LOGD("TEST");
 
 	int ret = WIFI_DIRECT_ERROR_NONE;
 	wifi_direct_client_response_s	resp;
@@ -412,7 +411,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 			{
 				int i = -1;
 				unsigned char NULL_MAC[6] = {0,0,0,0,0,0};
-				for(i=0;i<WFD_MAC_ASSOC_STA;i++)
+				for(i=0;i<WFD_MAX_ASSOC_STA;i++)
 				{
 					memset(&wfd_server->connected_peers[i], 0, sizeof(wfd_local_connected_peer_info_t));
 					wfd_server->connected_peers[i].isUsed = 0;
@@ -831,8 +830,14 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 			resp.result = WIFI_DIRECT_ERROR_NONE;
 			wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s));
 
-			if (wfd_oem_is_groupowner())
+			if (wfd_oem_is_groupowner()) {
+				if (wps_config == WIFI_DIRECT_WPS_TYPE_PIN_DISPLAY ||
+					  wps_config == WIFI_DIRECT_WPS_TYPE_PIN_KEYPAD)
+					wfd_oem_wps_pin_start(client_req->data.mac_addr);
+				else
+					wfd_oem_wps_pbc_start();
 				break;
+			}
 
 			if (wfd_oem_connect(client_req->data.mac_addr, wps_config))
 			{
@@ -1458,9 +1463,9 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 
 		resp.param1 = wfd_server_get_state();
 
-		if (max_client > WFD_MAC_ASSOC_STA)
+		if (max_client > WFD_MAX_ASSOC_STA)
 		{
-			WDS_LOGF( "ERROR : Max client number shold be under [%d]\n", WFD_MAC_ASSOC_STA);
+			WDS_LOGF( "ERROR : Max client number shold be under [%d]\n", WFD_MAX_ASSOC_STA);
 			resp.result = WIFI_DIRECT_ERROR_INVALID_PARAMETER;
 		}
 		else

@@ -320,13 +320,10 @@ void wfd_load_plugin()
 
 static int wfd_server_init(void)
 {
-	int i = -1;
-	unsigned char NULL_MAC[6] = { 0, 0, 0, 0, 0, 0 };
-
 	__WDS_LOG_FUNC_ENTER__;
+	int i = -1;
 
-	memset(&g_wfd_server, 0, sizeof(wfd_server_control_t));
-	g_wfd_server.active_clients = 0;
+	memset(&g_wfd_server, 0x00, sizeof(wfd_server_control_t));
 	g_wfd_server.async_sockfd = -1;
 	g_wfd_server.sync_sockfd = -1;
 
@@ -335,31 +332,11 @@ static int wfd_server_init(void)
 	g_wfd_server.config_data.wps_config = WIFI_DIRECT_WPS_TYPE_PBC;
 	g_wfd_server.config_data.auto_connection = false;
 	g_wfd_server.config_data.want_persistent_group = false;
-	g_wfd_server.config_data.max_clients = WFD_MAC_ASSOC_STA;
+	g_wfd_server.config_data.max_clients = WFD_MAX_ASSOC_STA;
 	g_wfd_server.config_data.hide_SSID = false;
 	g_wfd_server.config_data.group_owner_intent = 8;
 	g_wfd_server.config_data.primary_dev_type = WIFI_DIRECT_PRIMARY_DEVICE_TYPE_TELEPHONE;	// Telephone
 	g_wfd_server.config_data.secondary_dev_type = WIFI_DIRECT_SECONDARY_DEVICE_TYPE_PHONE_SM_DUAL;	// smart phone dual mode (wifi and cellular)
-
-	//g_wfd_server.config_data.primary_dev_type = WFD_DEVICE_TYPE_CAT_TELEPHONE;
-	//g_wfd_server.config_data.secondary_dev_type = WFD_DEVICE_TYPE_SUB_CAT_PHONE_WM;
-
-
-	for (i = 0; i < WFD_MAX_CLIENTS; i++)
-	{
-		memset(&g_wfd_server.client[i], 0, sizeof(wfd_server_client_t));
-	}
-
-	for (i = 0; i < 8; i++)
-	{
-		memset(&g_wfd_server.connected_peers[i], 0, sizeof(wfd_local_connected_peer_info_t));
-		g_wfd_server.connected_peers[i].isUsed = 0;
-
-	}
-	g_wfd_server.connected_peer_count = 0;
-	memcpy(g_wfd_server.current_peer.mac_address, NULL_MAC, 6);
-
-	g_wfd_server.autonomous_group_owner = false;
 
 	wfd_load_plugin();
 
@@ -644,23 +621,14 @@ int main(gint argc, gchar * argv[])
 	WDS_LOGD("========================================\n");
 
 	for (i = 0; i < argc; i++)
-	{
 		WDS_LOGD( "arg[%d]= %s", i, argv[i]);
-	}
 
 	if (!g_thread_supported())
-	{
 		g_thread_init(NULL);
-	}
 
 	g_type_init();
 
 	mainloop = g_main_loop_new(NULL, FALSE);
-
-	WDS_LOGD( "gmainloop is initialized");
-
-
-	WDS_LOGD( "Entering g_main_loop()...");
 
 	wfd_server_init();
 

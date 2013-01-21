@@ -183,7 +183,7 @@ void __wfd_server_print_connected_peer()
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 	int i;
 
-	for (i = 0; i < WFD_MAC_ASSOC_STA; i++)
+	for (i = 0; i < WFD_MAX_ASSOC_STA; i++)
 	{
 		if (wfd_server->connected_peers[i].isUsed == 0)
 		{
@@ -356,7 +356,7 @@ bool wfd_server_clear_connected_peer()
 	int i;
 	unsigned char NULL_IP[4] = { 0, 0, 0, 0};
 
-	for (i = 0; i < WFD_MAC_ASSOC_STA; i++)
+	for (i = 0; i < WFD_MAX_ASSOC_STA; i++)
 	{
 		wfd_server->connected_peers[i].isUsed = 0;
 		memcpy(wfd_server->connected_peers[i].ip_address, NULL_IP, 4);
@@ -385,7 +385,7 @@ void wfd_server_add_connected_peer(wfd_discovery_entry_s* peer, unsigned char in
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 	int i;
 
-	for (i = 0; i < WFD_MAC_ASSOC_STA; i++)
+	for (i = 0; i < WFD_MAX_ASSOC_STA; i++)
 	{
 		if (wfd_server->connected_peers[i].isUsed == 0)
 		{
@@ -408,7 +408,7 @@ void wfd_server_remove_connected_peer(wfd_discovery_entry_s * peer)
 	int i;
 	unsigned char NULL_IP[4] = { 0, 0, 0, 0};
 
-	for (i = 0; i < WFD_MAC_ASSOC_STA; i++)
+	for (i = 0; i < WFD_MAX_ASSOC_STA; i++)
 	{
 		if (wfd_server->connected_peers[i].isUsed==1 &&
 				memcmp(wfd_server->connected_peers[i].peer.mac_address, peer->mac_address, 6) == 0 )
@@ -430,7 +430,7 @@ void wfd_server_remove_connected_peer_by_interface_mac(unsigned char interface_m
 	int i;
 	unsigned char NULL_IP[4] = { 0, 0, 0, 0};
 
-	for (i = 0; i < WFD_MAC_ASSOC_STA; i++)
+	for (i = 0; i < WFD_MAX_ASSOC_STA; i++)
 	{
 		if (wfd_server->connected_peers[i].isUsed==1 &&
 				memcmp(wfd_server->connected_peers[i].int_address, interface_mac, 6) == 0 )
@@ -452,7 +452,7 @@ int wfd_server_is_connected_peer_by_device_mac(unsigned char device_mac[6])
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 	int i;
 
-	for (i = 0; i < WFD_MAC_ASSOC_STA; i++)
+	for (i = 0; i < WFD_MAX_ASSOC_STA; i++)
 	{
 		if (wfd_server->connected_peers[i].isUsed==1 &&
 				memcmp(wfd_server->connected_peers[i].peer.mac_address, device_mac, 6) == 0 )
@@ -471,7 +471,7 @@ wfd_server_get_connected_peer_by_device_mac(unsigned char device_mac[6])
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 	int i;
 
-	for (i = 0; i < WFD_MAC_ASSOC_STA; i++)
+	for (i = 0; i < WFD_MAX_ASSOC_STA; i++)
 	{
 		if (wfd_server->connected_peers[i].isUsed==1 &&
 				memcmp(wfd_server->connected_peers[i].peer.mac_address, device_mac, 6) == 0 )
@@ -493,7 +493,7 @@ wfd_server_get_connected_peer_by_interface_mac(unsigned char int_mac[6])
 
 	__wfd_server_print_connected_peer();
 
-	for (i = 0; i < WFD_MAC_ASSOC_STA; i++)
+	for (i = 0; i < WFD_MAX_ASSOC_STA; i++)
 	{
 		if (wfd_server->connected_peers[i].isUsed == 1 &&
 			memcmp(wfd_server->connected_peers[i].int_address, int_mac, 6) == 0)
@@ -520,7 +520,7 @@ int wfd_server_is_connected_peer_by_interface_mac(unsigned char interface_mac[6]
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 	int i;
 
-	for (i = 0; i < WFD_MAC_ASSOC_STA; i++)
+	for (i = 0; i < WFD_MAX_ASSOC_STA; i++)
 	{
 		if (wfd_server->connected_peers[i].isUsed==1 &&
 				memcmp(wfd_server->connected_peers[i].int_address, interface_mac, 6) == 0 )
@@ -784,10 +784,15 @@ void wfd_server_process_event(wfd_event_t event)
 
 		case WFD_EVENT_PROV_DISCOVERY_RESPONSE_WPS_DISPLAY:
 		case WFD_EVENT_PROV_DISCOVERY_RESPONSE_WPS_KEYPAD:
+			if (event == WFD_EVENT_PROV_DISCOVERY_RESPONSE_WPS_DISPLAY) {
+				wfd_server->config_data.wps_config = WIFI_DIRECT_WPS_TYPE_PIN_DISPLAY;
+				wfd_oem_connect(g_incomming_peer_mac_address, wfd_server->config_data.wps_config);
+			}
+			else if (event == WFD_EVENT_PROV_DISCOVERY_RESPONSE_WPS_KEYPAD)
+				wfd_server->config_data.wps_config = WIFI_DIRECT_WPS_TYPE_PIN_KEYPAD;
 			noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_WPS_REQ;
-			WDS_LOGI("g_incomming_peer_mac_address is [%s]\n", g_incomming_peer_mac_address);
+			WDS_LOGI("g_incomming_peer_mac_address is [" MACSTR "]\n", MAC2STR(g_incomming_peer_mac_address));
 			snprintf(noti.param1, sizeof(noti.param1), MACSTR,	 MAC2STR(g_incomming_peer_mac_address));
-			WDS_LOGD( "SENDING CLIENT EVENT NOTI MAC = %s\n", g_incomming_peer_mac_address);
 			__wfd_server_send_client_event(&noti);
 			break;
 
@@ -846,11 +851,9 @@ void wfd_server_process_event(wfd_event_t event)
 		case WFD_EVENT_PROV_DISCOVERY_REQUEST_WPS_KEYPAD:
 			{
 				if (event == WFD_EVENT_PROV_DISCOVERY_REQUEST)
-					wfd_server->config_data.wps_config =
-						WIFI_DIRECT_WPS_TYPE_PBC;
+					wfd_server->config_data.wps_config = WIFI_DIRECT_WPS_TYPE_PBC;
 				else if (event == WFD_EVENT_PROV_DISCOVERY_REQUEST_WPS_DISPLAY)
-					wfd_server->config_data.wps_config =
-						WIFI_DIRECT_WPS_TYPE_PIN_DISPLAY;
+					wfd_server->config_data.wps_config = WIFI_DIRECT_WPS_TYPE_PIN_DISPLAY;
 				else if (event == WFD_EVENT_PROV_DISCOVERY_REQUEST_WPS_KEYPAD)
 					wfd_server->config_data.wps_config = WIFI_DIRECT_WPS_TYPE_PIN_KEYPAD;
 				else

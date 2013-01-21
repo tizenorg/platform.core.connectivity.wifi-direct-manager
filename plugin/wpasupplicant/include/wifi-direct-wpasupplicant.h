@@ -123,6 +123,7 @@ typedef void (*wfd_noti_cb) (int event_type);
 #define CMD_DISPLAY_STRING "display"
 #define CMD_KEYPAD_STRING "keypad"
 #define CMD_WPS_PUSHBUTTON_START "WPS_PBC"
+#define CMD_WPS_WPS_PIN_START "WPS_PIN"
 #define CMD_GET_PEER_INFO "P2P_PEER"
 #define CMD_SET_PARAM "SET"
 #define CMD_GET_PARAM "GET"
@@ -278,6 +279,9 @@ typedef enum {
 	WS_EVENT_PROVISION_DISCOVERY_DISPLAY,
 	WS_EVENT_PROVISION_DISCOVERY_KEYPAD,
 
+	WS_EVENT_GROUP_FORMATION_SUCCESS,
+	WS_EVENT_GROUP_FORMATION_FAILURE,
+
 	WS_EVENT_GROUP_STARTED,
 	WS_EVENT_PERSISTENT_GROUP_STARTED,
 	WS_EVENT_GROUP_REMOVED,
@@ -313,6 +317,9 @@ ws_event_id_s g_ws_event_info[] =
 	{"P2P-PROV-DISC-PBC-REQ", WS_EVENT_PROVISION_DISCOVERY_PBC_REQ},
 	{"P2P-PROV-DISC-SHOW-PIN", WS_EVENT_PROVISION_DISCOVERY_DISPLAY},
 	{"P2P-PROV-DISC-ENTER-PIN", WS_EVENT_PROVISION_DISCOVERY_KEYPAD},
+
+	{"P2P-GROUP-FORMATION-SUCCESS", WS_EVENT_GROUP_FORMATION_SUCCESS},
+	{"P2P-GROUP-FORMATION-FAILURE", WS_EVENT_GROUP_FORMATION_FAILURE},
 
 	// connection
 	{"P2P-GROUP-STARTED", WS_EVENT_GROUP_STARTED},
@@ -375,6 +382,8 @@ int wfd_ws_deactivate();
 int wfd_ws_connect(unsigned char mac_addr[6], wifi_direct_wps_type_e wps_config);
 int wfd_ws_disconnect();
 int wfd_ws_disconnect_sta(unsigned char mac_addr[6]);
+int wfd_ws_wps_pbc_start();
+int wfd_ws_wps_pin_start(unsigned char peer_addr[6]);
 bool wfd_ws_is_discovery_enabled();
 int wfd_ws_start_discovery(bool listen_only, int timeout);
 int wfd_ws_cancel_discovery();

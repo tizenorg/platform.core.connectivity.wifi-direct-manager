@@ -342,7 +342,7 @@ void __wfd_DHCP_lease_add_cb(keynode_t *key, void* data)
         }
         wfd_macaddr_atoe(mac_str, mac_hex);
         __wfd_server_print_connected_peer();
-        for(i=0; i<WFD_MAC_ASSOC_STA; i++)
+        for(i=0; i<WFD_MAX_ASSOC_STA; i++)
         {
 
         	if (wfd_server->connected_peers[i].isUsed == 1 &&
@@ -362,7 +362,7 @@ void __wfd_DHCP_lease_add_cb(keynode_t *key, void* data)
         		break;
         	}
         }
-        if (i==WFD_MAC_ASSOC_STA)
+        if (i==WFD_MAX_ASSOC_STA)
         	WDS_LOGE( "Can't find peer from table\n");
 
         __wfd_server_print_connected_peer();
