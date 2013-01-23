@@ -197,18 +197,20 @@ void wfd_server_reset_client(int sync_sockfd)
 			wfd_server->client[index].dev_handle = -1;
 
 			wfd_server->active_clients--;
-
-			wfd_termination_timer_start();
-
-			wfd_server_print_client();
-
-			__WDS_LOG_FUNC_EXIT__;
-			return;
+			break;
 		}
 	}
 
-	WDS_LOGF(
-			"Error!!! Reset client fail: socketfd=%d is not found\n", sync_sockfd);
+	if (wfd_server->active_clients == 0)
+		wfd_termination_timer_start();
+
+	if (index == WFD_MAX_CLIENTS)
+	{
+		WDS_LOGE("Error!!! Reset client fail: socketfd=%d is not found\n", sync_sockfd);
+		__WDS_LOG_FUNC_EXIT__;
+		return;
+	}
+
 	__WDS_LOG_FUNC_EXIT__;
 	return;
 }
@@ -216,11 +218,10 @@ void wfd_server_reset_client(int sync_sockfd)
 void wfd_server_print_client()
 {
 	__WDS_LOG_FUNC_ENTER__;
-	
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 	int index = 0;
 
-	WDS_LOGI( "--------------------\n", wfd_server->active_clients-1);
+	WDS_LOGI( "--------------------\n");
 	for (index = 0; index < WFD_MAX_CLIENTS; index++)
 	{
 		if (wfd_server->client[index].isUsed == TRUE)
@@ -246,13 +247,12 @@ void wfd_server_print_client()
 
 bool wfd_server_client_request_callback(GIOChannel* source, GIOCondition condition, gpointer data)
 {
+	__WDS_LOG_FUNC_ENTER__;
 	int sockfd = (int) data;
 	wifi_direct_client_request_s client_req;
 	int req_len = sizeof(wifi_direct_client_request_s);
 
-	__WDS_LOG_FUNC_ENTER__;
-
-	memset(&client_req, 0, req_len);
+	memset(&client_req, 0x00, req_len);
 
 	if (wfd_server_read_socket_event(sockfd, (char *) &client_req, req_len) < 0)
 	{
@@ -271,20 +271,18 @@ bool wfd_server_client_request_callback(GIOChannel* source, GIOCondition conditi
 /* Function to connect client with wfd_server */
 bool wfd_server_register_client(int sockfd)
 {
+	__WDS_LOG_FUNC_ENTER__;
 	int index = 0;
 	int status = 0;
 	wifi_direct_client_request_s register_req;
 	wifi_direct_client_response_s register_rsp;
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
 
-	__WDS_LOG_FUNC_ENTER__;
-
 	if (sockfd <= 0)
 	{
-		// invalid socket fd should not be closed!!
 		WDS_LOGE( "Error!!! Invalid sockfd argument = [%d] \n", sockfd);
 		__WDS_LOG_FUNC_EXIT__;
-		return TRUE;
+		return FALSE;
 	}
 
 	/** Read the Register socket type*/
