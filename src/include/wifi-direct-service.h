@@ -29,7 +29,7 @@
  * 	Macros
  *****************************************************************************/
 #define WFD_MAX_CLIENTS  		16
-#define WFD_MAC_ASSOC_STA        8
+#define WFD_MAX_ASSOC_STA        8
 
 #define WFD_SERVER_SOCKET_PATH "/tmp/wfd_client_socket"
 
@@ -100,7 +100,7 @@ typedef struct
 
 	wfd_discovery_entry_s current_peer;   // it is used during connecting/disconnecting
 
-	wfd_local_connected_peer_info_t connected_peers[WFD_MAC_ASSOC_STA];
+	wfd_local_connected_peer_info_t connected_peers[WFD_MAX_ASSOC_STA];
 	int connected_peer_count;
 
 	int dhcp_pid;

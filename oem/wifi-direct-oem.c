@@ -94,6 +94,17 @@ int wfd_oem_wps_pbc_start()
 	return (g_ops->wfd_oem_wps_pbc_start());
 }
 
+int wfd_oem_wps_pin_start(unsigned char mac_addr[6])
+{
+	if (NULL == g_ops->wfd_oem_wps_pin_start)
+	{
+		WDS_LOGE( "g_ops->wfd_oem_wps_pin_start is NULL!!\n");
+		return false;
+	}
+
+	return (g_ops->wfd_oem_wps_pin_start(mac_addr));
+}
+
 int wfd_oem_disconnect()
 {
 	if (NULL == g_ops->wfd_oem_disconnect)

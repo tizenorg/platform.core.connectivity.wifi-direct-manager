@@ -30,7 +30,8 @@ int wfd_oem_destroy(void);
 int wfd_oem_activate(void);
 int wfd_oem_deactivate(void);
 int wfd_oem_connect(unsigned char mac_addr[6], wifi_direct_wps_type_e wps_config);
-int wfd_ws_wps_pbc_start(void);
+int wfd_oem_wps_pbc_start(void);
+int wfd_oem_wps_pin_start(unsigned char mac_addr[6]);
 int wfd_oem_disconnect(void);
 int wfd_oem_disconnect_sta(unsigned char mac_addr[6]);	
 bool wfd_oem_is_discovery_enabled(void);
@@ -79,6 +80,7 @@ struct wfd_oem_operations {
 	int (*wfd_oem_deactivate)(void);
 	int (*wfd_oem_connect)(unsigned char mac_addr[6], wifi_direct_wps_type_e wps_config);
 	int (*wfd_oem_wps_pbc_start)(void);
+	int (*wfd_oem_wps_pin_start)(unsigned char mac_addr[6]);
 	int (*wfd_oem_disconnect)(void);
 	int (*wfd_oem_disconnect_sta)(unsigned char mac_addr[6]);
 	bool (*wfd_oem_is_discovery_enabled)(void);

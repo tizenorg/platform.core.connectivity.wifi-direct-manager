@@ -51,7 +51,7 @@ GList *g_conn_peer_addr;
 static unsigned char g_assoc_sta_mac[6];
 static unsigned char g_disassoc_sta_mac[6];
 char g_wps_pin[9];
-int g_current_conn_direction;
+static int g_pin_event_block;
 
 enum current_conn_direction
 {
@@ -68,6 +68,7 @@ static struct wfd_oem_operations supplicant_ops =
 	.wfd_oem_deactivate = wfd_ws_deactivate,
 	.wfd_oem_connect = wfd_ws_connect,
 	.wfd_oem_wps_pbc_start = wfd_ws_wps_pbc_start,
+	.wfd_oem_wps_pin_start = wfd_ws_wps_pin_start,
 	.wfd_oem_disconnect = wfd_ws_disconnect,
 	.wfd_oem_disconnect_sta = wfd_ws_disconnect_sta,
 	.wfd_oem_is_discovery_enabled = wfd_ws_is_discovery_enabled,
@@ -964,8 +965,14 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 			WDP_LOGD( "WS EVENT : [MAC : %s]\n", event_str);
 		break;
 
+		case WS_EVENT_GROUP_FORMATION_SUCCESS:
+		case WS_EVENT_GROUP_FORMATION_FAILURE:
+			g_pin_event_block = 0;
+		break;
 
 		case WS_EVENT_GROUP_STARTED:
+			if (g_pin_event_block)
+				g_pin_event_block = 0;
 			event->id = WS_EVENT_GROUP_STARTED;
 			WDP_LOGD( "WS EVENT : [WS_EVENT_GROUP_STARTED]\n");
 			{
@@ -1119,8 +1126,6 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 				ptr = __get_event_str(ptr + 19, event_str);
 				strncpy(event->peer_intf_mac_address, event_str, sizeof(event->peer_intf_mac_address));
 
-				if (wfd_server->config_data.wps_config == WIFI_DIRECT_WPS_TYPE_PIN_KEYPAD)
-					wfd_ws_connect_for_go_neg(g_incomming_peer_mac_address, wfd_server->config_data.wps_config);
 			}
 		break;
 		
@@ -1494,6 +1499,10 @@ static gboolean __ws_event_callback(GIOChannel * source,
 
 		case WS_EVENT_PROVISION_DISCOVERY_RESPONSE_DISPLAY:
 		{
+			if (g_pin_event_block)
+				break;
+
+			g_pin_event_block = 1;
 			unsigned char la_mac_addr[6];
 			wfd_macaddr_atoe(event.peer_mac_address, la_mac_addr);
 			memset(g_incomming_peer_mac_address, 0, sizeof(g_incomming_peer_mac_address));
@@ -1507,6 +1516,10 @@ static gboolean __ws_event_callback(GIOChannel * source,
 
 		case WS_EVENT_PROVISION_DISCOVERY_RESPONSE_KEYPAD:
 		{
+			if (g_pin_event_block)
+				break;
+
+			g_pin_event_block = 1;
 			unsigned char la_mac_addr[6];
 			wfd_macaddr_atoe(event.peer_mac_address, la_mac_addr);
 			memset(g_incomming_peer_mac_address, 0, sizeof(g_incomming_peer_mac_address));
@@ -1520,7 +1533,10 @@ static gboolean __ws_event_callback(GIOChannel * source,
 		case WS_EVENT_PROVISION_DISCOVERY_DISPLAY:
 		case WS_EVENT_PROVISION_DISCOVERY_KEYPAD:
 		{
-			g_current_conn_direction = CONN_DIRECTION_INCOMING;
+			if (g_pin_event_block)
+				break;
+
+			g_pin_event_block = 1;
 			WDP_LOGD("Incomming PROV_DISC [%d]", event.id);
 			unsigned char la_mac_addr[6];
 			wfd_macaddr_atoe(event.peer_mac_address, la_mac_addr);
@@ -1639,6 +1655,8 @@ static gboolean __ws_event_callback(GIOChannel * source,
 
 		case WS_EVENT_STA_CONNECTED:
 			{
+				if (g_pin_event_block)
+					g_pin_event_block = 0;
 				GList *element = NULL;
 				element = g_list_find_custom(g_conn_peer_addr, event.peer_mac_address, glist_compare_peer_mac_cb);
 				if(element  == NULL)
@@ -2131,6 +2149,8 @@ int wfd_ws_deactivate()
 	int res_buffer_len=sizeof(res_buffer);
 	int result = 0;
 
+	g_pin_event_block = 0;
+
 	// stop p2p_find
 	wfd_ws_cancel_discovery();
 
@@ -2229,11 +2249,46 @@ int wfd_ws_wps_pbc_start(void)
  	return true;
 }
 
-int wfd_ws_connect(unsigned char mac_addr[6], wifi_direct_wps_type_e wps_config)
+int wfd_ws_wps_pin_start(unsigned char peer_addr[6])
 {
 	__WDP_LOG_FUNC_ENTER__;
 
 	char cmd[50] = {0, };
+	char mac_str[18] = {0, };
+	char wps_str[8] = {0, };
+	char res_buffer[1024]={0,};
+	int res_buffer_len = sizeof(res_buffer);
+	int result;
+
+	snprintf(mac_str, 18, MACSTR, MAC2STR(peer_addr));
+	snprintf(cmd, sizeof(cmd),"%s %s %s", CMD_WPS_WPS_PIN_START, mac_str, g_wps_pin);
+	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
+	WDP_LOGD( "__send_wpa_request(WPS_PIN) result=[%d]\n", result);
+	if (result < 0)
+	{
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
+	 	return false;
+	}
+
+	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
+	{
+	 	__WDP_LOG_FUNC_EXIT__;
+	 	return false;
+	}
+
+	WDP_LOGD( "start WPS PBC...\n");
+
+
+	__WDP_LOG_FUNC_EXIT__;
+	return true;
+}
+
+int wfd_ws_connect(unsigned char mac_addr[6], wifi_direct_wps_type_e wps_config)
+{
+	__WDP_LOG_FUNC_ENTER__;
+
+	char cmd[64] = {0, };
 	char mac_str[18] = {0, };
 	char wps_str[8] = {0, };
 	char res_buffer[1024]={0,};
@@ -2253,7 +2308,11 @@ int wfd_ws_connect(unsigned char mac_addr[6], wifi_direct_wps_type_e wps_config)
 	if (wfd_server->current_peer.is_group_owner)
 	{
 		snprintf(mac_str, 18, MACSTR, MAC2STR(mac_addr));
-		snprintf(cmd, sizeof(cmd),"%s %s %s join", CMD_CONNECT, mac_str, __convert_wps_config_methods_value(wps_config));
+		if (wps_config == WIFI_DIRECT_WPS_TYPE_PIN_KEYPAD || 
+			wps_config == WIFI_DIRECT_WPS_TYPE_PIN_DISPLAY)
+			snprintf(cmd, sizeof(cmd),"%s %s %s join", CMD_CONNECT, mac_str, g_wps_pin);
+		else
+			snprintf(cmd, sizeof(cmd),"%s %s %s join", CMD_CONNECT, mac_str, __convert_wps_config_methods_value(wps_config));
 		result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
 		WDP_LOGD( "__send_wpa_request(CMD_CONNECT join) result=[%d]\n", result);
 	}
@@ -2267,16 +2326,10 @@ int wfd_ws_connect(unsigned char mac_addr[6], wifi_direct_wps_type_e wps_config)
 			snprintf(cmd, sizeof(cmd), "%s %s %s", CMD_CONNECT, mac_str, CMD_PBC_STRING);
 		} else if (wps_config == WIFI_DIRECT_WPS_TYPE_PIN_DISPLAY) {
 			WDP_LOGD("WIFI_DIRECT_WPS_TYPE_PIN_DISPLAY");
-			if (g_current_conn_direction == CONN_DIRECTION_OUTGOING)
-				snprintf(cmd, sizeof(cmd), "%s %s %s %s", CMD_CONNECT, mac_str, g_wps_pin, CMD_KEYPAD_STRING);
-			else
-				snprintf(cmd, sizeof(cmd), "%s %s %s %s", CMD_CONNECT, mac_str, g_wps_pin, CMD_DISPLAY_STRING);
+			snprintf(cmd, sizeof(cmd), "%s %s %s %s", CMD_CONNECT, mac_str, g_wps_pin, CMD_DISPLAY_STRING);
 		} else if (wps_config == WIFI_DIRECT_WPS_TYPE_PIN_KEYPAD) {
 			WDP_LOGD("WIFI_DIRECT_WPS_TYPE_PIN_KEYPAD");
-			if (g_current_conn_direction == CONN_DIRECTION_OUTGOING)
-				snprintf(cmd, sizeof(cmd), "%s %s %s %s", CMD_CONNECT, mac_str, g_wps_pin, CMD_DISPLAY_STRING);
-			else
-				snprintf(cmd, sizeof(cmd), "%s %s %s %s", CMD_CONNECT, mac_str, g_wps_pin, CMD_KEYPAD_STRING);
+			snprintf(cmd, sizeof(cmd), "%s %s %s %s", CMD_CONNECT, mac_str, g_wps_pin, CMD_KEYPAD_STRING);
 		} else {
 			WDP_LOGD( "UNKNOWN CONFIG METHOD\n");
 			return false;
@@ -2310,7 +2363,7 @@ int wfd_ws_connect_for_go_neg(unsigned char mac_addr[6],
 		wifi_direct_wps_type_e wps_config)
 {
 	__WDP_LOG_FUNC_ENTER__;
-	char cmd[50] = {0, };
+	char cmd[64] = {0, };
 	char mac_str[18] = {0, };
 	char res_buffer[1024]={0,};
 	int res_buffer_len = sizeof(res_buffer);
@@ -2318,9 +2371,7 @@ int wfd_ws_connect_for_go_neg(unsigned char mac_addr[6],
 
 	WDP_LOGD( "CONNECT REQUEST FOR GO NEGOTIATION");
 	snprintf(mac_str, 18, MACSTR, MAC2STR(mac_addr));
-#if 0
-	snprintf(cmd, sizeof(cmd), "%s %s %s", CMD_CONNECT, mac_str,
-				g_wps_pin);
+	snprintf(cmd, sizeof(cmd), "%s %s %s %s", CMD_CONNECT, mac_str, g_wps_pin, __convert_wps_config_methods_value(wps_config));
 
 	if (wps_config == WIFI_DIRECT_WPS_TYPE_PIN_KEYPAD ||
 			wps_config == WIFI_DIRECT_WPS_TYPE_PIN_DISPLAY) {
@@ -2329,24 +2380,7 @@ int wfd_ws_connect_for_go_neg(unsigned char mac_addr[6],
 		WDP_LOGE( "Not expected CONFIG METHOD\n");
 		return false;
 	}
-#else
-	if (wps_config == WIFI_DIRECT_WPS_TYPE_PIN_DISPLAY) {
-		WDP_LOGD("WIFI_DIRECT_WPS_TYPE_PIN_DISPLAY");
-		if (g_current_conn_direction == CONN_DIRECTION_OUTGOING)
-			snprintf(cmd, sizeof(cmd), "%s %s %s %s", CMD_CONNECT, mac_str, g_wps_pin, CMD_KEYPAD_STRING);
-		else
-			snprintf(cmd, sizeof(cmd), "%s %s %s %s", CMD_CONNECT, mac_str, g_wps_pin, CMD_DISPLAY_STRING);
-	} else if (wps_config == WIFI_DIRECT_WPS_TYPE_PIN_KEYPAD) {
-		WDP_LOGD("WIFI_DIRECT_WPS_TYPE_PIN_KEYPAD");
-		if (g_current_conn_direction == CONN_DIRECTION_OUTGOING)
-			snprintf(cmd, sizeof(cmd), "%s %s %s %s", CMD_CONNECT, mac_str, g_wps_pin, CMD_DISPLAY_STRING);
-		else
-			snprintf(cmd, sizeof(cmd), "%s %s %s %s", CMD_CONNECT, mac_str, g_wps_pin, CMD_KEYPAD_STRING);
-	} else {
-		WDP_LOGD( "Unexpexted CONFIG METHOD\n");
-		return false;
-	}
-#endif
+
 	WDP_LOGD( "COMMAND = [%s]****\n", cmd);
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer,
 			res_buffer_len);
@@ -2369,7 +2403,7 @@ int wfd_ws_connect_for_persistent_group(unsigned char mac_addr[6], wifi_direct_w
 {
 	__WDP_LOG_FUNC_ENTER__;
 
-	char cmd[50] = {0, };
+	char cmd[64] = {0, };
 	char mac_str[18] = {0, };
 	char res_buffer[1024]={0,};
 	int res_buffer_len = sizeof(res_buffer);
@@ -2503,6 +2537,8 @@ int wfd_ws_disconnect()
 	int res_buffer_len = sizeof(res_buffer);
 	int result;
 
+	g_pin_event_block = 0;
+
 	snprintf(cmd, sizeof(cmd), "%s %s", CMD_GROUP_REMOVE, DEFAULT_IF_NAME);
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
 	WDP_LOGD( "__send_wpa_request(P2P_GROUP_REMOVE) result=[%d]\n", result);
@@ -2550,33 +2586,35 @@ bool wfd_ws_is_discovery_enabled()
 
 bool wfd_ws_flush()
 {
-        __WDP_LOG_FUNC_ENTER__;
+	__WDP_LOG_FUNC_ENTER__;
 
-        char cmd[16] = {0, };
-        char res_buffer[1024]={0,};
-        int res_buffer_len=sizeof(res_buffer);
-        int result = 0;
+	char cmd[16] = {0, };
+	char res_buffer[1024]={0,};
+	int res_buffer_len=sizeof(res_buffer);
+	int result = 0;
 
-        // Skip checking result..
-        strncpy(cmd, CMD_FLUSH, sizeof(cmd));
-        result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-        WDP_LOGD( "__send_wpa_request(P2P_FLUSH) result=[%d]\n", result);
+	g_pin_event_block = 0;
 
-        if (result < 0)
-        {
-                WDP_LOGE( "__send_wpa_request FAILED!!\n");
-                __WDP_LOG_FUNC_EXIT__;
-                return false;
-        }
+	// Skip checking result..
+	strncpy(cmd, CMD_FLUSH, sizeof(cmd));
+	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
+	WDP_LOGD( "__send_wpa_request(P2P_FLUSH) result=[%d]\n", result);
 
-        if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
-        {
-                __WDP_LOG_FUNC_EXIT__;
-                return false;
-        }
+	if (result < 0)
+	{
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
+		__WDP_LOG_FUNC_EXIT__;
+		return false;
+	}
 
-        __WDP_LOG_FUNC_EXIT__;
-        return true;
+	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
+	{
+		__WDP_LOG_FUNC_EXIT__;
+		return false;
+	}
+
+	__WDP_LOG_FUNC_EXIT__;
+	return true;
 }
 
 
@@ -2950,16 +2988,15 @@ int wfd_ws_send_provision_discovery_request(unsigned char mac_addr[6], wifi_dire
 {
 	__WDP_LOG_FUNC_ENTER__;
 
-	char cmd[40] = {0, };
+	char cmd[64] = {0, };
 	char mac_str[18] = {0, };
 	char res_buffer[1024]={0,};
 	int res_buffer_len = sizeof(res_buffer);
 	int result;
 
-	g_current_conn_direction = CONN_DIRECTION_OUTGOING;
 	WDP_LOGD("Outgoing PROV_DISC");
 
-	if (is_peer_go)
+	if (is_peer_go && config_method == WIFI_DIRECT_WPS_TYPE_PBC)
 	{
 		snprintf(mac_str, 18, MACSTR, MAC2STR(mac_addr));
 		snprintf(cmd, sizeof(cmd),"%s %s %s join", CMD_CONNECT, mac_str, __convert_wps_config_methods_value(config_method));
