@@ -51,7 +51,7 @@ GList *g_conn_peer_addr;
 static unsigned char g_assoc_sta_mac[6];
 static unsigned char g_disassoc_sta_mac[6];
 char g_wps_pin[9];
-static nt g_pin_event_block;
+static int g_pin_event_block;
 
 enum current_conn_direction
 {

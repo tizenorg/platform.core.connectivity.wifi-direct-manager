@@ -49,8 +49,9 @@ rm -rf %{buildroot}
 %__strip %{buildroot}%{_bindir}/wfd-manager
 
 mkdir -p %{buildroot}/usr/share/license
-cp %{_builddir}/%{buildsubdir}/LICENSE %{buildroot}/usr/share/license/%{name}
-cp %{_builddir}/%{buildsubdir}/LICENSE %{buildroot}/usr/share/license/wifi-direct-plugin-wpasupplicant
+cp %{_builddir}/%{buildsubdir}/LICENSE.APLv2 %{buildroot}/usr/share/license/%{name}
+cp %{_builddir}/%{buildsubdir}/LICENSE.APLv2 %{buildroot}/usr/share/license/wifi-direct-plugin-wpasupplicant
+cp %{_builddir}/%{buildsubdir}/LICENSE.Flora %{buildroot}/usr/share/license/p2p_supplicant
 
 %post
 chmod 644 /usr/etc/wifi-direct/dhcpd.p2p.conf
@@ -93,5 +94,6 @@ vconftool set -t string memory/private/wifi_direct_manager/dhcpc_server_ip 0.0.0
 %defattr(-,root,root,-)
 %{_libdir}/wifi-direct-plugin-wpasupplicant.so
 /usr/share/license/wifi-direct-plugin-wpasupplicant
+/usr/share/license/p2p_supplicant
 %attr(755,-,-) %{_sbindir}/p2p_supplicant
 
