@@ -1,9 +1,9 @@
 Name:       wifi-direct-manager
 Summary:    Wi-Fi Direct manger
-Version:    0.5.8
+Version:    0.5.9
 Release:    1
 Group:      TO_BE_FILLED
-License:    Samsung Proprietary License
+License:    Apache License Version 2.0
 Source0:    %{name}-%{version}.tar.gz
 Requires(post): /usr/bin/vconftool
 BuildRequires:  pkgconfig(wifi-direct)
