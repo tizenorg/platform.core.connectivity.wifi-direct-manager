@@ -1,3 +1,11 @@
+wfi-direct-manager (0.5.8) precise; urgency=low
+
+  * Fix bug(N_SE-22984)
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.5.8
+
+ -- Gibyoung Kim <lastkgb.kim@samsung.com>  Fri, 25 Jan 2013 16:37:42 +0900
+
 wfi-direct-manager (0.5.7) precise; urgency=low
 
   * Fix bug(N_SE-21973)

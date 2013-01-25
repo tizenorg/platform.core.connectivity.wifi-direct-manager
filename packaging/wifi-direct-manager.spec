@@ -1,6 +1,6 @@
 Name:       wifi-direct-manager
 Summary:    Wi-Fi Direct manger
-Version:    0.5.7
+Version:    0.5.8
 Release:    1
 Group:      TO_BE_FILLED
 License:    Samsung Proprietary License
@@ -14,7 +14,6 @@ BuildRequires:  pkgconfig(capi-appfw-application)
 BuildRequires:  cmake
 
 
-#%define debug_package %{nil}  
 
 %description
 Wi-Fi Direct manager

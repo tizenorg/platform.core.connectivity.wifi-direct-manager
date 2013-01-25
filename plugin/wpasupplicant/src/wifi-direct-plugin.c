@@ -1118,10 +1118,7 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 		case WS_EVENT_GO_NEG_REQUEST:
 			{
 				WDP_LOGD( "WS EVENT : [WS_EVENT_GO_NEG_REQUEST]");
-				// TODO: check validity of event
-				int wpa_mode;
 
-				wfd_server_control_t *wfd_server = wfd_server_get_control();
 				event->id = WS_EVENT_GO_NEG_REQUEST;
 				ptr = __get_event_str(ptr + 19, event_str);
 				strncpy(event->peer_intf_mac_address, event_str, sizeof(event->peer_intf_mac_address));
@@ -2255,7 +2252,6 @@ int wfd_ws_wps_pin_start(unsigned char peer_addr[6])
 
 	char cmd[50] = {0, };
 	char mac_str[18] = {0, };
-	char wps_str[8] = {0, };
 	char res_buffer[1024]={0,};
 	int res_buffer_len = sizeof(res_buffer);
 	int result;
@@ -2290,7 +2286,6 @@ int wfd_ws_connect(unsigned char mac_addr[6], wifi_direct_wps_type_e wps_config)
 
 	char cmd[64] = {0, };
 	char mac_str[18] = {0, };
-	char wps_str[8] = {0, };
 	char res_buffer[1024]={0,};
 	int res_buffer_len = sizeof(res_buffer);
 	int result;
@@ -3640,7 +3635,8 @@ int wfd_ws_get_connected_peers_info(wfd_connected_peer_info_s ** peer_list, int*
 		/*
 			typedef struct
 			{
-				char ssid[WIFI_DIRECT_MAX_SSID_LEN + 1];
+				char device_name[WIFI_DIRECT_MAX_DEVICE_NAME_LEN + 1];
+				unsigned char ip_address[4];
 				unsigned char mac_address[6];
 				unsigned char intf_mac_address[6];
 				unsigned int services;
@@ -3649,9 +3645,9 @@ int wfd_ws_get_connected_peers_info(wfd_connected_peer_info_s ** peer_list, int*
 				int channel;
 			} wfd_connected_peer_info_s;
 		 */
+
 		result = __extract_value_str(res_buffer, "device_name", (char*) tmp_peer_list[i].device_name);
-		if(result <= 0)
-		{
+		if(result <= 0) {
 			WDP_LOGE( "Extracting value failed\n");
 			*peer_list = NULL;
 			*peer_num = 0;
