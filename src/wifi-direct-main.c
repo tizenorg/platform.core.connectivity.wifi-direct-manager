@@ -321,7 +321,6 @@ void wfd_load_plugin()
 static int wfd_server_init(void)
 {
 	__WDS_LOG_FUNC_ENTER__;
-	int i = -1;
 
 	memset(&g_wfd_server, 0x00, sizeof(wfd_server_control_t));
 	g_wfd_server.async_sockfd = -1;
@@ -542,7 +541,6 @@ static gboolean wfd_discovery_timeout_cb(void *user_data)
 {
 	__WDS_LOG_FUNC_ENTER__;
 	wfd_server_control_t *wfd_server = wfd_server_get_control();
-	wifi_direct_client_noti_s noti;
 	int ret;
 
 	g_source_remove(wfd_server->discovery_timer);
@@ -562,15 +560,6 @@ static gboolean wfd_discovery_timeout_cb(void *user_data)
 	{
 		WDS_LOGE( "Error!! wfd_oem_cancel_discovery() failed..\n");
 	}
-
-#if 0
-	memset(&noti, 0, sizeof(wifi_direct_client_noti_s));
-
-	noti.event = WIFI_DIRECT_CLI_EVENT_DISCOVER_END;
-	noti.error = WIFI_DIRECT_ERROR_NONE;
-
-	__wfd_server_send_client_event(&noti);
-#endif
 
 	__WDS_LOG_FUNC_EXIT__;
 	return FALSE;

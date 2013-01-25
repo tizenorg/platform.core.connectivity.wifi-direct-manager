@@ -312,11 +312,11 @@ int wfd_server_find_peer_by_macaddr(wfd_discovery_entry_s *plist, int entry_size
 }
 
 
-int wfd_server_send_response(int sockfd, void * data, int len)
+int wfd_server_send_response(int sockfd, void *data, int len)
 {
 	int ret_val = 0;
-	wfd_server_control_t * wfd_server = wfd_server_get_control();
-	wifi_direct_client_response_s*	resp = (wifi_direct_client_response_s*) data;
+	wfd_server_control_t *wfd_server = wfd_server_get_control();
+	wifi_direct_client_response_s *resp = (wifi_direct_client_response_s*) data;
 
 	__WDS_LOG_FUNC_ENTER__;
 
@@ -401,7 +401,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 			wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s));
 
 			int res = 0;
-			wifi_direct_client_noti_s		noti;
+			wifi_direct_client_noti_s noti;
 			memset(&noti, 0, sizeof(wifi_direct_client_noti_s));
 
 			noti.event = WIFI_DIRECT_CLI_EVENT_ACTIVATION;
@@ -410,14 +410,13 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 			// Initialize server db.
 			{
 				int i = -1;
-				unsigned char NULL_MAC[6] = {0,0,0,0,0,0};
 				for(i=0;i<WFD_MAX_ASSOC_STA;i++)
 				{
 					memset(&wfd_server->connected_peers[i], 0, sizeof(wfd_local_connected_peer_info_t));
 					wfd_server->connected_peers[i].isUsed = 0;
 				}
 				wfd_server->connected_peer_count = 0;
-				memcpy(wfd_server->current_peer.mac_address, NULL_MAC, 6);
+				memset(&wfd_server->current_peer, 0x00, sizeof(wfd_discovery_entry_s));
 			}
 
 			wfd_server_set_state(WIFI_DIRECT_STATE_ACTIVATING);
@@ -974,7 +973,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		}
 		else
 		{
-			sprintf(resp.param2, ssid);
+			snprintf(resp.param2, sizeof(resp.param2), "%s", ssid);
 			resp.result = WIFI_DIRECT_ERROR_NONE;
 		}
 
@@ -992,7 +991,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		char device_name[WIFI_DIRECT_MAX_DEVICE_NAME_LEN+1];
 
 		strncpy(device_name, wfd_server->config_data.device_name, WIFI_DIRECT_MAX_DEVICE_NAME_LEN);
-		sprintf(resp.param2, device_name);
+		snprintf(resp.param2, sizeof(resp.param2), "%s", device_name);
 		resp.result = WIFI_DIRECT_ERROR_NONE;
 
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
@@ -1040,7 +1039,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 	case WIFI_DIRECT_CMD_GET_IP_ADDR:
 	{
 		char* ip_addr = wfd_oem_get_ip();
-		sprintf(resp.param2, ip_addr);
+		snprintf(resp.param2, sizeof(resp.param2), "%s", ip_addr);
 
 		resp.result = WIFI_DIRECT_ERROR_NONE;
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
@@ -1098,7 +1097,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		else
 		{
 			WDS_LOGD( "pin [%s]\n", pin);
-			sprintf(resp.param2, pin);
+			snprintf(resp.param2, sizeof(resp.param2), "%s", pin);
 			resp.result = WIFI_DIRECT_ERROR_NONE;
 		}
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
@@ -1237,88 +1236,73 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 	{
 		int total_msg_len = 0;
 		wfd_connected_peer_info_s* plist = NULL;
-		wfd_connected_peer_info_s plist_buf;
-		wfd_connected_peer_info_s* tmp_plist = NULL;		
-		wfd_local_connected_peer_info_t* tmplist = NULL;		
 		int peer_count = 0;
-		int i;
-		int val = 0;
+		int i = 0, j = 0;
 
 		wifi_direct_state_e state = wfd_server_get_state();
 		ret = WIFI_DIRECT_ERROR_NONE;
-		if (state == WIFI_DIRECT_STATE_CONNECTED)
-		{
-			val = wfd_oem_get_connected_peers_info(&tmp_plist, &peer_count);
-			if (val == false)
-			{
-				WDS_LOGE( "Error!! wfd_oem_get_connected_peers_info() failed..\n");
-				peer_count = 0;
-				tmp_plist = NULL;
-				ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			}
-			else
-			{
-				tmplist = wfd_server_get_connected_peer_by_interface_mac(tmp_plist[0].intf_mac_address);
-				if (tmplist == NULL)
-				{
-					WDS_LOGE( "Error!! Can't find connected peer info of mac=[" MACSTR "]\n",
-							MAC2STR(tmp_plist[0].intf_mac_address));
-					peer_count = 0;
-					ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-				}
-				else
-				{
-					memset(&plist_buf, 0, sizeof(plist_buf));
-					strncpy(plist_buf.device_name, tmplist->peer.device_name, sizeof(plist_buf.device_name));
-					memcpy(&plist_buf.intf_mac_address[0], &tmplist->int_address[0], 6);
-					memcpy(&plist_buf.mac_address[0], &tmplist->peer.mac_address[0], 6);
-					plist_buf.services = tmplist->peer.services;
-					plist_buf.is_p2p = 1;
-					plist_buf.category = tmplist->peer.category;
-					plist_buf.channel = wfd_oem_get_operating_channel();
-					memcpy(&plist_buf.ip_address[0], &tmplist->ip_address[0], 4);
-					
-					plist = &plist_buf;
-					peer_count = 1;
-				}
-			}
-		}
-		else if (state == WIFI_DIRECT_STATE_GROUP_OWNER)
-		{
-			val = wfd_oem_get_connected_peers_info(&plist, &peer_count);
-			if (val == false)
-			{
-				WDS_LOGE( "Error!! wfd_oem_get_connected_peers_info() failed..\n");
-				ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			}
-			else
-			{
-				// Append Device MAC address
-				for(i=0;i<peer_count;i++)
-				{
-					tmplist = wfd_server_get_connected_peer_by_interface_mac(plist[i].intf_mac_address);
-					if (tmplist != NULL)
-					{
-						memcpy(&plist[i].mac_address[0], &tmplist->peer.mac_address[0], 6);
-						memcpy(&plist[i].ip_address[0], &tmplist->ip_address[0], 4);
-					}
-					else
-					{
-						WDS_LOGE( "Error, Cant' find connected peer by int_addr" MACSTR "!!\n",
-								MAC2STR(plist[i].intf_mac_address));
-						// continue...
-					}
-				}
-			}
-		}
-		else
-		{
-			plist = NULL;
-			peer_count = 0;
+		if (state < WIFI_DIRECT_STATE_CONNECTED) {
 			WDS_LOGE( "state != WIFI_DIRECT_STATE_CONNECTED\n");
-			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
+			resp.result = WIFI_DIRECT_ERROR_NOT_PERMITTED;
+			if (wfd_server_send_response(client->sync_sockfd, &resp,
+											sizeof(wifi_direct_client_response_s)) < 0) {
+				wfd_server_reset_client(client->sync_sockfd);
+				__WDS_LOG_FUNC_EXIT__;
+				return;
+			}
+			break;
+
+		}
+		WDS_LOGD("WFD status [%d]", state);
+
+		peer_count = wfd_server->connected_peer_count;
+		if (peer_count <= 0) {
+			WDS_LOGE("Error?? There is no connected peers");
+			resp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+			if (wfd_server_send_response(client->sync_sockfd, &resp,
+											sizeof(wifi_direct_client_response_s)) < 0) {
+				wfd_server_reset_client(client->sync_sockfd);
+				__WDS_LOG_FUNC_EXIT__;
+				return;
+			}
+			break;
+		}
+		WDS_LOGD("Connected peer count [%d]", peer_count);
+
+		plist = (wfd_connected_peer_info_s*) calloc(peer_count, sizeof(wfd_connected_peer_info_s));
+		if(plist == NULL)
+		{
+			WDS_LOGF( "Memory Allocation is FAILED!!!!!![%d]\n");
+			resp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+			if (wfd_server_send_response(client->sync_sockfd, &resp,
+											sizeof(wifi_direct_client_response_s)) < 0) {
+				wfd_server_reset_client(client->sync_sockfd);
+				__WDS_LOG_FUNC_EXIT__;
+				return;
+			}
+			break;
 		}
 
+		while(j < peer_count && i < WFD_MAX_ASSOC_STA)
+		{
+			if (wfd_server->connected_peers[i].isUsed == 0) {
+				WDS_LOGD("Not used peer info [%s]", wfd_server->connected_peers[i].peer.device_name);
+				i++;
+				continue;
+			}
+			WDS_LOGD("Connected peer info found [%s]", wfd_server->connected_peers[i].peer.device_name);
+
+			strncpy(plist[j].device_name, wfd_server->connected_peers[i].peer.device_name, WIFI_DIRECT_MAX_DEVICE_NAME_LEN);
+			memcpy(&plist[j].intf_mac_address[0], wfd_server->connected_peers[i].int_address, 6);
+			memcpy(&plist[j].mac_address[0], wfd_server->connected_peers[i].peer.mac_address, 6);
+			plist[j].services = wfd_server->connected_peers[i].peer.services;
+			plist[j].is_p2p = 1;
+			plist[j].category = wfd_server->connected_peers[i].peer.category;
+			plist[j].channel = wfd_server->connected_peers[i].peer.channel;
+			memcpy(&plist[j].ip_address[0], wfd_server->connected_peers[i].ip_address, 4);
+
+			j++;
+		}
 		total_msg_len = sizeof(wifi_direct_client_response_s) + (sizeof(wfd_connected_peer_info_s) * peer_count);
 
 		WDS_LOGD( "Peer count : %d, total message size : %d\n", peer_count, total_msg_len);
@@ -1338,12 +1322,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		}
 
 		resp.param1 = peer_count;
-#if 0
-		if (ret == TRUE)
-			resp.result = WIFI_DIRECT_ERROR_NONE;
-#else
 		resp.result = ret;
-#endif
 
 		memset(msg, 0, total_msg_len);
 		memcpy(msg, &resp, sizeof(wifi_direct_client_response_s));

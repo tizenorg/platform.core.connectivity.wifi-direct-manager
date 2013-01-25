@@ -20,6 +20,7 @@
 #include <glib.h>
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
 #include <unistd.h>
@@ -341,24 +342,23 @@ void __wfd_DHCP_lease_add_cb(keynode_t *key, void* data)
         	continue;
         }
         wfd_macaddr_atoe(mac_str, mac_hex);
-        __wfd_server_print_connected_peer();
         for(i=0; i<WFD_MAX_ASSOC_STA; i++)
         {
 
         	if (wfd_server->connected_peers[i].isUsed == 1 &&
         			memcmp(mac_hex, wfd_server->connected_peers[i].int_address, 6) == 0)
         	{
-                	WDS_LOGD( "Found peer: interface mac=[%s].\n",mac_str);
-                	WDS_LOGD( "device mac=["MACSTR"]\n",MAC2STR(wfd_server->connected_peers[i].peer.mac_address));
+			WDS_LOGD( "Found peer: interface mac=[%s].\n",mac_str);
+			WDS_LOGD( "device mac=["MACSTR"]\n",MAC2STR(wfd_server->connected_peers[i].peer.mac_address));
 
-        		inet_aton(ip_str, (struct in_addr*)&wfd_server->connected_peers[i].ip_address);
-                	WDS_LOGD( "Fill IP: ip=[%s].\n",ip_str);
+			inet_aton(ip_str, (struct in_addr*)&wfd_server->connected_peers[i].ip_address);
+			WDS_LOGD( "Fill IP: ip=[%s].\n",ip_str);
 
-    			//Send event to client with [dev_mac, ip]
-		noti.event = WIFI_DIRECT_CLI_EVENT_IP_LEASED_IND;
-		snprintf(noti.param1, 18, MACSTR, MAC2STR(wfd_server->connected_peers[i].peer.mac_address));
-		strncpy(noti.param2, ip_str, strlen(ip_str));
-		__wfd_server_send_client_event(&noti);
+			//Send event to client with [dev_mac, ip]
+			noti.event = WIFI_DIRECT_CLI_EVENT_IP_LEASED_IND;
+			snprintf(noti.param1, 18, MACSTR, MAC2STR(wfd_server->connected_peers[i].peer.mac_address));
+			strncpy(noti.param2, ip_str, strlen(ip_str));
+			__wfd_server_send_client_event(&noti);
         		break;
         	}
         }
