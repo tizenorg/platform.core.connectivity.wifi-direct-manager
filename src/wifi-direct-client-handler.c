@@ -1283,11 +1283,9 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 			break;
 		}
 
-		while(j < peer_count && i < WFD_MAX_ASSOC_STA)
-		{
+		for (i = 0, j = 0; j < peer_count && i < WFD_MAX_ASSOC_STA; i++) {
 			if (wfd_server->connected_peers[i].isUsed == 0) {
 				WDS_LOGD("Not used peer info [%s]", wfd_server->connected_peers[i].peer.device_name);
-				i++;
 				continue;
 			}
 			WDS_LOGD("Connected peer info found [%s]", wfd_server->connected_peers[i].peer.device_name);
