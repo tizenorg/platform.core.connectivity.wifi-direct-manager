@@ -1122,10 +1122,18 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 				event->id = WS_EVENT_GO_NEG_REQUEST;
 				ptr = __get_event_str(ptr + 19, event_str);
 				strncpy(event->peer_intf_mac_address, event_str, sizeof(event->peer_intf_mac_address));
-
 			}
 		break;
-		
+
+		case WS_EVENT_WPS_FAIL:
+			{
+				WDP_LOGD("WS EVENT : [WS_EVENT_WPS_FAIL]");
+				char config_error[4] = {0, };
+				event->id = WS_EVENT_WPS_FAIL;
+				ptr = __extract_value_str(ptr, "config_error", config_error);
+				event->msg = atoi(config_error);
+			}
+		break;
 
  		default:
 			WDP_LOGE( "ERROR : unknown event !!\n");
@@ -1744,6 +1752,15 @@ static gboolean __ws_event_callback(GIOChannel * source,
 			{
 			}
 		break;
+
+		case WS_EVENT_WPS_FAIL:
+			{
+				if (event.msg == WPS_ERROR_PASSWORD_MISMATCH) {
+					WDP_LOGD("WPS_ERROR_PASSWORD_MISMATCH");
+					g_noti_cb(WFD_EVENT_CREATE_LINK_AUTH_FAIL);
+				}
+			}
+		break;
  
 		default:
 		break;
@@ -2318,6 +2335,7 @@ int wfd_ws_connect(unsigned char mac_addr[6], wifi_direct_wps_type_e wps_config)
 				mac_str, g_wps_pin);
 
 		if (wps_config == WIFI_DIRECT_WPS_TYPE_PBC) {
+			WDP_LOGD("WIFI_DIRECT_WPS_TYPE_PBC");
 			snprintf(cmd, sizeof(cmd), "%s %s %s", CMD_CONNECT, mac_str, CMD_PBC_STRING);
 		} else if (wps_config == WIFI_DIRECT_WPS_TYPE_PIN_DISPLAY) {
 			WDP_LOGD("WIFI_DIRECT_WPS_TYPE_PIN_DISPLAY");
