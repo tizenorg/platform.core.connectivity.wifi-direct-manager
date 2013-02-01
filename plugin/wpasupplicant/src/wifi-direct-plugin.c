@@ -51,7 +51,7 @@ GList *g_conn_peer_addr;
 static unsigned char g_assoc_sta_mac[6];
 static unsigned char g_disassoc_sta_mac[6];
 char g_wps_pin[9];
-static int g_pin_event_block;
+static int g_wps_event_block;
 
 enum current_conn_direction
 {
@@ -967,12 +967,10 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 
 		case WS_EVENT_GROUP_FORMATION_SUCCESS:
 		case WS_EVENT_GROUP_FORMATION_FAILURE:
-			g_pin_event_block = 0;
+			event->id = event_id;
 		break;
 
 		case WS_EVENT_GROUP_STARTED:
-			if (g_pin_event_block)
-				g_pin_event_block = 0;
 			event->id = WS_EVENT_GROUP_STARTED;
 			WDP_LOGD( "WS EVENT : [WS_EVENT_GROUP_STARTED]\n");
 			{
@@ -1504,10 +1502,10 @@ static gboolean __ws_event_callback(GIOChannel * source,
 
 		case WS_EVENT_PROVISION_DISCOVERY_RESPONSE_DISPLAY:
 		{
-			if (g_pin_event_block)
+			if (g_wps_event_block)
 				break;
 
-			g_pin_event_block = 1;
+			g_wps_event_block = 1;
 			unsigned char la_mac_addr[6];
 			wfd_macaddr_atoe(event.peer_mac_address, la_mac_addr);
 			memset(g_incomming_peer_mac_address, 0, sizeof(g_incomming_peer_mac_address));
@@ -1521,10 +1519,10 @@ static gboolean __ws_event_callback(GIOChannel * source,
 
 		case WS_EVENT_PROVISION_DISCOVERY_RESPONSE_KEYPAD:
 		{
-			if (g_pin_event_block)
+			if (g_wps_event_block)
 				break;
 
-			g_pin_event_block = 1;
+			g_wps_event_block = 1;
 			unsigned char la_mac_addr[6];
 			wfd_macaddr_atoe(event.peer_mac_address, la_mac_addr);
 			memset(g_incomming_peer_mac_address, 0, sizeof(g_incomming_peer_mac_address));
@@ -1538,10 +1536,10 @@ static gboolean __ws_event_callback(GIOChannel * source,
 		case WS_EVENT_PROVISION_DISCOVERY_DISPLAY:
 		case WS_EVENT_PROVISION_DISCOVERY_KEYPAD:
 		{
-			if (g_pin_event_block)
+			if (g_wps_event_block)
 				break;
 
-			g_pin_event_block = 1;
+			g_wps_event_block = 1;
 			WDP_LOGD("Incomming PROV_DISC [%d]", event.id);
 			unsigned char la_mac_addr[6];
 			wfd_macaddr_atoe(event.peer_mac_address, la_mac_addr);
@@ -1566,8 +1564,15 @@ static gboolean __ws_event_callback(GIOChannel * source,
 		}
 		break;
 
+		case WS_EVENT_GROUP_FORMATION_SUCCESS:
+		case WS_EVENT_GROUP_FORMATION_FAILURE:
+			g_wps_event_block = 0;
+		break;
+
 		case WS_EVENT_GROUP_STARTED:
 		{
+			g_wps_event_block = 0;
+
 			if(wfd_ws_is_groupowner())
 			{
 				WDP_LOGD(" CHECK : It's AP... \n");
@@ -1660,8 +1665,7 @@ static gboolean __ws_event_callback(GIOChannel * source,
 
 		case WS_EVENT_STA_CONNECTED:
 			{
-				if (g_pin_event_block)
-					g_pin_event_block = 0;
+				g_wps_event_block = 0;
 				GList *element = NULL;
 				element = g_list_find_custom(g_conn_peer_addr, event.peer_mac_address, glist_compare_peer_mac_cb);
 				if(element  == NULL)
@@ -2163,7 +2167,7 @@ int wfd_ws_deactivate()
 	int res_buffer_len=sizeof(res_buffer);
 	int result = 0;
 
-	g_pin_event_block = 0;
+	g_wps_event_block = 0;
 
 	// stop p2p_find
 	wfd_ws_cancel_discovery();
@@ -2225,11 +2229,11 @@ int wfd_ws_deactivate()
  	return true;
 }
 
-int wfd_ws_wps_pbc_start(void)
+int wfd_ws_wps_pbc_start(unsigned char peer_addr[6])
 {
 	__WDP_LOG_FUNC_ENTER__;
 
- 	char cmd[8] = {0, };
+ 	char cmd[40] = {0, };
 	char res_buffer[1024]={0,};
 	int res_buffer_len = sizeof(res_buffer);
 	int result;
@@ -2241,7 +2245,20 @@ int wfd_ws_wps_pbc_start(void)
 	 	return false;
 	}
 
-	strncpy(cmd, CMD_WPS_PUSHBUTTON_START, sizeof(cmd));
+	char tmp_mac[6] = {0,};
+
+	if (peer_addr == NULL) {
+		if (memcmp(g_incomming_peer_mac_address, tmp_mac, 6) == 0)
+			snprintf(cmd, sizeof(cmd), "%s", CMD_WPS_PUSHBUTTON_START);
+		else
+			snprintf(cmd, sizeof(cmd), "%s p2p_dev_addr=" MACSTR "", CMD_WPS_PUSHBUTTON_START, MAC2STR(g_incomming_peer_mac_address));
+	} else if (memcmp(peer_addr, tmp_mac, 6) != 0){
+		snprintf(cmd, sizeof(cmd), "%s p2p_dev_addr=" MACSTR "", CMD_WPS_PUSHBUTTON_START, MAC2STR(peer_addr));
+	} else {
+		WDP_LOGE("Peer address is incorrent");
+		return false;
+	}
+
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
 	WDP_LOGD( "__send_wpa_request(WPS_PBC) result=[%d]\n", result);
 	if (result < 0)
@@ -2550,7 +2567,7 @@ int wfd_ws_disconnect()
 	int res_buffer_len = sizeof(res_buffer);
 	int result;
 
-	g_pin_event_block = 0;
+	g_wps_event_block = 0;
 
 	snprintf(cmd, sizeof(cmd), "%s %s", CMD_GROUP_REMOVE, DEFAULT_IF_NAME);
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
@@ -2606,7 +2623,7 @@ bool wfd_ws_flush()
 	int res_buffer_len=sizeof(res_buffer);
 	int result = 0;
 
-	g_pin_event_block = 0;
+	g_wps_event_block = 0;
 
 	// Skip checking result..
 	strncpy(cmd, CMD_FLUSH, sizeof(cmd));

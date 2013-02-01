@@ -776,7 +776,7 @@ void wfd_server_process_event(wfd_event_t event)
 			if (wfd_oem_is_groupowner())
 			{
 				// provision request comes, when we sent 'invite'...
-				wfd_oem_wps_pbc_start();
+				wfd_oem_wps_pbc_start(NULL);
 			}
 			else
 			{

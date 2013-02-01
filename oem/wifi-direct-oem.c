@@ -83,7 +83,7 @@ int wfd_oem_connect(unsigned char mac_addr[6], wifi_direct_wps_type_e	wps_config
 	return (g_ops->wfd_oem_connect(mac_addr, wps_config));
 }
 
-int wfd_oem_wps_pbc_start()
+int wfd_oem_wps_pbc_start(unsigned char mac_addr[6])
 {
 	if (NULL == g_ops->wfd_oem_wps_pbc_start)
 	{
@@ -91,7 +91,7 @@ int wfd_oem_wps_pbc_start()
 		return false;
 	}
 
-	return (g_ops->wfd_oem_wps_pbc_start());
+	return (g_ops->wfd_oem_wps_pbc_start(mac_addr));
 }
 
 int wfd_oem_wps_pin_start(unsigned char mac_addr[6])
