@@ -646,7 +646,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 			if (ret == true)
 			{
 				if (wfd_server->config_data.want_persistent_group == false)
-					wfd_oem_wps_pbc_start();
+					wfd_oem_wps_pbc_start(client_req->data.mac_addr);
 
 				snprintf(noti.param1, sizeof(noti.param1), MACSTR, MAC2STR(client_req->data.mac_addr));
 
@@ -834,7 +834,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 					  wps_config == WIFI_DIRECT_WPS_TYPE_PIN_KEYPAD)
 					wfd_oem_wps_pin_start(client_req->data.mac_addr);
 				else
-					wfd_oem_wps_pbc_start();
+					wfd_oem_wps_pbc_start(client_req->data.mac_addr);
 				break;
 			}
 
