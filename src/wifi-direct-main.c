@@ -624,10 +624,14 @@ int main(gint argc, gchar * argv[])
 	for (i = 0; i < argc; i++)
 		WDS_LOGD( "arg[%d]= %s", i, argv[i]);
 
+#if !GLIB_CHECK_VERSION (2, 31, 0)
 	if (!g_thread_supported())
 		g_thread_init(NULL);
+#endif
 
+#if !GLIB_CHECK_VERSION(2,35,0)
 	g_type_init();
+#endif
 
 	mainloop = g_main_loop_new(NULL, FALSE);
 
