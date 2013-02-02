@@ -1,4 +1,7 @@
 <manifest>
+	<define>
+		<domain name="wifi_direct_manager" policy="restricted" plist="wifi-direct-plugin-broadcom, wifi-direct-plugin-wpasupplicant"/>
+	</define>
 	<request>
 		<domain name="wifi_direct_manager"/>
 	</request>
