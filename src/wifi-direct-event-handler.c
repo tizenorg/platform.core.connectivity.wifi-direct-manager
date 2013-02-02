@@ -798,6 +798,19 @@ void wfd_server_process_event(wfd_event_t event)
 			__wfd_server_send_client_event(&noti);
 			break;
 
+		case WFD_EVENT_PROV_DISCOVERY_REQUEST_WPS_DISPLAY:
+		case WFD_EVENT_PROV_DISCOVERY_REQUEST_WPS_KEYPAD:
+			if (event == WFD_EVENT_PROV_DISCOVERY_REQUEST_WPS_DISPLAY) {
+				wfd_server->config_data.wps_config = WIFI_DIRECT_WPS_TYPE_PIN_DISPLAY;
+				wfd_oem_wps_pin_start(g_incomming_peer_mac_address);
+			} else if (event == WFD_EVENT_PROV_DISCOVERY_REQUEST_WPS_KEYPAD) {
+				wfd_server->config_data.wps_config = WIFI_DIRECT_WPS_TYPE_PIN_KEYPAD;
+			}
+			noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_WPS_REQ;
+			WDS_LOGI("g_incomming_peer_mac_address is [" MACSTR "]\n", MAC2STR(g_incomming_peer_mac_address));
+			snprintf(noti.param1, sizeof(noti.param1), MACSTR, MAC2STR(g_incomming_peer_mac_address));
+			__wfd_server_send_client_event(&noti);
+		break;
 		default:
 			WDS_LOGI(
 						   "Unprocessed event: state=[%s] event= [%s] \n",
@@ -847,7 +860,6 @@ void wfd_server_process_event(wfd_event_t event)
 	{
 		switch (event)
 		{
-		case WFD_EVENT_INVITE_REQUEST:
 		case WFD_EVENT_PROV_DISCOVERY_REQUEST:
 		case WFD_EVENT_PROV_DISCOVERY_REQUEST_WPS_DISPLAY:
 		case WFD_EVENT_PROV_DISCOVERY_REQUEST_WPS_KEYPAD:
@@ -858,23 +870,23 @@ void wfd_server_process_event(wfd_event_t event)
 					wfd_server->config_data.wps_config = WIFI_DIRECT_WPS_TYPE_PIN_DISPLAY;
 				else if (event == WFD_EVENT_PROV_DISCOVERY_REQUEST_WPS_KEYPAD)
 					wfd_server->config_data.wps_config = WIFI_DIRECT_WPS_TYPE_PIN_KEYPAD;
-				else
-				{
-					//wfd_server->config_data.wps_config = WIFI_DIRECT_WPS_TYPE_NONE;
-					WDS_LOGD( "WFD_EVENT_INVITE_REQUEST\n");
-				}
 
 				noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_REQ;
-
-				WDS_LOGI(
-							   "g_incomming_peer_mac_address is " MACSTR "\n",
+				WDS_LOGI("g_incomming_peer_mac_address is " MACSTR "\n",
 							   MAC2STR(g_incomming_peer_mac_address));
-				//WDS_LOGI( "g_incomming_peer_ssid is [%s]\n", g_incomming_peer_ssid);
 				snprintf(noti.param1, sizeof(noti.param1), MACSTR,
 						 MAC2STR(g_incomming_peer_mac_address));
 
-				//strncpy(noti.param2, g_incomming_peer_ssid, strlen(g_incomming_peer_ssid));
+				__wfd_server_send_client_event(&noti);
+			}
+			break;
 
+		case WFD_EVENT_INVITE_REQUEST:
+			{
+				noti.event = WIFI_DIRECT_CLI_EVENT_INVITATION_REQ;
+				WDS_LOGD("WIFI_DIRECT_CLI_EVENT_INVITATION_REQ");
+				snprintf(noti.param1, sizeof(noti.param1), MACSTR,
+						 MAC2STR(g_incomming_peer_mac_address));
 				__wfd_server_send_client_event(&noti);
 			}
 			break;

@@ -1,10 +1,18 @@
+wfi-direct-manager (0.6.4) precise; urgency=low
+
+  * Fix bug of invitation behavior
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.6.4
+
+ -- Gibyoung Kim <lastkgb.kim@samsung.com>  Sun, 3 Feb 2013 02:45:22 +0900
+
 wfi-direct-manager (0.6.3) precise; urgency=low
 
   * SMACK is corrected
   * Git : framework/connectivity/wifi-direct-manager
   * Tag : wifi-direct-manager_0.6.3
 
- -- Gibyoung Kim <lastkgb.kim@samsung.com>  Fri, 2 Feb 2013 19:38:15 +0900
+ -- Gibyoung Kim <lastkgb.kim@samsung.com>  Sat, 2 Feb 2013 19:38:15 +0900
 
 wfi-direct-manager (0.6.2) precise; urgency=low
 

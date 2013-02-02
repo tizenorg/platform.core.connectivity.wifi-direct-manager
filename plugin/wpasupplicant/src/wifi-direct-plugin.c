@@ -2248,11 +2248,16 @@ int wfd_ws_wps_pbc_start(unsigned char peer_addr[6])
 	char tmp_mac[6] = {0,};
 
 	if (peer_addr == NULL) {
-		if (memcmp(g_incomming_peer_mac_address, tmp_mac, 6) == 0)
+		WDP_LOGD("Peer address is NULL");
+		if (memcmp(g_incomming_peer_mac_address, tmp_mac, 6) == 0) {
+			WDP_LOGD("Incomming peer [" MACSTR "]", MAC2STR(g_incomming_peer_mac_address));
 			snprintf(cmd, sizeof(cmd), "%s", CMD_WPS_PUSHBUTTON_START);
-		else
+		} else {
+			WDP_LOGD("Incomming peer [" MACSTR "]", MAC2STR(g_incomming_peer_mac_address));
 			snprintf(cmd, sizeof(cmd), "%s p2p_dev_addr=" MACSTR "", CMD_WPS_PUSHBUTTON_START, MAC2STR(g_incomming_peer_mac_address));
+		}
 	} else if (memcmp(peer_addr, tmp_mac, 6) != 0){
+		WDP_LOGD("Peer address [" MACSTR "]", MAC2STR(peer_addr));
 		snprintf(cmd, sizeof(cmd), "%s p2p_dev_addr=" MACSTR "", CMD_WPS_PUSHBUTTON_START, MAC2STR(peer_addr));
 	} else {
 		WDP_LOGE("Peer address is incorrent");
@@ -2338,10 +2343,12 @@ int wfd_ws_connect(unsigned char mac_addr[6], wifi_direct_wps_type_e wps_config)
 	{
 		snprintf(mac_str, 18, MACSTR, MAC2STR(mac_addr));
 		if (wps_config == WIFI_DIRECT_WPS_TYPE_PIN_KEYPAD || 
-			wps_config == WIFI_DIRECT_WPS_TYPE_PIN_DISPLAY)
+			wps_config == WIFI_DIRECT_WPS_TYPE_PIN_DISPLAY) {
 			snprintf(cmd, sizeof(cmd),"%s %s %s join", CMD_CONNECT, mac_str, g_wps_pin);
-		else
+		}else {
 			snprintf(cmd, sizeof(cmd),"%s %s %s join", CMD_CONNECT, mac_str, __convert_wps_config_methods_value(wps_config));
+		}
+		WDP_LOGD("Join command: [%s]", cmd);
 		result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
 		WDP_LOGD( "__send_wpa_request(CMD_CONNECT join) result=[%d]\n", result);
 	}
@@ -3031,6 +3038,7 @@ int wfd_ws_send_provision_discovery_request(unsigned char mac_addr[6], wifi_dire
 		snprintf(mac_str, 18, MACSTR, MAC2STR(mac_addr));
 		snprintf(cmd, sizeof(cmd),"%s %s %s join", CMD_CONNECT, mac_str, __convert_wps_config_methods_value(config_method));
 		result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
+		WDP_LOGD("Join command: [%s]", cmd);
 		WDP_LOGD( "__send_wpa_request(P2P_PROV_DISC) result=[%d]\n", result);
 	}
 	else

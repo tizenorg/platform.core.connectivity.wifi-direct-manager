@@ -22,6 +22,7 @@
 
 #include "wifi-direct-oem.h"
 #include "wifi-direct-utils.h"
+#include "wifi-direct-service.h"
 
 unsigned char g_incomming_peer_mac_address[6];
 char g_incomming_peer_ssid[32 + 1];
