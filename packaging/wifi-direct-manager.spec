@@ -1,6 +1,6 @@
 Name:       wifi-direct-manager
 Summary:    Wi-Fi Direct manger
-Version:    0.6.1
+Version:    0.6.2
 Release:    1
 Group:      TO_BE_FILLED
 License:    Apache License Version 2.0
@@ -12,7 +12,6 @@ BuildRequires:  pkgconfig(dlog)
 BuildRequires:  pkgconfig(vconf)
 BuildRequires:  pkgconfig(capi-appfw-application)
 BuildRequires:  cmake
-
 
 
 %description
@@ -62,9 +61,9 @@ chmod 755 /usr/bin/wifi-direct-server.sh
 chmod 755 /usr/bin/wifi-direct-dhcp.sh
 chmod 755 /usr/sbin/p2p_supp.sh
 
-vconftool set -t int memory/wifi_direct/state 0 -u 5000 -i
-vconftool set -t int memory/private/wifi_direct_manager/dhcp_ip_lease 0 -i
-vconftool set -t string memory/private/wifi_direct_manager/dhcpc_server_ip 0.0.0.0 -i
+vconftool set -t int memory/wifi_direct/state 0 -u 5000 -i -f
+vconftool set -t int memory/private/wifi_direct_manager/dhcp_ip_lease 0 -i -f
+vconftool set -t string memory/private/wifi_direct_manager/dhcpc_server_ip 0.0.0.0 -i -f
 
 %postun
 
