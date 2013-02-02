@@ -1,3 +1,11 @@
+wfi-direct-manager (0.6.3) precise; urgency=low
+
+  * SMACK is corrected
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.6.3
+
+ -- Gibyoung Kim <lastkgb.kim@samsung.com>  Fri, 2 Feb 2013 19:38:15 +0900
+
 wfi-direct-manager (0.6.2) precise; urgency=low
 
   * Fix bug(N_SE-23902)
@@ -6,7 +14,7 @@ wfi-direct-manager (0.6.2) precise; urgency=low
   * Git : framework/connectivity/wifi-direct-manager
   * Tag : wifi-direct-manager_0.6.2
 
- -- Gibyoung Kim <lastkgb.kim@samsung.com>  Fri, 1 Feb 2013 22:3:8 +0900
+ -- Gibyoung Kim <lastkgb.kim@samsung.com>  Fri, 1 Feb 2013 22:03:08 +0900
 
 wfi-direct-manager (0.6.1) precise; urgency=low
 
