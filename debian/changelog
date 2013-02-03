@@ -1,3 +1,11 @@
+wfi-direct-manager (0.6.5) precise; urgency=low
+
+  * Remove unuseful code
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.6.5
+
+ -- Jaehyun Kim <jeik01@samsung.com>  Sun, 03 Feb 2013 17:29:47 +0900
+
 wfi-direct-manager (0.6.4) precise; urgency=low
 
   * Fix bug of invitation behavior

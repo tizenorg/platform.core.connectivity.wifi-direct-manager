@@ -726,14 +726,6 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		{
 			if (NULL == peer)
 			{
-				if ( NULL == wfd_server->current_peer.intf_mac_address )
-				{
-					WDS_LOGF( "[wfd_server->current_peer.intf_mac_address] is NULL!\n");
-					resp.result = WIFI_DIRECT_ERROR_INVALID_PARAMETER;
-					wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s));
-					break;
- 				}
-				
 				if (wfd_oem_disconnect_sta(wfd_server->current_peer.intf_mac_address))
 				{
 					wfd_server_remember_connecting_peer(client_req->data.mac_addr);
@@ -1013,10 +1005,8 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
-		if ( NULL != device_name )
-			WDS_LOGI( "device_name = [%s]\n", device_name);
-		else
-			WDS_LOGF( "device_name is NULL !!\n");
+
+		WDS_LOGI( "device_name = [%s]\n", device_name);
 
 		memset(wfd_server->config_data.device_name, 0, WIFI_DIRECT_MAX_DEVICE_NAME_LEN+1);
 		strncpy(wfd_server->config_data.device_name, device_name, WIFI_DIRECT_MAX_DEVICE_NAME_LEN);
@@ -1063,10 +1053,8 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
-		if ( NULL != pin )
-			WDS_LOGF( "PIN = [%s]\n", pin);
-		else
-			WDS_LOGF( "PIN is NULL !!\n");
+
+		WDS_LOGF( "PIN = [%s]\n", pin);
 
 		ret = wfd_oem_set_wps_pin(pin);
 
@@ -1140,10 +1128,8 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
-		if ( NULL != ssid )
-			WDS_LOGF( "ssid = [%s]\n", ssid);
-		else
-			WDS_LOGF( "ssid is NULL !!\n");
+
+		WDS_LOGF( "ssid = [%s]\n", ssid);
 
 		ret = wfd_oem_set_ssid(ssid);
 
@@ -1173,10 +1159,8 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
-		if ( NULL != new_wpa )
-			WDS_LOGF( "new_wpa = [%s]\n", new_wpa);
-		else
-			WDS_LOGF( "new_wpa is NULL !!\n");
+
+		WDS_LOGF( "new_wpa = [%s]\n", new_wpa);
 
 		if (wfd_oem_set_wpa_passphrase(new_wpa) == false)
 			resp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;

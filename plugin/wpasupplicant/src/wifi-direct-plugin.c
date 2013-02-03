@@ -192,10 +192,10 @@ int __send_wpa_request(int sockfd, char *cmd, char *reply, size_t reply_buf_len)
 			{
 				WDP_LOGD("POLLIN \n");
 				result = read(sockfd, (char *) reply, reply_buf_len);
-				
+
 				WDP_LOGD("sockfd %d retval %d\n", sockfd, result);
 				WDP_LOGD("reply[%s]\n", reply);
-				
+
 				if (result < 0)
 				{
 					WDP_LOGE( "Error!!! reading data, error [%s]\n", strerror(errno));
@@ -850,8 +850,7 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 	ptr = ptr +3;
 	ptr = __get_event_str(ptr, event_str);
 
-	if (NULL != event_str)
-		WDP_LOGD( "event str [%s]\n", event_str);
+	WDP_LOGD( "event str [%s]\n", event_str);
 
 	i=0;
 	event_id = WS_EVENT_NONE;
@@ -1547,11 +1546,11 @@ static gboolean __ws_event_callback(GIOChannel * source,
 			memcpy(&g_incomming_peer_mac_address, la_mac_addr, 6);
 			memset(g_incomming_peer_ssid, 0, sizeof(g_incomming_peer_ssid));
 			strncpy(g_incomming_peer_ssid, event.peer_ssid, sizeof(g_incomming_peer_ssid));
-			if (event.wps_pin != NULL) {
-				WDP_LOGD( "NEW PIN RECEIVED = %s\n", event.wps_pin);
-				memset(g_wps_pin, 0x00, sizeof(g_wps_pin));
-				strncpy(g_wps_pin, event.wps_pin, sizeof(g_wps_pin));
-			}
+
+			WDP_LOGD( "NEW PIN RECEIVED = %s\n", event.wps_pin);
+			memset(g_wps_pin, 0x00, sizeof(g_wps_pin));
+			strncpy(g_wps_pin, event.wps_pin, sizeof(g_wps_pin));
+
 			WDP_LOGD( "Prov Req:  mac[" MACSTR"] ssid=[%s]\n",
 				MAC2STR(g_incomming_peer_mac_address), g_incomming_peer_ssid);
 
@@ -2837,22 +2836,16 @@ int wfd_ws_get_discovery_result(wfd_discovery_entry_s ** peer_list, int* peer_nu
 		} wfd_discovery_entry_s;
 */
 		// Device MAC address
-		if (NULL != ws_peer_list[i].mac)
-		{
-			unsigned char la_mac_addr[6];
+		unsigned char la_mac_addr1[6];
 
-			wfd_macaddr_atoe(ws_peer_list[i].mac, la_mac_addr);
-			memcpy(wfd_peer_list[i].mac_address, (char*)(la_mac_addr), sizeof(la_mac_addr));
-		}
+		wfd_macaddr_atoe(ws_peer_list[i].mac, la_mac_addr1);
+		memcpy(wfd_peer_list[i].mac_address, (char*)(la_mac_addr1), sizeof(la_mac_addr1));
 
 		// Interface MAC address
-		if (NULL != ws_peer_list[i].interface_addr)
-		{
-			unsigned char la_mac_addr[6];
+		unsigned char la_mac_addr2[6];
 
-			wfd_macaddr_atoe(ws_peer_list[i].interface_addr, la_mac_addr);
-			memcpy(wfd_peer_list[i].intf_mac_address, (char*)(la_mac_addr), sizeof(la_mac_addr));
-		}
+		wfd_macaddr_atoe(ws_peer_list[i].interface_addr, la_mac_addr2);
+		memcpy(wfd_peer_list[i].intf_mac_address, (char*)(la_mac_addr2), sizeof(la_mac_addr2));
 
 		// WPS Config method
 		wfd_peer_list[i].wps_cfg_methods = 0;
@@ -2955,22 +2948,17 @@ int wfd_ws_get_peer_info(unsigned char *mac_addr, wfd_discovery_entry_s **peer)
 			ws_peer_info.pri_dev_type,
 			ws_peer_info.oper_ssid);
 
-	if (NULL != ws_peer_info.mac)
-	{
-		unsigned char la_mac_addr[6];
+	// Device MAC address
+	unsigned char la_mac_addr1[6];
 
-		wfd_macaddr_atoe(ws_peer_info.mac, la_mac_addr);
-		memcpy(wfd_peer_info->mac_address, (char*)(la_mac_addr), sizeof(la_mac_addr));
-	}
+	wfd_macaddr_atoe(ws_peer_info.mac, la_mac_addr1);
+	memcpy(wfd_peer_info->mac_address, (char*)(la_mac_addr1), sizeof(la_mac_addr1));
 
 	// Interface MAC address
-	if (NULL != ws_peer_info.interface_addr)
-	{
-		unsigned char la_mac_addr[6];
+	unsigned char la_mac_addr2[6];
 
-		wfd_macaddr_atoe(ws_peer_info.interface_addr, la_mac_addr);
-		memcpy(wfd_peer_info->intf_mac_address, (char*)(la_mac_addr), sizeof(la_mac_addr));
-	}
+	wfd_macaddr_atoe(ws_peer_info.interface_addr, la_mac_addr2);
+	memcpy(wfd_peer_info->intf_mac_address, (char*)(la_mac_addr2), sizeof(la_mac_addr2));
 
 	// WPS Config method
 	wfd_peer_info->wps_cfg_methods = 0;

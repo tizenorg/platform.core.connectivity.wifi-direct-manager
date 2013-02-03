@@ -132,7 +132,6 @@ char *wfd_print_state(wifi_direct_state_e s)
 	default:
 		return "Unknown";
 	}
-	return "Unknown";
 }
 
 int wfd_macaddr_atoe(char *p, unsigned char mac[])
