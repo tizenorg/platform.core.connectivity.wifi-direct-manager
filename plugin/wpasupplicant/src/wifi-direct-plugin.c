@@ -1206,6 +1206,7 @@ int __get_network_id_from_network_list_with_ssid(char* persistent_group_ssid)
 	int i;
 	int result;
 	wfd_persistent_group_info_s* plist;
+	int network_id = -1;
 
 	WDP_LOGD( "search with persistent_group_ssid = [%s]\n",persistent_group_ssid);
 
@@ -1220,10 +1221,13 @@ int __get_network_id_from_network_list_with_ssid(char* persistent_group_ssid)
 				if (strcmp(plist[i].ssid, persistent_group_ssid) == 0)
 				{
 					WDP_LOGD( "Found peer in persistent group list [network id : %d]\n", plist[i].network_id);
-					return plist[i].network_id;
+					network_id = plist[i].network_id;
+					free(plist);
+					return network_id;
 				}
 			}
 			WDP_LOGE( "There is no Persistent Group has ssid[%s]\n", persistent_group_ssid);
+			free(plist);
 			__WDP_LOG_FUNC_EXIT__;
 			return -1;
 		}
@@ -1251,6 +1255,7 @@ int __get_network_id_from_network_list_with_go_mac(char* go_mac_address)
 	int result;
 	wfd_persistent_group_info_s* plist;
 	char mac_str[18] = {0, };
+	int network_id = -1;
 
 	WDP_LOGD( "search with persistent_group go_mac_address = [%s]\n",go_mac_address);
 
@@ -1266,10 +1271,14 @@ int __get_network_id_from_network_list_with_go_mac(char* go_mac_address)
 				if (strcmp(mac_str, go_mac_address) == 0)
 				{
 					WDP_LOGD( "Found peer in persistent group list [network id : %d]\n", plist[i].network_id);
-					return plist[i].network_id;
+					network_id = plist[i].network_id;
+					free(plist);
+				 	__WDP_LOG_FUNC_EXIT__;
+					return network_id;
 				}
 			}
 			WDP_LOGE( "There is no Persistent Group has go mac[%s]\n", go_mac_address);
+			free(plist);
 			__WDP_LOG_FUNC_EXIT__;
 			return -1;
 		}
@@ -1807,7 +1816,7 @@ static gboolean __ws_event_callback(GIOChannel * source,
 	return true;
 }
 
-int __convert_category_from_type(char *pri_dev_type)
+unsigned short __convert_category_from_type(char *pri_dev_type)
 {
 	__WDP_LOG_FUNC_ENTER__;
 	char *saveptr = NULL;
@@ -1816,14 +1825,14 @@ int __convert_category_from_type(char *pri_dev_type)
 	if(pri_dev_type == NULL)
 	{
 		WDP_LOGE( "Incorrect parameter\n");
-		return -1;
+		return 0;
 	}
 
 	token = strtok_r(pri_dev_type, "-", &saveptr);
 	if(token == NULL)
 	{
 		WDP_LOGD( "Extracting failed\n");
-		return -1;
+		return 0;
 	}
 
 	if(!strcmp(token, "255"))
@@ -1853,10 +1862,10 @@ int __convert_category_from_type(char *pri_dev_type)
 	else
 	{
 		WDP_LOGD( "Unknown device type [%s]\n", token);
-		return -1;
+		return 0;
 	}
 	__WDP_LOG_FUNC_EXIT__;
-	return -1;
+	return 0;
 }
 
 
@@ -3479,7 +3488,13 @@ char* wfd_ws_get_ip()
 {
 	__WDP_LOG_FUNC_ENTER__;
 
-	char ip_string[20] = {0,};
+	char *ip_string = NULL;
+
+	ip_string = (char*) calloc(1, 20);
+	if (!ip_string) {
+		WDP_LOGE("Failed to allocate memory for IP string");
+		return NULL;
+	}
 
 	snprintf(ip_string, 20, "%s", g_local_interface_ip_address);
 	WDP_LOGD( "################################################\n");
@@ -3747,7 +3762,7 @@ int wfd_ws_get_connected_peers_info(wfd_connected_peer_info_s ** peer_list, int*
 		}
 
 		tmp_peer_list[i].category = __convert_category_from_type(pri_dev_type);
-		if(tmp_peer_list[i].category < 0)
+		if(tmp_peer_list[i].category == 0)
 		{
 			WDP_LOGE( "Category converting error\n");
 			*peer_list = NULL;
@@ -4179,7 +4194,7 @@ int wfd_ws_dsp_init(void)
 }
 
 
-int wfd_ws_get_persistent_group_info(wfd_persistent_group_info_s ** persistent_group_list, int* persistent_group_num)
+int wfd_ws_get_persistent_group_info(wfd_persistent_group_info_s **persistent_group_list, int *persistent_group_num)
 {
 	__WDP_LOG_FUNC_ENTER__;
 	
@@ -4189,10 +4204,9 @@ int wfd_ws_get_persistent_group_info(wfd_persistent_group_info_s ** persistent_g
 	int result = 0;
 	int i;
 	ws_network_info_s ws_persistent_group_list[MAX_PERSISTENT_GROUP_NUM];
-	wfd_persistent_group_info_s	wfd_persistent_group_list[MAX_PERSISTENT_GROUP_NUM];
+	wfd_persistent_group_info_s *wfd_persistent_group_list = NULL;
 
 	memset(ws_persistent_group_list, 0, (sizeof(ws_network_info_s)*MAX_PERSISTENT_GROUP_NUM));
-	memset(wfd_persistent_group_list, 0, (sizeof(wfd_persistent_group_info_s)*MAX_PERSISTENT_GROUP_NUM));
 
 	/* Reading lists the configured networks, including stored information for persistent groups. 
 	The identifier in this is used with p2p_group_add and p2p_invite to indicate witch persistent
@@ -4218,8 +4232,25 @@ int wfd_ws_get_persistent_group_info(wfd_persistent_group_info_s ** persistent_g
 	}
 
 	__parsing_persistent_group(res_buffer, ws_persistent_group_list, persistent_group_num);
-
 	WDP_LOGD( "Persistent Group Count=%d\n", *persistent_group_num);
+
+	if (*persistent_group_num == 0) {
+		WDP_LOGD("There is no persistent group");
+		*persistent_group_list = NULL;
+	 	__WDP_LOG_FUNC_EXIT__;
+		return false;
+	}
+
+	wfd_persistent_group_list = (wfd_persistent_group_info_s*) calloc(*persistent_group_num,
+																sizeof(wfd_persistent_group_info_s));
+	if (!wfd_persistent_group_list) {
+		WDP_LOGF("Failed to allocate memory for wfd_persistent_group_list");
+		*persistent_group_num = 0;
+		*persistent_group_list = NULL;
+	 	__WDP_LOG_FUNC_EXIT__;
+	 	return false;
+	}
+
 	for(i=0;i<(*persistent_group_num);i++)
 	{
 		WDP_LOGD( "----persistent group [%d]----\n", i);		
@@ -4227,7 +4258,6 @@ int wfd_ws_get_persistent_group_info(wfd_persistent_group_info_s ** persistent_g
 		WDP_LOGD( "ssid=%s\n", ws_persistent_group_list[i].ssid);
 		WDP_LOGD( "bssid=%s\n", ws_persistent_group_list[i].bssid);
 		WDP_LOGD( "flags=%s\n", ws_persistent_group_list[i].flags);
-
 
 // TODO: should filer by [PERSISTENT] value of flags.
 
@@ -4240,7 +4270,7 @@ int wfd_ws_get_persistent_group_info(wfd_persistent_group_info_s ** persistent_g
 		memcpy(wfd_persistent_group_list[i].go_mac_address, la_mac_addr, 6);
 	}
 
-	*persistent_group_list = &wfd_persistent_group_list[0];
+	*persistent_group_list = wfd_persistent_group_list;
 
 	__WDP_LOG_FUNC_EXIT__;
  	return true;

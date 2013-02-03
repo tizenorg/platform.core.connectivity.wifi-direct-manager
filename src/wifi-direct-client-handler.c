@@ -300,7 +300,7 @@ int wfd_server_find_peer_by_macaddr(wfd_discovery_entry_s *plist, int entry_size
 
 	for(i = 0; i < entry_size; i++)
 	{
-		if(memcmp((void*)&plist[i].mac_address[0], (void*)&macaddr[0], sizeof(macaddr))==0)
+		if(memcmp((void*)&plist[i].mac_address[0], (void*)&macaddr[0], sizeof(plist[i].mac_address))==0)
 		{
 			return i;
 		}
@@ -560,7 +560,8 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 
 		memset(msg, 0, total_msg_len);
 		memcpy(msg, &resp, sizeof(wifi_direct_client_response_s));
-		memcpy(msg + sizeof(wifi_direct_client_response_s), plist, sizeof(wfd_discovery_entry_s) * peer_count);
+		if (peer_count)
+			memcpy(msg + sizeof(wifi_direct_client_response_s), plist, sizeof(wfd_discovery_entry_s) * peer_count);
 
 		__wfd_server_print_entry_list((wfd_discovery_entry_s*)plist, peer_count);
 		wfd_server_send_response(client->sync_sockfd, msg, total_msg_len);
@@ -1031,7 +1032,13 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 	case WIFI_DIRECT_CMD_GET_IP_ADDR:
 	{
 		char* ip_addr = wfd_oem_get_ip();
-		snprintf(resp.param2, sizeof(resp.param2), "%s", ip_addr);
+		if (!ip_addr)
+			snprintf(resp.param2, sizeof(resp.param2), "0.0.0.0");
+		else
+			snprintf(resp.param2, sizeof(resp.param2), "%s", ip_addr);
+
+		if (ip_addr)
+			free(ip_addr);
 
 		resp.result = WIFI_DIRECT_ERROR_NONE;
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
@@ -1685,7 +1692,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 	{
 		int persistent_group_count = 0;
 		int total_msg_len = 0;
-		wfd_persistent_group_info_s* plist;
+		wfd_persistent_group_info_s *plist;
 		
 		ret = wfd_oem_get_persistent_group_info(&plist, &persistent_group_count);
 		if (ret == false)
@@ -1707,6 +1714,8 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 			WDS_LOGF( "Memory Allocation is FAILED!!!!!![%d]\n");
 			resp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 			wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s));
+			if (plist)
+				free(plist);
 			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
@@ -1716,9 +1725,13 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 
 		memset(msg, 0, total_msg_len);
 		memcpy(msg, &resp, sizeof(wifi_direct_client_response_s));
-		memcpy(msg + sizeof(wifi_direct_client_response_s), plist, sizeof(wfd_persistent_group_info_s) * persistent_group_count);
+		if (persistent_group_count > 0)
+			memcpy(msg + sizeof(wifi_direct_client_response_s), plist, sizeof(wfd_persistent_group_info_s) * persistent_group_count);
 
 		wfd_server_send_response(client->sync_sockfd, msg, total_msg_len);
+		if (plist)
+			free(plist);
+
 		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
