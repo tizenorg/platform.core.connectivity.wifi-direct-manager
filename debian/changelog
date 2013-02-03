@@ -1,3 +1,11 @@
+wfi-direct-manager (0.6.7) precise; urgency=low
+
+  * Remove prevent issue : Improper use of negative value
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.6.7
+
+ -- Jaehyun Kim <jeik01@samsung.com>  Sun, 03 Feb 2013 23:16:38 +0900
+
 wfi-direct-manager (0.6.6) precise; urgency=low
 
   * Fix resource leaks

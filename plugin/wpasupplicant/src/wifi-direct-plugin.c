@@ -2118,7 +2118,7 @@ int wfd_ws_activate()
 	char cmd[128] = {0, };
 	char res_buffer[1024]={0,};
 	int res_buffer_len=sizeof(res_buffer);
-	
+
 	// Loading Driver,  Excuting p2p_supplicant
 	system("/usr/bin/wlan.sh p2p");
 	system("/usr/sbin/p2p_supp.sh start");
@@ -2161,18 +2161,29 @@ int wfd_ws_activate()
 				if (__wpa_ctrl_attach(g_monitor_sockfd) < 0)
 				{
 					WDP_LOGE( "Failed to attach monitor socket! sockfd=[%d]", g_monitor_sockfd);
+					system("/usr/sbin/p2p_supp.sh stop");
+					system("/usr/bin/wlan.sh stop");
+					close(g_global_sockfd);
+					close(g_control_sockfd);
+					close(g_monitor_sockfd);
 					return false;
 				}
 				break;
-			}
+			} else
+				close(g_control_sockfd);
 		} else {
 			WDP_LOGE( "Failed to attach control socket! sockfd=[%d]", g_control_sockfd);
 		}
 		count--;
 
-		if (count == 0)
-			WDP_LOGE( "Failed to create socket !!\n");		
-		
+		if (count == 0) {
+			WDP_LOGE( "Failed to create socket !!\n");
+			system("/usr/sbin/p2p_supp.sh stop");
+			system("/usr/bin/wlan.sh stop");
+			close(g_global_sockfd);
+			return false;
+		}
+
 	} while (count > 0);
 
 	WDP_LOGD( "Successfully socket connected to server !!\n");
