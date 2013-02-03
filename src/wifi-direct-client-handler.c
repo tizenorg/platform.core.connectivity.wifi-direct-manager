@@ -564,6 +564,8 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 
 		__wfd_server_print_entry_list((wfd_discovery_entry_s*)plist, peer_count);
 		wfd_server_send_response(client->sync_sockfd, msg, total_msg_len);
+
+		g_free(msg);
 		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
@@ -1297,9 +1299,11 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 			if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
 			{
 				wfd_server_reset_client(client->sync_sockfd);
+				g_free(plist);
 				__WDS_LOG_FUNC_EXIT__;
 				return;
 			}
+			g_free(plist);
 			break;
 		}
 
@@ -1316,10 +1320,13 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		if (wfd_server_send_response(client->sync_sockfd, msg, total_msg_len) < 0)
 		{
 			wfd_server_reset_client(client->sync_sockfd);
+			g_free(plist);
+			g_free(msg);
 			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
-
+		g_free(plist);
+		g_free(msg);
 	}
 	break;
 

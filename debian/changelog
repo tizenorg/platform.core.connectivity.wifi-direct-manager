@@ -1,3 +1,11 @@
+wfi-direct-manager (0.6.6) precise; urgency=low
+
+  * Fix resource leaks
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.6.6
+
+ -- Jaehyun Kim <jeik01@samsung.com>  Sun, 03 Feb 2013 20:45:45 +0900
+
 wfi-direct-manager (0.6.5) precise; urgency=low
 
   * Remove unuseful code

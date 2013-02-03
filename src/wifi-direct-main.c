@@ -252,6 +252,7 @@ static int wfd_server_create_socket(void)
 	if (bind(sockfd, (struct sockaddr *) &servAddr, len) == -1)
 	{
 		WDS_LOGE( "Failed to bind server socket. Error = [%s]", strerror(errno));
+		close(sockfd);
 		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}
@@ -261,6 +262,8 @@ static int wfd_server_create_socket(void)
 	if (chmod(WFD_SERVER_SOCKET_PATH, sock_mode) < 0)
 	{
 		WDS_LOGD( "Failed to change server socket file mode");
+		close(sockfd);
+		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
@@ -268,6 +271,7 @@ static int wfd_server_create_socket(void)
 	if (listen(sockfd, WFD_MAX_CLIENTS) == -1)
 	{
 		WDS_LOGF( "Failed to listen server socket. Error = [%s]", strerror(errno));
+		close(sockfd);
 		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}
@@ -303,6 +307,7 @@ void wfd_load_plugin()
 
 	if (!plugin_load) {
 		WDS_LOGF( "Failed to load symbol. Error = [%s]", strerror(errno));
+		dlclose(handle);
 		return ;
 	}
 

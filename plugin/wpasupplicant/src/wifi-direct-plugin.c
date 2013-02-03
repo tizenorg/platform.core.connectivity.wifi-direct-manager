@@ -261,6 +261,7 @@ int __create_ctrl_intf(char *ctrl_intf_name, char *path)
 		if (bind(sockfd, (struct sockaddr*)&localAddr, sizeof(localAddr)) < 0)
 		{
 			WDP_LOGE( "Error!!! bind(). Error = [%s]. Give up..\n", strerror(errno));
+			close(sockfd);
 			__WDP_LOG_FUNC_EXIT__;
 			return -1;
 		}
@@ -273,13 +274,15 @@ int __create_ctrl_intf(char *ctrl_intf_name, char *path)
 		if (unlink(path) < 0)
 		{
 			WDP_LOGE("unlink[ctrl_iface], Error=[%s]", strerror(errno));
+			close(sockfd);
 			__WDP_LOG_FUNC_EXIT__;
 			return -1;
 		}
 
-		if (bind(sockfd, (struct sockaddr*)&servAddr, sizeof(servAddr)) < 0)
+		if (connect(sockfd, (struct sockaddr*)&servAddr, sizeof(servAddr)) < 0)
 		{
 			WDP_LOGE("bind[PF_UNIX], Error=[%s]", strerror(errno));
+			close(sockfd);
 			__WDP_LOG_FUNC_EXIT__;
 			return -1;
 		}
@@ -1311,6 +1314,7 @@ int __get_network_id_from_persistent_client_list_with_mac(char* peer_mac_address
 
 		if (strcmp(stored_peer_mac, peer_mac_address) == 0)
 		{
+			fclose(fp);
 			return network_id;
 		}
 	}
@@ -1350,6 +1354,7 @@ bool __is_already_stored_persistent_client(int network_id, char* peer_mac_addres
 			&& (stored_network_id == network_id))
 		{
 			WDP_LOGD( "found peer in persistent peer list\n");
+			fclose(fp);
 			__WDP_LOG_FUNC_EXIT__;
 			return true;
 		}
@@ -2953,6 +2958,7 @@ int wfd_ws_get_peer_info(unsigned char *mac_addr, wfd_discovery_entry_s **peer)
 	{
 		WDP_LOGE( "__send_wpa_request FAILED!!\n");
 		*peer = NULL;
+		g_free(wfd_peer_info);
 	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
@@ -2960,6 +2966,7 @@ int wfd_ws_get_peer_info(unsigned char *mac_addr, wfd_discovery_entry_s **peer)
 	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))	/* p2p_supplicant returns the 'FAIL' if there is no discovered peer. */
 	{
 		*peer = NULL;
+		g_free(wfd_peer_info);
 	 	__WDP_LOG_FUNC_EXIT__;
 	 	return false;
 	}
