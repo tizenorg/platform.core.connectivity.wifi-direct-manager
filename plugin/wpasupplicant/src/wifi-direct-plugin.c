@@ -50,7 +50,7 @@ int g_oem_pipe[2];
 GList *g_conn_peer_addr;
 static unsigned char g_assoc_sta_mac[6];
 static unsigned char g_disassoc_sta_mac[6];
-char g_wps_pin[9];
+char g_wps_pin[WPS_PIN_LEN];
 static int g_wps_event_block;
 
 enum current_conn_direction
@@ -573,7 +573,8 @@ char* __get_persistent_group_value(char*ptr, ws_network_info_s* group)
 	{
 		value[c++] = *p++;
 	}
-	strncpy(group->ssid, value, sizeof(group->ssid));
+	strncpy(group->ssid, value, NETWORK_SSID_LEN);
+	group->ssid[NETWORK_SSID_LEN-1] = '\0';
 
 	while(!__is_item_char(*p))
 	{
@@ -587,8 +588,9 @@ char* __get_persistent_group_value(char*ptr, ws_network_info_s* group)
 	{
 		value[c++] = *p++;
 	}
-	strncpy(group->bssid, value, sizeof(group->bssid));
-	
+	strncpy(group->bssid, value, NETWORK_BSSID_LEN);
+	group->bssid[NETWORK_BSSID_LEN-1] = '\0';
+
 	while(!__is_item_char(*p))
 	{
 		p++;
@@ -596,12 +598,13 @@ char* __get_persistent_group_value(char*ptr, ws_network_info_s* group)
 
 	/* flags */
 	c = 0;
-	memset(value, 0, sizeof(value));
+	memset(value, 0x00, sizeof(value));
 	while(*p != '\n')
 	{
 		value[c++] = *p++;
 	}
-	strncpy(group->flags, value, sizeof(group->flags));
+	strncpy(group->flags, value, NETWORK_FLAGS_LEN);
+	group->flags[NETWORK_FLAGS_LEN-1] = '\0';
 
 	p++;
 	return p;
@@ -621,8 +624,8 @@ int __parsing_peer(char* buf, ws_discovered_peer_info_s* peer)
 	memset(peer, 0, sizeof(ws_discovered_peer_info_s));
 
 	// Get mac address
-	strncpy(peer->mac, ptr, 17);
-	peer->mac[18]='\0';
+	strncpy(peer->mac, ptr, MACSTR_LEN);
+	peer->mac[MACSTR_LEN-1]='\0';
 	ptr += 17+1;
 
 	WDP_LOGD( "mac=%s\n", peer->mac);
@@ -659,34 +662,44 @@ int __parsing_peer(char* buf, ws_discovered_peer_info_s* peer)
 			peer->level = atoi(value);
 			break;
 		case WS_PEER_INFO_WPS_METHOD:
-			strncpy(peer->wps_method, value, sizeof(peer->wps_method));
+			strncpy(peer->wps_method, value, WPS_METHOD_LEN);
+			peer->wps_method[WPS_METHOD_LEN-1] = '\0';
 			break;
 		case WS_PEER_INFO_INTERFACE_ADDR:
-			strncpy(peer->interface_addr, value, sizeof(peer->interface_addr));
+			strncpy(peer->interface_addr, value, MACSTR_LEN);
+			peer->interface_addr[MACSTR_LEN-1] = '\0';
 			break;
 		case WS_PEER_INFO_MEMBER_IN_GO_DEV:
-			strncpy(peer->member_in_go_dev, value, sizeof(peer->member_in_go_dev));
+			strncpy(peer->member_in_go_dev, value, MACSTR_LEN);
+			peer->member_in_go_dev[MACSTR_LEN-1] = '\0';
 			break;
 		case WS_PEER_INFO_MEMBER_IN_GO_IFACE:
-			strncpy(peer->member_in_go_iface, value, sizeof(peer->member_in_go_iface));
+			strncpy(peer->member_in_go_iface, value, MACSTR_LEN);
+			peer->member_in_go_iface[MACSTR_LEN-1] = '\0';
 			break;
 		case WS_PEER_INFO_PRI_DEV_TYPE:
-			strncpy(peer->pri_dev_type, value, sizeof(peer->pri_dev_type));
+			strncpy(peer->pri_dev_type, value, DEVICE_TYPE_LEN);
+			peer->pri_dev_type[DEVICE_TYPE_LEN-1] = '\0';
 			break;
 		case WS_PEER_INFO_DEVICE_NAME:
-			strncpy(peer->device_name, value, sizeof(peer->device_name));
+			strncpy(peer->device_name, value, DEVICE_NAME_LEN);
+			peer->device_name[DEVICE_NAME_LEN-1] = '\0';
 			break;
 		case WS_PEER_INFO_MANUFACTURER:
-			strncpy(peer->manufacturer, value, sizeof(peer->manufacturer));
+			strncpy(peer->manufacturer, value, MANUFACTURER_LEN);
+			peer->manufacturer[MANUFACTURER_LEN-1] = '\0';
 			break;
 		case WS_PEER_INFO_MODEL_NAME:
-			strncpy(peer->model_name, value, sizeof(peer->model_name));
+			strncpy(peer->model_name, value, MODEL_NAME_LEN);
+			peer->model_name[MODEL_NAME_LEN-1] = '\0';
 			break;
 		case WS_PEER_INFO_MODEL_NUMBER:
-			strncpy(peer->model_number, value, sizeof(peer->model_number));
+			strncpy(peer->model_number, value, MODEL_NUMBER_LEN);
+			peer->model_number[MODEL_NUMBER_LEN-1] = '\0';
 			break;
 		case WS_PEER_INFO_SERIAL_NUMBER:
-			strncpy(peer->serial_number, value, sizeof(peer->serial_number));
+			strncpy(peer->serial_number, value, SERIAL_NUMBER_LEN);
+			peer->serial_number[SERIAL_NUMBER_LEN-1] = '\0';
 			break;
 		case WS_PEER_INFO_CONFIG_METHODS:
 			{
@@ -743,16 +756,19 @@ int __parsing_peer(char* buf, ws_discovered_peer_info_s* peer)
 			peer->go_neg_req_sent = atoi(value);
 			break;
 		case WS_PEER_INFO_GO_STATE:
-			strncpy(peer->go_state, value, sizeof(peer->go_state));
+			strncpy(peer->go_state, value, GO_STATE_LEN);
+			peer->go_state[GO_STATE_LEN-1] = '\0';
 			break;
 		case WS_PEER_INFO_DIALOG_TOKEN:
 			peer->dialog_token = atoi(value);
 			break;
 		case WS_PEER_INFO_INTENDED_ADDR:
-			strncpy(peer->intended_addr, value, sizeof(peer->intended_addr));
+			strncpy(peer->intended_addr, value, MACSTR_LEN);
+			peer->intended_addr[MACSTR_LEN-1] = '\0';
 			break;
 		case WS_PEER_INFO_COUNTRY:
-			strncpy(peer->country, value, sizeof(peer->country));
+			strncpy(peer->country, value, COUNTRY_CODE_LEN);
+			peer->country[COUNTRY_CODE_LEN-1] = '\0';
 			break;
 		case WS_PEER_INFO_OPER_FREQ:
 			peer->oper_freq = atoi(value);
@@ -761,10 +777,12 @@ int __parsing_peer(char* buf, ws_discovered_peer_info_s* peer)
 			peer->req_config_methods = atoi(value);
 			break;
 		case WS_PEER_INFO_FLAGS:
-			strncpy(peer->flags, value, sizeof(peer->flags));
+			strncpy(peer->flags, value, PEER_FLAGS_LEN);
+			peer->flags[PEER_FLAGS_LEN-1] = '\0';
 			break;
 		case WS_PEER_INFO_STATUS:
-			strncpy(peer->status, value, sizeof(peer->status));
+			strncpy(peer->status, value, PEER_STATUS_LEN);
+			peer->status[PEER_STATUS_LEN-1] = '\0';
 			break;
 		case WS_PEER_INFO_WAIT_COUNT:
 			peer->wait_count = atoi(value);
@@ -773,7 +791,8 @@ int __parsing_peer(char* buf, ws_discovered_peer_info_s* peer)
 			peer->invitation_reqs = atoi(value);
 			break;
 		case WS_PEER_INFO_OPER_SSID:
-			strncpy(peer->oper_ssid, value, sizeof(peer->oper_ssid));
+			strncpy(peer->oper_ssid, value, DEVICE_NAME_LEN);
+			peer->oper_ssid[DEVICE_NAME_LEN-1] = '\0';
 			break;
 
 /*----- Miracast -----*/
@@ -788,9 +807,7 @@ int __parsing_peer(char* buf, ws_discovered_peer_info_s* peer)
 	}
 
  	__WDP_LOG_FUNC_EXIT__;
-
 	return 0;
-	
 }
 
 
@@ -876,7 +893,8 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 		case WS_EVENT_PROVISION_DISCOVERY_RESPONSE:
 			event->id = WS_EVENT_PROVISION_DISCOVERY_RESPONSE;
 			ptr = __get_event_str(ptr, event_str);
-			strncpy(event->peer_mac_address, event_str, sizeof(event->peer_mac_address)); 
+			strncpy(event->peer_mac_address, event_str, MACSTR_LEN);
+			event->peer_mac_address[MACSTR_LEN-1] = '\0';
 			WDP_LOGD( "WS EVENT : [WS_EVENT_PROVISION_DISCOVERY_RESPONSE]\n");
 			WDP_LOGD( "WS EVENT : [MAC : %s]\n", event_str);
 		break;
@@ -912,11 +930,13 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 				WDP_LOGD( "Prov disc Response : DISPLAY");
 				event->id = WS_EVENT_PROVISION_DISCOVERY_RESPONSE_DISPLAY;
 				ptr = __get_event_str(ptr, event_str);
-				strncpy(event->peer_mac_address, event_str, sizeof(event->peer_mac_address));
+				strncpy(event->peer_mac_address, event_str, MACSTR_LEN);
+				event->peer_mac_address[MACSTR_LEN-1] = '\0';
 				WDP_LOGD( "WS EVENT : [WS_EVENT_PROVISION_DISCOVERY_RESPONSE_DISPLAY]\n");
 				WDP_LOGD( "WS EVENT : [MAC : %s]\n", event_str);
 				ptr = __get_event_str(ptr, event_str);
-				strncpy(event->wps_pin, event_str, sizeof(event->wps_pin));
+				strncpy(event->wps_pin, event_str, WPS_PIN_LEN);
+				event->wps_pin[WPS_PIN_LEN-1] = '\0';
 				WDP_LOGD( "WS EVENT : [PIN : %s]\n", event_str);
 				__WDP_LOG_FUNC_EXIT__;
 				return;
@@ -924,7 +944,8 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 			ptr = __get_event_str(ptr, event_str); /* Stepping Mac Addr */
 			ptr = __get_event_str(ptr, event_str); /* Stepping PIN */
 			memset(event->wps_pin, 0x00, sizeof(event->wps_pin));
-			strncpy(event->wps_pin, event_str, sizeof(event->wps_pin));
+			strncpy(event->wps_pin, event_str, WPS_PIN_LEN);
+			event->wps_pin[WPS_PIN_LEN-1] = '\0';
 			WDP_LOGD( "WS EVENT : [PIN : %s]\n", event_str);
 
 			res = __extract_value_str(ptr, "name" , event->peer_ssid);
@@ -947,7 +968,8 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 				WDP_LOGD( "Prov disc Response : KEYPAD");
 				event->id = WS_EVENT_PROVISION_DISCOVERY_RESPONSE_KEYPAD;
 				ptr = __get_event_str(ptr, event_str);
-				strncpy(event->peer_mac_address, event_str, sizeof(event->peer_mac_address)); 
+				strncpy(event->peer_mac_address, event_str, MACSTR_LEN);
+				event->peer_mac_address[MACSTR_LEN-1] = '\0';
 				WDP_LOGD( "WS EVENT : [WS_EVENT_PROVISION_DISCOVERY_RESPONSE_KEYPAD]\n");
 				WDP_LOGD( "WS EVENT : [MAC : %s]\n", event_str);
 				__WDP_LOG_FUNC_EXIT__;
@@ -1027,7 +1049,8 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 				event->id = WS_EVENT_STA_CONNECTED;
 
 				ptr = __get_event_str(ptr, event_str);
-				strncpy(event->peer_intf_mac_address, event_str, sizeof(event->peer_intf_mac_address));
+				strncpy(event->peer_intf_mac_address, event_str, MACSTR_LEN);
+				event->peer_intf_mac_address[MACSTR_LEN-1] = '\0';
 
 				res = __extract_value_str(ptr, "dev_addr", event->peer_mac_address);
 				if (res < 0)
@@ -1047,8 +1070,10 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 				intf_addr = (char*) calloc(1, 18);
 				event->id = WS_EVENT_DISCONNECTED;
 				res = __extract_value_str(ptr, "to", intf_addr);
-				if(res > 0)
-					strncpy(event->peer_mac_address, intf_addr, 18);
+				if(res > 0) {
+					strncpy(event->peer_mac_address, intf_addr, MACSTR_LEN);
+					event->peer_mac_address[MACSTR_LEN-1] = '\0';
+				}
 				free(intf_addr);
 				WDP_LOGD( "disconnected peer mac address [%s]", event->peer_mac_address);
 			}
@@ -1061,7 +1086,8 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 				event->id = WS_EVENT_STA_DISCONNECTED;
 
 				ptr = __get_event_str(ptr, event_str);
-				strncpy(event->peer_intf_mac_address, event_str, sizeof(event->peer_intf_mac_address));
+				strncpy(event->peer_intf_mac_address, event_str, MACSTR_LEN);
+				event->peer_intf_mac_address[MACSTR_LEN-1] = '\0';
 
 				res = __extract_value_str(ptr, "dev_addr", event->peer_mac_address);
 				if (res < 0)
@@ -1118,7 +1144,8 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 
 				event->id = WS_EVENT_GO_NEG_REQUEST;
 				ptr = __get_event_str(ptr + 19, event_str);
-				strncpy(event->peer_intf_mac_address, event_str, sizeof(event->peer_intf_mac_address));
+				strncpy(event->peer_intf_mac_address, event_str, MACSTR_LEN);
+				event->peer_intf_mac_address[MACSTR_LEN-1] = '\0';
 			}
 		break;
 
@@ -1549,7 +1576,7 @@ static gboolean __ws_event_callback(GIOChannel * source,
 
 			WDP_LOGD( "NEW PIN RECEIVED = %s\n", event.wps_pin);
 			memset(g_wps_pin, 0x00, sizeof(g_wps_pin));
-			strncpy(g_wps_pin, event.wps_pin, sizeof(g_wps_pin));
+			strncpy(g_wps_pin, event.wps_pin, WPS_PIN_LEN);
 
 			WDP_LOGD( "Prov Req:  mac[" MACSTR"] ssid=[%s]\n",
 				MAC2STR(g_incomming_peer_mac_address), g_incomming_peer_ssid);
@@ -2857,7 +2884,8 @@ int wfd_ws_get_discovery_result(wfd_discovery_entry_s ** peer_list, int* peer_nu
 			wfd_peer_list[i].wps_cfg_methods += WIFI_DIRECT_WPS_TYPE_PIN_KEYPAD;
 
 		// Device name --> SSID
-		strncpy(wfd_peer_list[i].device_name, ws_peer_list[i].device_name, sizeof(wfd_peer_list[i].device_name));
+		strncpy(wfd_peer_list[i].device_name, ws_peer_list[i].device_name, DEVICE_NAME_LEN);
+		wfd_peer_list[i].device_name[DEVICE_NAME_LEN-1] = '\0';
 
 		// is_group_owner
 		if ((ws_peer_list[i].group_capab & GROUP_CAPAB_GROUP_OWNER) > 0)  /* checking GO state */
@@ -2970,7 +2998,8 @@ int wfd_ws_get_peer_info(unsigned char *mac_addr, wfd_discovery_entry_s **peer)
 		wfd_peer_info->wps_cfg_methods += WIFI_DIRECT_WPS_TYPE_PIN_KEYPAD;
 
 	// Device name --> SSID
-	strncpy(wfd_peer_info->device_name, ws_peer_info.device_name, sizeof(wfd_peer_info->device_name));
+	strncpy(wfd_peer_info->device_name, ws_peer_info.device_name, DEVICE_NAME_LEN);
+	wfd_peer_info->device_name[DEVICE_NAME_LEN-1] = '\0';
 
 	// is_group_owner
 	if ((ws_peer_info.group_capab & GROUP_CAPAB_GROUP_OWNER) > 0)  /* checking GO state */
@@ -3415,38 +3444,27 @@ bool wfd_ws_dhcpc_get_ip_address(char *ipaddr_buf, int len, int is_IPv6)
 
 	if (ipaddr_buf == NULL)
 		return false;
-#if 0
-	FILE *fp = NULL;
-	if((fp = fopen(DEFAULT_IP_LOG_PATH, "r+")) != NULL)
-	{
-		fclose(fp);
-		fp = NULL;
-#endif
 
-		if((fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP)) < 0) {
-			WDP_LOGE( "Failed to open socket\n");
-			return false;
-		}
-
-		memset(IfRequest.ifr_name, 0, DEFAULT_IF_NAME_LEN);
-		strncpy(IfRequest.ifr_name, DEFAULT_IF_NAME, DEFAULT_IF_NAME_LEN - 1);
-		if(ioctl(fd, SIOCGIFADDR, &IfRequest) < 0) {
-			WDP_LOGE( "Failed to get IP\n");
-			close(fd);
-			return false;
-		}
-
-		sin = (struct sockaddr_in*)&IfRequest.ifr_broadaddr;
-		if (ipaddr_buf != NULL)
-			strncpy(ipaddr_buf, (char*)inet_ntoa(sin->sin_addr), len);
-		return true;
-#if 0
+	if((fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP)) < 0) {
+		WDP_LOGE( "Failed to open socket\n");
+		return false;
 	}
-#endif
+
+	memset(IfRequest.ifr_name, 0x00, DEFAULT_IF_NAME_LEN);
+	strncpy(IfRequest.ifr_name, DEFAULT_IF_NAME, DEFAULT_IF_NAME_LEN - 1);
+
+	if(ioctl(fd, SIOCGIFADDR, &IfRequest) < 0) {
+		WDP_LOGE( "Failed to get IP\n");
+		close(fd);
+		return false;
+	}
+
+	sin = (struct sockaddr_in*)&IfRequest.ifr_broadaddr;
+	if (ipaddr_buf != NULL)
+		strncpy(ipaddr_buf, (char*)inet_ntoa(sin->sin_addr), len);
 
 	__WDP_LOG_FUNC_EXIT__;
-	
-	return false;
+	return true;
 }
 
 
@@ -3469,7 +3487,8 @@ int wfd_ws_set_wps_pin(char* pin)
 {
 	__WDP_LOG_FUNC_ENTER__;
 	if (pin != NULL) {
-		strncpy(g_wps_pin, pin, sizeof(g_wps_pin));
+		strncpy(g_wps_pin, pin, WPS_PIN_LEN);
+		g_wps_pin[WPS_PIN_LEN-1] = '\0';
 		WDP_LOGD( "SETTING WPS PIN = %s\n", \
 				g_wps_pin);
 	} else {
@@ -3486,7 +3505,8 @@ int wfd_ws_get_wps_pin(char* wps_pin, int len)
 	if (wps_pin == NULL) {
 		return false;
 	}
- 	strncpy(wps_pin, g_wps_pin, sizeof(g_wps_pin));
+ 	strncpy(wps_pin, g_wps_pin, WPS_PIN_LEN);
+	wps_pin[WPS_PIN_LEN-1] = '\0';
 	WDP_LOGD( "FILLED WPS PIN = %s\n", wps_pin);
 	__WDP_LOG_FUNC_EXIT__;
  	return true;
@@ -4205,7 +4225,8 @@ int wfd_ws_get_persistent_group_info(wfd_persistent_group_info_s ** persistent_g
 // TODO: should filer by [PERSISTENT] value of flags.
 
 		wfd_persistent_group_list[i].network_id = ws_persistent_group_list[i].network_id;
-		strncpy(wfd_persistent_group_list[i].ssid, ws_persistent_group_list[i].ssid, sizeof(wfd_persistent_group_list[i].ssid));
+		strncpy(wfd_persistent_group_list[i].ssid, ws_persistent_group_list[i].ssid, NETWORK_SSID_LEN);
+		wfd_persistent_group_list[i].ssid[NETWORK_SSID_LEN-1] = '\0';
 		
 		unsigned char la_mac_addr[6];
 		wfd_macaddr_atoe(ws_persistent_group_list[i].bssid, la_mac_addr);

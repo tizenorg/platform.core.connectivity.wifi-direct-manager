@@ -75,6 +75,24 @@
 #define FREQUENCY_2G "freq=2"
 #define MAX_PEER_NUM 10
 #define MAX_PERSISTENT_GROUP_NUM 20
+#define MACSTR_LEN 18
+#define WPS_METHOD_LEN 16
+#define DEVICE_NAME_LEN 64
+#define DEVICE_TYPE_LEN 18
+#define MANUFACTURER_LEN 64
+#define MODEL_NAME_LEN 64
+#define MODEL_NUMBER_LEN 64
+#define SERIAL_NUMBER_LEN 64
+#define GO_STATE_LEN 16
+#define PEER_FLAGS_LEN 128
+#define PEER_STATUS_LEN 16
+#define COUNTRY_CODE_LEN 8
+
+#define NETWORK_SSID_LEN 64
+#define NETWORK_BSSID_LEN 18
+#define NETWORK_FLAGS_LEN 32
+
+#define WPS_PIN_LEN 9
 
 #define BIT(n) 1<<(n-1)
 
@@ -223,35 +241,35 @@ ws_field_id_s g_ws_field_info[] =
 
 typedef struct
 {
-	char mac[18];
+	char mac[MACSTR_LEN];
 	int age;
 	int listen_freq;
 	int level;
-	char wps_method[32];
-	char interface_addr[18];
-	char member_in_go_dev[18];
-	char member_in_go_iface[18];
-	char pri_dev_type[18];
-	char device_name[64];
-	char manufacturer[64];
-	char model_name[64];
-	char model_number[64];
-	char serial_number[64];
+	char wps_method[WPS_METHOD_LEN];
+	char interface_addr[MACSTR_LEN];
+	char member_in_go_dev[MACSTR_LEN];
+	char member_in_go_iface[MACSTR_LEN];
+	char pri_dev_type[DEVICE_TYPE_LEN];
+	char device_name[DEVICE_NAME_LEN];
+	char manufacturer[MANUFACTURER_LEN];
+	char model_name[MODEL_NAME_LEN];
+	char model_number[MODEL_NUMBER_LEN];
+	char serial_number[SERIAL_NUMBER_LEN];
 	unsigned int config_methods;
 	unsigned int dev_capab;
 	unsigned int group_capab;
 	unsigned int go_neg_req_sent;
-	char go_state[32];
+	char go_state[GO_STATE_LEN];
 	int dialog_token;
-	char intended_addr[18];
-	char country[8];
+	char intended_addr[MACSTR_LEN];
+	char country[COUNTRY_CODE_LEN];
 	unsigned int oper_freq;
 	unsigned int req_config_methods;
-	char flags[128];
-	char status[16];
+	char flags[PEER_FLAGS_LEN];
+	char status[PEER_STATUS_LEN];
 	int wait_count;
 	int invitation_reqs;
-	char oper_ssid[64];
+	char oper_ssid[DEVICE_NAME_LEN];
 
 /*----- Miracast -----*/
 	int is_wfd_device;
@@ -260,9 +278,9 @@ typedef struct
 typedef struct
 {
 	int network_id;
-	char ssid[64];
-	char bssid[18];	
-	char flags[32];
+	char ssid[NETWORK_SSID_LEN];
+	char bssid[NETWORK_BSSID_LEN];
+	char flags[NETWORK_FLAGS_LEN];
  } ws_network_info_s;
 
 
@@ -371,10 +389,10 @@ ws_event_id_s g_ws_event_info[] =
 typedef struct
 {
 	ws_event_id_e id;
-	char peer_mac_address[18];
-	char peer_intf_mac_address[18];
-	char peer_ssid[32];
-	char wps_pin[9];
+	char peer_mac_address[MACSTR_LEN];
+	char peer_intf_mac_address[MACSTR_LEN];
+	char peer_ssid[DEVICE_NAME_LEN];
+	char wps_pin[WPS_PIN_LEN];
 	int msg;
 } ws_event_s;
 
