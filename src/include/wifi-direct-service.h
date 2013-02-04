@@ -117,6 +117,7 @@ typedef struct
 	/** Autonomous Group mode */
 	bool autonomous_group_owner;
 
+	void *plugin_handle;
 }wfd_server_control_t;
 
 

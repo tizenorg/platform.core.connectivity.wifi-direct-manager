@@ -525,7 +525,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 	{
 		int peer_count = 0;
 		int total_msg_len = 0;
-		wfd_discovery_entry_s* plist;
+		wfd_discovery_entry_s* plist = NULL;
 
 		wifi_direct_state_e state = wfd_server_get_state();
 		if (state > WIFI_DIRECT_STATE_ACTIVATING)
@@ -560,10 +560,11 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 
 		memset(msg, 0, total_msg_len);
 		memcpy(msg, &resp, sizeof(wifi_direct_client_response_s));
-		if (peer_count)
+		if (peer_count && plist != NULL) {
 			memcpy(msg + sizeof(wifi_direct_client_response_s), plist, sizeof(wfd_discovery_entry_s) * peer_count);
+			__wfd_server_print_entry_list((wfd_discovery_entry_s*)plist, peer_count);
+		}
 
-		__wfd_server_print_entry_list((wfd_discovery_entry_s*)plist, peer_count);
 		wfd_server_send_response(client->sync_sockfd, msg, total_msg_len);
 
 		g_free(msg);

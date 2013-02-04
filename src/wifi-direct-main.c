@@ -283,7 +283,7 @@ static int wfd_server_create_socket(void)
 	return 1;
 }
 
-void wfd_load_plugin()
+static void *wfd_load_plugin()
 {
 	void *handle;
 	struct utsname kernel_info;
@@ -299,7 +299,7 @@ void wfd_load_plugin()
 	if (!handle) {
 		WDS_LOGE("Failed to open shared object");
 		fputs(dlerror(), stderr);
-		return;
+		return NULL;
 	}
 
 	int (*plugin_load)(struct wfd_oem_operations **ops) = NULL;
@@ -308,14 +308,14 @@ void wfd_load_plugin()
 	if (!plugin_load) {
 		WDS_LOGF( "Failed to load symbol. Error = [%s]", strerror(errno));
 		dlclose(handle);
-		return ;
+		return NULL;
 	}
 
 	struct wfd_oem_operations *temp_ops;
 	(*plugin_load)(&temp_ops);
 	g_ops = temp_ops;
 
-	return;
+	return handle;
 }
 
 
@@ -342,7 +342,9 @@ static int wfd_server_init(void)
 	g_wfd_server.config_data.primary_dev_type = WIFI_DIRECT_PRIMARY_DEVICE_TYPE_TELEPHONE;	// Telephone
 	g_wfd_server.config_data.secondary_dev_type = WIFI_DIRECT_SECONDARY_DEVICE_TYPE_PHONE_SM_DUAL;	// smart phone dual mode (wifi and cellular)
 
-	wfd_load_plugin();
+	g_wfd_server.plugin_handle = wfd_load_plugin();
+	if (g_wfd_server.plugin_handle == NULL)
+		return -1;
 
 	wfd_oem_init(wfd_server_process_event);
 
@@ -368,6 +370,9 @@ static int wfd_server_destroy()
 	memset(&g_wfd_server, 0, sizeof(wfd_server_control_t));
 
 	wfd_oem_destroy();
+
+	if (g_wfd_server.plugin_handle != NULL)
+		dlclose(g_wfd_server.plugin_handle);
 
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
