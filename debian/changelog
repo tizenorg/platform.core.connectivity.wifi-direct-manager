@@ -1,3 +1,11 @@
+wfi-direct-manager (0.6.8) precise; urgency=low
+
+  * Remove prevent issue : Resource leak, Uninitialized pointer read
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.6.8
+
+ -- Jaehyun Kim <jeik01@samsung.com>  Mon, 04 Feb 2013 20:53:18 +0900
+
 wfi-direct-manager (0.6.7) precise; urgency=low
 
   * Remove prevent issue : Improper use of negative value
