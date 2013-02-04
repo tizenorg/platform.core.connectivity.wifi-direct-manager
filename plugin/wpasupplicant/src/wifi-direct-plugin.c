@@ -2185,11 +2185,9 @@ int wfd_ws_activate()
 		}
 
 	} while (count > 0);
-
 	WDP_LOGD( "Successfully socket connected to server !!\n");
 
 	GIOChannel *gio3;
-
 	gio3 = g_io_channel_unix_new(g_monitor_sockfd);
 	g_source_id = g_io_add_watch(gio3, G_IO_IN | G_IO_ERR | G_IO_HUP, (GIOFunc) __ws_event_callback, NULL);
 	g_io_channel_unref(gio3);
@@ -2909,8 +2907,8 @@ int wfd_ws_get_discovery_result(wfd_discovery_entry_s ** peer_list, int* peer_nu
 			wfd_peer_list[i].wps_cfg_methods += WIFI_DIRECT_WPS_TYPE_PIN_KEYPAD;
 
 		// Device name --> SSID
-		strncpy(wfd_peer_list[i].device_name, ws_peer_list[i].device_name, DEVICE_NAME_LEN);
-		wfd_peer_list[i].device_name[DEVICE_NAME_LEN-1] = '\0';
+		strncpy(wfd_peer_list[i].device_name, ws_peer_list[i].device_name, WIFI_DIRECT_MAX_DEVICE_NAME_LEN);
+		wfd_peer_list[i].device_name[WIFI_DIRECT_MAX_DEVICE_NAME_LEN] = '\0';
 
 		// is_group_owner
 		if ((ws_peer_list[i].group_capab & GROUP_CAPAB_GROUP_OWNER) > 0)  /* checking GO state */
@@ -3025,8 +3023,8 @@ int wfd_ws_get_peer_info(unsigned char *mac_addr, wfd_discovery_entry_s **peer)
 		wfd_peer_info->wps_cfg_methods += WIFI_DIRECT_WPS_TYPE_PIN_KEYPAD;
 
 	// Device name --> SSID
-	strncpy(wfd_peer_info->device_name, ws_peer_info.device_name, DEVICE_NAME_LEN);
-	wfd_peer_info->device_name[DEVICE_NAME_LEN-1] = '\0';
+	strncpy(wfd_peer_info->device_name, ws_peer_info.device_name, WIFI_DIRECT_MAX_DEVICE_NAME_LEN);
+	wfd_peer_info->device_name[WIFI_DIRECT_MAX_DEVICE_NAME_LEN] = '\0';
 
 	// is_group_owner
 	if ((ws_peer_info.group_capab & GROUP_CAPAB_GROUP_OWNER) > 0)  /* checking GO state */
@@ -4273,8 +4271,8 @@ int wfd_ws_get_persistent_group_info(wfd_persistent_group_info_s **persistent_gr
 // TODO: should filer by [PERSISTENT] value of flags.
 
 		wfd_persistent_group_list[i].network_id = ws_persistent_group_list[i].network_id;
-		strncpy(wfd_persistent_group_list[i].ssid, ws_persistent_group_list[i].ssid, NETWORK_SSID_LEN);
-		wfd_persistent_group_list[i].ssid[NETWORK_SSID_LEN-1] = '\0';
+		strncpy(wfd_persistent_group_list[i].ssid, ws_persistent_group_list[i].ssid, WIFI_DIRECT_MAX_SSID_LEN);
+		wfd_persistent_group_list[i].ssid[WIFI_DIRECT_MAX_SSID_LEN] = '\0';
 		
 		unsigned char la_mac_addr[6];
 		wfd_macaddr_atoe(ws_persistent_group_list[i].bssid, la_mac_addr);
