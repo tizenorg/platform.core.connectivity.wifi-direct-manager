@@ -65,10 +65,6 @@
 
 #define DEFAULT_IF_NAME "p2p-wlan0-0"
 #define DEFAULT_IF_NAME_LEN 12
-//#define DEFAULT_SSID_NAME "BcmDevice00"
-//#define DEFAULT_DISCOVERY_TMO_SECS 3600
-//#define DEFAULT_CONNECT_TMO_SECS 60
-//#define DISCOVERY_MAX_PEERS 64
 #define DEFAULT_IP_LOG_PATH "/tmp/udhcpc_log"
 #define PERSISTENT_PEER_PATH "/opt/etc/persistent-peer"
 #define DEFAULT_SERVER_IP "192.168.16.1"
