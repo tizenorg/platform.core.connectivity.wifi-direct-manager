@@ -995,28 +995,30 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 		break;
 
 		case WS_EVENT_GROUP_STARTED:
-			event->id = WS_EVENT_GROUP_STARTED;
-			WDP_LOGD( "WS EVENT : [WS_EVENT_GROUP_STARTED]\n");
 			{
-				int res = 0;
-				char *dev_addr;
-				dev_addr = (char*) calloc(1, MACSTR_LEN);
-				res = __extract_value_str(ptr, "dev_addr", dev_addr);
-				if(res > 0)
-					strcpy(event->peer_mac_address, dev_addr);
-				free(dev_addr);
-				WDP_LOGD( "connected peer mac address [%s]", event->peer_mac_address);
+				event->id = WS_EVENT_GROUP_STARTED;
+				WDP_LOGD( "WS EVENT : [WS_EVENT_GROUP_STARTED]\n");
+				if (strstr(ptr, "client")) {
+					WDP_LOGD("[Group Client]");
+					int res = 0;
+					char *go_dev_addr = NULL;
+					go_dev_addr = (char*) calloc(1, MACSTR_LEN);
+					res = __extract_value_str(ptr, "go_dev_addr", go_dev_addr);
+					if(res > 0) {
+						strncpy(event->peer_mac_address, go_dev_addr, MACSTR_LEN);
+						event->peer_mac_address[MACSTR_LEN-1] = '\0';
+					}
+					free(go_dev_addr);
+					WDP_LOGD( "connected peer mac address [%s]", event->peer_mac_address);
+				} else {
+					WDP_LOGD("[Group Owner]");
+				}
 
 				/* for checking persistent group */
-				char *dummy;
-				dummy = (char*) calloc(1, 18); /* dummy */
-				res = __extract_value_str(ptr, "PERSISTENT", dummy);
-				if(res >= 0)
-				{
+				if (strstr(ptr, "PERSISTENT")) {
 					WDP_LOGD( "[PERSISTENT GROUP]");
 					event->id = WS_EVENT_PERSISTENT_GROUP_STARTED;
 				}
-				free(dummy);
 			}
 		break;
 
@@ -1786,8 +1788,6 @@ static gboolean __ws_event_callback(GIOChannel * source,
 			wfd_macaddr_atoe(event.peer_mac_address, la_mac_addr);
 			memcpy(&g_incomming_peer_mac_address, la_mac_addr, 6);
 			WDP_LOGD( "INVITATION REQ. RECEIVED:  mac[" MACSTR"]\n", MAC2STR(g_incomming_peer_mac_address));
-			wfd_ws_start_discovery(false, 0);
-
 			g_noti_cb(WFD_EVENT_INVITE_REQUEST);
 		}
 		break;
