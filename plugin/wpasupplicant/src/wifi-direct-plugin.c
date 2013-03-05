@@ -2857,7 +2857,7 @@ int wfd_ws_get_discovery_result(wfd_discovery_entry_s ** peer_list, int* peer_nu
 		__parsing_peer(res_buffer, &ws_peer_list[peer_count]);
 		peer_count++;
 
-	} while(1);
+	} while(peer_count < MAX_PEER_NUM);
 
 	WDP_LOGD( "number of discovered peers: %d\n", peer_count);
 
