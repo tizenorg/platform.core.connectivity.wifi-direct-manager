@@ -1154,6 +1154,13 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 			}
 		break;
 
+		case WS_EVENT_GO_NEG_FAILURE:
+			{
+				WDP_LOGD("WS EVENT : [WS_EVENT_GO_NEG_FAILURE]");
+				event->id = WS_EVENT_GO_NEG_FAILURE;
+			}
+		break;
+
 		case WS_EVENT_WPS_FAIL:
 			{
 				WDP_LOGD("WS EVENT : [WS_EVENT_WPS_FAIL]");
@@ -1794,6 +1801,14 @@ static gboolean __ws_event_callback(GIOChannel * source,
 
 		case WS_EVENT_INVITATION_RSP:
 			{
+			}
+		break;
+
+		case WS_EVENT_GO_NEG_FAILURE:
+			{
+				wfd_ws_cancel();
+				wfd_ws_flush();
+				g_noti_cb(WFD_EVENT_GROUP_OWNER_NEGOTIATION_FAIL);
 			}
 		break;
 
@@ -2666,6 +2681,35 @@ int wfd_ws_disconnect_sta(unsigned char mac_addr[6])
 
 	__WDP_LOG_FUNC_EXIT__;
  	return result;
+}
+
+bool wfd_ws_cancel()
+{
+        __WDP_LOG_FUNC_ENTER__;
+        char cmd[16] = {0, };
+        char res_buffer[1024]={0,};
+        int res_buffer_len=sizeof(res_buffer);
+        int result = 0;
+
+        strncpy(cmd, CMD_CANCEL, sizeof(cmd));
+        result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
+        WDP_LOGD("__send_wpa_request(CMD_CANCEL) result=[%d]\n", result);
+
+        if (result < 0)
+        {
+                WDP_LOGE("__send_wpa_request FAILED!!\n");
+                __WDP_LOG_FUNC_EXIT__;
+                return false;
+        }
+
+        if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
+        {
+                __WDP_LOG_FUNC_EXIT__;
+                return false;
+        }
+
+        __WDP_LOG_FUNC_EXIT__;
+        return true;
 }
 
 bool wfd_ws_is_discovery_enabled()

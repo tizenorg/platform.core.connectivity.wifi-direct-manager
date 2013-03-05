@@ -149,6 +149,7 @@ typedef void (*wfd_noti_cb) (int event_type);
 #define CMD_TERMINATE "TERMINATE"
 #define CMD_GET_LIST_NETWORKS "LIST_NETWORKS"
 #define CMD_REMOVE_NETWORK "REMOVE_NETWORK"
+#define CMD_CANCEL "P2P_CANCEL"
 
 
 /*----- Miracast -----*/
@@ -311,6 +312,7 @@ typedef enum {
 
 	WS_EVENT_TERMINATING,
 	WS_EVENT_GO_NEG_REQUEST,
+	WS_EVENT_GO_NEG_FAILURE,
 
 	WS_EVENT_WPS_FAIL,
 
@@ -377,6 +379,7 @@ ws_event_id_s g_ws_event_info[] =
 	{"CTRL-EVENT-TERMINATING", WS_EVENT_TERMINATING},
 	{"P2P-GO-NEG-REQUEST", WS_EVENT_GO_NEG_REQUEST},
 
+	{"P2P-GO-NEG-FAILURE", WS_EVENT_GO_NEG_FAILURE},
 	{"WPS-FAIL", WS_EVENT_WPS_FAIL},
 
 	{"", WS_EVENT_NONE}
@@ -460,6 +463,7 @@ int wfd_ws_get_disassoc_sta_mac(unsigned char *mac_addr);
 int wfd_ws_get_requestor_mac(unsigned char *mac_addr);
 int wfd_ws_get_operating_channel(void);
 bool wfd_ws_flush();
+bool wfd_ws_cancel();
 int wfd_ws_dsp_init(void);
 int wfd_ws_get_persistent_group_info(wfd_persistent_group_info_s ** persistent_group_list, int* persistent_group_num);
 int wfd_ws_remove_persistent_group(wfd_persistent_group_info_s *persistent_group);
