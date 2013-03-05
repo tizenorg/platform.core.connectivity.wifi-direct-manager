@@ -1,6 +1,6 @@
 Name:       wifi-direct-manager
 Summary:    Wi-Fi Direct manger
-Version:    0.6.8
+Version:    0.6.9
 Release:    1
 Group:      TO_BE_FILLED
 License:    Apache License Version 2.0

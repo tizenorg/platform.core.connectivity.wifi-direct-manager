@@ -2264,7 +2264,7 @@ int wfd_ws_deactivate()
 	// close control interface
 	g_source_remove(g_source_id);
 	unlink("/tmp/wpa_ctrl_monitor");
-	if (g_monitor_sockfd >= 0)
+	if (g_monitor_sockfd > 2)
 		close(g_monitor_sockfd);
 
 	// terminate wpasupplicant
@@ -2287,7 +2287,7 @@ int wfd_ws_deactivate()
 	memset(res_buffer, 0x0, 1024);
 
 	unlink("/tmp/wpa_ctrl_control");
-	if (g_control_sockfd >= 0)
+	if (g_control_sockfd > 2)
 		close(g_control_sockfd);
 
 	wfd_ws_glist_reset_connected_peer();
@@ -3526,7 +3526,8 @@ bool wfd_ws_dhcpc_get_ip_address(char *ipaddr_buf, int len, int is_IPv6)
 
 	if(ioctl(fd, SIOCGIFADDR, &IfRequest) < 0) {
 		WDP_LOGE( "Failed to get IP\n");
-		close(fd);
+		if (fd > 2)
+			close(fd);
 		return false;
 	}
 
