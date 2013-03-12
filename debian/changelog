@@ -1,0 +1,166 @@
+wfi-direct-manager (0.6.8) precise; urgency=low
+
+  * Remove prevent issue : Resource leak, Uninitialized pointer read
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.6.8
+
+ -- Jaehyun Kim <jeik01@samsung.com>  Mon, 04 Feb 2013 20:53:18 +0900
+
+wfi-direct-manager (0.6.7) precise; urgency=low
+
+  * Remove prevent issue : Improper use of negative value
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.6.7
+
+ -- Jaehyun Kim <jeik01@samsung.com>  Sun, 03 Feb 2013 23:16:38 +0900
+
+wfi-direct-manager (0.6.6) precise; urgency=low
+
+  * Fix resource leaks
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.6.6
+
+ -- Jaehyun Kim <jeik01@samsung.com>  Sun, 03 Feb 2013 20:45:45 +0900
+
+wfi-direct-manager (0.6.5) precise; urgency=low
+
+  * Remove unuseful code
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.6.5
+
+ -- Jaehyun Kim <jeik01@samsung.com>  Sun, 03 Feb 2013 17:29:47 +0900
+
+wfi-direct-manager (0.6.4) precise; urgency=low
+
+  * Fix bug of invitation behavior
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.6.4
+
+ -- Gibyoung Kim <lastkgb.kim@samsung.com>  Sun, 3 Feb 2013 02:45:22 +0900
+
+wfi-direct-manager (0.6.3) precise; urgency=low
+
+  * SMACK is corrected
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.6.3
+
+ -- Gibyoung Kim <lastkgb.kim@samsung.com>  Sat, 2 Feb 2013 19:38:15 +0900
+
+wfi-direct-manager (0.6.2) precise; urgency=low
+
+  * Fix bug(N_SE-23902)
+  * Fix Group Created event issue
+  * SMACK is applyed
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.6.2
+
+ -- Gibyoung Kim <lastkgb.kim@samsung.com>  Fri, 1 Feb 2013 22:03:08 +0900
+
+wfi-direct-manager (0.6.1) precise; urgency=low
+
+  * Fix bug(N_SE-23716)
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.6.1
+
+ -- Gibyoung Kim <lastkgb.kim@samsung.com>  Fri, 1 Feb 2013 02:59:51 +0900
+
+wfi-direct-manager (0.6.0) precise; urgency=low
+
+  * Fix bug(N_SE-23485)
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.6.0
+
+ -- Gibyoung Kim <lastkgb.kim@samsung.com>  Fri, 25 Jan 2013 21:03:11 +0900
+
+wfi-direct-manager (0.5.9) precise; urgency=low
+
+  * Package Update
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.5.9
+
+ -- Gibyoung Kim <lastkgb.kim@samsung.com>  Fri, 25 Jan 2013 21:03:11 +0900
+
+wfi-direct-manager (0.5.8) precise; urgency=low
+
+  * Fix bug(N_SE-22984)
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.5.8
+
+ -- Gibyoung Kim <lastkgb.kim@samsung.com>  Fri, 25 Jan 2013 16:37:42 +0900
+
+wfi-direct-manager (0.5.7) precise; urgency=low
+
+  * Fix bug(N_SE-21973)
+  * Add WPS PIN feature for GO
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.5.7
+
+ -- Gibyoung Kim <lastkgb.kim@samsung.com>  Mon, 21 Jan 2013 17:40:19 +0900
+
+wfi-direct-manager (0.5.6) precise; urgency=low
+
+  * Add License files.
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.5.6
+
+ -- sunil85.kim <isurit@sunil85.kim>  Wed, 23 Jan 2013 11:22:47 +0900
+
+wfi-direct-manager (0.5.5) precise; urgency=low
+
+  * Boiler plate at Wi-Fi-Direct-Manager
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.5.5
+
+ -- sunil85.kim <isurit@sunil85.kim>  Mon, 21 Jan 2013 12:11:44 +0900
+
+wfi-direct-manager (0.5.4) precise; urgency=low
+
+  * Modify "Group create" bug when GO
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.5.4
+
+ -- sunil85.kim <isurit@sunil85.kim>  Thu, 17 Jan 2013 16:59:22 +0900
+
+wfi-direct-manager (0.5.3) precise; urgency=low
+
+  * Fix bug(WPS PIN keypad not worked)
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.5.3
+
+ -- Gibyoung Kim <lastkgb.kim@samsung.com>  Sun, 23 Dec 2012 19:41:49 +0900
+
+wfi-direct-manager (0.5.2) precise; urgency=low
+
+  * Fix bug(WPS PIN Display not worked)
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.5.2
+
+ -- Gibyoung Kim <lastkgb.kim@samsung.com>  Sat, 22 Dec 2012 18:50:04 +0900
+
+wifi-direct-manager (0.5.1) precise; urgency=low
+
+  * DLog macro is changed
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.5.1
+
+ -- Gibyoung Kim <lastkgb.kim@samsung.com>  Tue, 18 Dec 2012 20:02:25 +0900
+
+wifi-direct-manager (0.5.0) precise; urgency=low
+
+  * Implementation of wifi_direct_get_device_name / wifi_direct_set_device_name
+  * fixed discovery problerm in case of lisen only mode.
+  * Implementation of persistent mode
+  * added timer for discovering.
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.5.0
+
+ -- Gibyoung Kim <lastkgb.kim@samsung.com>  Tue, 11 Dec 2012 17:47:45 +0900
+
+wifi-direct-manager (0.4.0) precise; urgency=low
+
+  * Initial Update
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.4.0
+
+ -- Gibyoung Kim <lastkgb.kim@samsung.com>  Fri, 23 Nov 2012 21:35:21 +0900
+
