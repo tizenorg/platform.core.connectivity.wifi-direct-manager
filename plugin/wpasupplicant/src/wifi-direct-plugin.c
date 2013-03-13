@@ -2764,10 +2764,7 @@ int wfd_ws_start_discovery(bool listen_only, int timeout)
 	int res_buffer_len=sizeof(res_buffer);
 	int result = 0;
 
-#if 0
-	if (wfd_ws_is_groupowner()==false && wfd_ws_is_groupclient()==false)
-		wfd_ws_flush();
-#endif
+	wfd_ws_flush();
 
 	if (listen_only == true)
 	{
