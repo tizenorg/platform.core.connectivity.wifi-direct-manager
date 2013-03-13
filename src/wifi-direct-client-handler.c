@@ -1251,8 +1251,13 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 
 		peer_count = wfd_server->connected_peer_count;
 		if (peer_count <= 0) {
-			WDS_LOGE("Error?? There is no connected peers");
-			resp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+			if (state == WIFI_DIRECT_STATE_GROUP_OWNER) {
+				resp.result = WIFI_DIRECT_ERROR_NONE;
+				resp.param1 = 0;
+			} else {
+				resp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+			}
+
 			if (wfd_server_send_response(client->sync_sockfd, &resp,
 											sizeof(wifi_direct_client_response_s)) < 0) {
 				wfd_server_reset_client(client->sync_sockfd);

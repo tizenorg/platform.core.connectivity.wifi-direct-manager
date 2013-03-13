@@ -1,3 +1,11 @@
+wfi-direct-manager (0.6.10) precise; urgency=low
+
+  * to fix incorrect error return when no connected peer exist
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.6.10
+
+ -- Gibyoung Kim <lastkgb.kim@samsung.com>  Wed, 13 Mar 2013 10:44:52 +0900
+
 wfi-direct-manager (0.6.9) precise; urgency=low
 
   * to fix PLM issue and prevent defect(private code sync)
