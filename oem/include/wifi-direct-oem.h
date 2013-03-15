@@ -108,7 +108,7 @@ struct wfd_oem_operations {
 	int (*wfd_oem_get_connected_peers_info)(wfd_connected_peer_info_s ** peer_list, int* peer_num);
 	int (*wfd_oem_get_connected_peers_count)(int* peer_num);
 	int (*wfd_oem_set_oem_loglevel)(int is_increase);
-	int (*wfd_oem_get_go_intent)(int* intent); 
+	int (*wfd_oem_get_go_intent)(int* intent);
 	int (*wfd_oem_set_go_intent)(int intent);
 	int (*wfd_oem_set_device_type)(wifi_direct_primary_device_type_e primary_cat, wifi_direct_secondary_device_type_e sub_cat);
 	int (*wfd_oem_get_device_mac_address)(unsigned char* device_mac);

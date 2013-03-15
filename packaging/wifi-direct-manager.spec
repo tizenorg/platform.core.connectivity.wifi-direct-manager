@@ -1,6 +1,6 @@
 Name:       wifi-direct-manager
 Summary:    Wi-Fi Direct manger
-Version:    0.6.8
+Version:    0.6.11
 Release:    1
 Group:      TO_BE_FILLED
 License:    Apache License Version 2.0
@@ -29,15 +29,21 @@ wifi drect plugin for wpa supplicant
 %prep
 %setup -q
 
+%build
+
 %ifarch %{arm}
 export ARCH=arm
+%else
+
+%if 0%{?simulator}
+export ARCH=emul
 %else
 export ARCH=i586
 %endif
 
-%build
+%endif
 
-cmake . -DCMAKE_INSTALL_PREFIX=%{_prefix}
+cmake . -DCMAKE_INSTALL_PREFIX=%{_prefix} -DARCHITECTURE=$ARCH
 make %{?jobs:-j%jobs}
 
 %install

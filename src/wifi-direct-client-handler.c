@@ -1139,7 +1139,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 			return;
 		}
 
-		WDS_LOGF( "ssid = [%s]\n", ssid);
+		WDS_LOGD( "ssid = [%s]\n", ssid);
 
 		ret = wfd_oem_set_ssid(ssid);
 
@@ -1170,7 +1170,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 			return;
 		}
 
-		WDS_LOGF( "new_wpa = [%s]\n", new_wpa);
+		WDS_LOGD( "new_wpa = [%s]\n", new_wpa);
 
 		if (wfd_oem_set_wpa_passphrase(new_wpa) == false)
 			resp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
@@ -1251,8 +1251,13 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 
 		peer_count = wfd_server->connected_peer_count;
 		if (peer_count <= 0) {
-			WDS_LOGE("Error?? There is no connected peers");
-			resp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+			if (state == WIFI_DIRECT_STATE_GROUP_OWNER) {
+				resp.result = WIFI_DIRECT_ERROR_NONE;
+				resp.param1 = 0;
+			} else {
+				resp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+			}
+
 			if (wfd_server_send_response(client->sync_sockfd, &resp,
 											sizeof(wifi_direct_client_response_s)) < 0) {
 				wfd_server_reset_client(client->sync_sockfd);
@@ -1709,7 +1714,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 
 		WDS_LOGD( "persistent_group_count : %d, total message size : %d\n", persistent_group_count, total_msg_len);
 
-		char * msg = (char*)malloc(total_msg_len);
+		char * msg = (char*) calloc(1, total_msg_len);
 		if(msg == NULL)
 		{
 			WDS_LOGF( "Memory Allocation is FAILED!!!!!![%d]\n");
@@ -1724,7 +1729,6 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		resp.param1 = persistent_group_count;
 		resp.result = WIFI_DIRECT_ERROR_NONE;
 
-		memset(msg, 0, total_msg_len);
 		memcpy(msg, &resp, sizeof(wifi_direct_client_response_s));
 		if (persistent_group_count > 0)
 			memcpy(msg + sizeof(wifi_direct_client_response_s), plist, sizeof(wfd_persistent_group_info_s) * persistent_group_count);
@@ -1732,6 +1736,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		wfd_server_send_response(client->sync_sockfd, msg, total_msg_len);
 		if (plist)
 			free(plist);
+		free(msg);
 
 		__WDS_LOG_FUNC_EXIT__;
 		return;

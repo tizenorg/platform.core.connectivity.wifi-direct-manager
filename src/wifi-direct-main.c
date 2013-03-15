@@ -150,8 +150,7 @@ char *wfd_server_print_cmd(wifi_direct_cmd_e cmd)
 		return "WIFI_DIRECT_CMD_SET_AUTOCONNECTION_MODE";
 	case WIFI_DIRECT_CMD_IS_AUTOCONNECTION_MODE:
 		return "WIFI_DIRECT_CMD_IS_AUTOCONNECTION_MODE";
-	case WIFI_DIRECT_CMD_IS_DISCOVERABLE:	// 40
-
+	case WIFI_DIRECT_CMD_IS_DISCOVERABLE:
 		return "WIFI_DIRECT_CMD_IS_DISCOVERABLE";
 	case WIFI_DIRECT_CMD_GET_OWN_GROUP_CHANNEL:
 		return "WIFI_DIRECT_CMD_GET_OWN_GROUP_CHANNEL";
@@ -252,7 +251,8 @@ static int wfd_server_create_socket(void)
 	if (bind(sockfd, (struct sockaddr *) &servAddr, len) == -1)
 	{
 		WDS_LOGE( "Failed to bind server socket. Error = [%s]", strerror(errno));
-		close(sockfd);
+		if (sockfd > 2)
+			close(sockfd);
 		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}
@@ -262,7 +262,8 @@ static int wfd_server_create_socket(void)
 	if (chmod(WFD_SERVER_SOCKET_PATH, sock_mode) < 0)
 	{
 		WDS_LOGD( "Failed to change server socket file mode");
-		close(sockfd);
+		if (sockfd > 2)
+			close(sockfd);
 		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}
@@ -271,7 +272,8 @@ static int wfd_server_create_socket(void)
 	if (listen(sockfd, WFD_MAX_CLIENTS) == -1)
 	{
 		WDS_LOGF( "Failed to listen server socket. Error = [%s]", strerror(errno));
-		close(sockfd);
+		if (sockfd > 2)
+			close(sockfd);
 		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}
