@@ -71,6 +71,7 @@ static struct wfd_oem_operations supplicant_ops =
 	.wfd_oem_wps_pin_start = wfd_ws_wps_pin_start,
 	.wfd_oem_disconnect = wfd_ws_disconnect,
 	.wfd_oem_disconnect_sta = wfd_ws_disconnect_sta,
+	.wfd_oem_reject_connection = wfd_ws_reject_connection,
 	.wfd_oem_is_discovery_enabled = wfd_ws_is_discovery_enabled,
 	.wfd_oem_start_discovery = wfd_ws_start_discovery,
 	.wfd_oem_cancel_discovery = wfd_ws_cancel_discovery,
@@ -2646,7 +2647,6 @@ int wfd_ws_connect_for_persistent_group(unsigned char mac_addr[6], wifi_direct_w
 int wfd_ws_disconnect()
 {
 	__WDP_LOG_FUNC_ENTER__;
-
 	char cmd[32] = {0, };
 	char res_buffer[1024]={0,};
 	int res_buffer_len = sizeof(res_buffer);
@@ -2682,13 +2682,44 @@ int wfd_ws_disconnect()
 int wfd_ws_disconnect_sta(unsigned char mac_addr[6])
 {
 	__WDP_LOG_FUNC_ENTER__;
-
 	int result;
 
  	result = wfd_ws_disconnect();
 
 	__WDP_LOG_FUNC_EXIT__;
  	return result;
+}
+
+int wfd_ws_reject_connection(unsigned char mac_addr[6])
+{
+	__WDP_LOG_FUNC_ENTER__;
+	char cmd[32] = {0, };
+	char res_buffer[1024]={0,};
+	int res_buffer_len = sizeof(res_buffer);
+	int result;
+
+	g_wps_event_block = 0;
+
+	snprintf(cmd, sizeof(cmd), "%s " MACSTR, CMD_REJECT, MAC2STR(mac_addr));
+	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
+	WDP_LOGD("__send_wpa_request(P2P_REJECT) result=[%d]\n", result);
+	if (result < 0)
+	{
+		WDP_LOGE("__send_wpa_request FAILED!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
+	 	return false;
+	}
+
+	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
+	{
+	 	__WDP_LOG_FUNC_EXIT__;
+	 	return false;
+	}
+
+	WDP_LOGD("reject connection attempt by peer [" MACSTR "]", MAC2STR(mac_addr));
+
+	__WDP_LOG_FUNC_EXIT__;
+	return true;
 }
 
 bool wfd_ws_cancel()

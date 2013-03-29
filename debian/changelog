@@ -1,6 +1,14 @@
+wfi-direct-manager (0.6.14) precise; urgency=low
+
+  * Fix bug N_SE-26723(Send rejection message)
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.6.14
+
+ -- Gibyoung Kim <lastkgb.kim@samsung.com>  Sat, 30 Mar 2013 01:49:17 +0900
+
 wfi-direct-manager (0.6.13) precise; urgency=low
 
-  * Flush discovered peer data when starting new scan
+  * Fix bug N_SE-30232(Retry connection during 120 secs)
   * Git : framework/connectivity/wifi-direct-manager
   * Tag : wifi-direct-manager_0.6.13
 

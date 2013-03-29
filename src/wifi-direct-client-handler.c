@@ -709,8 +709,11 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 
 	case WIFI_DIRECT_CMD_DISCONNECT:
 	{
-		wfd_local_connected_peer_info_t* peer = NULL;
+		// Response app first.
+		resp.result = WIFI_DIRECT_ERROR_NONE;
+		wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s));
 
+		wfd_local_connected_peer_info_t* peer = NULL;
 		peer = wfd_server_get_connected_peer_by_device_mac(client_req->data.mac_addr);
 #if 0		
 		if (peer == NULL)
@@ -721,10 +724,6 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 			break;
 		}
 #endif
-
-		// Response app first.
-		resp.result = WIFI_DIRECT_ERROR_NONE;
-		wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s));
 
 		if (wfd_oem_is_groupowner() == TRUE)
 		{
@@ -760,9 +759,14 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 		}
 		else
 		{
+			if (wfd_server->state < WIFI_DIRECT_STATE_CONNECTED) {
+				ret = wfd_oem_reject_connection(client_req->data.mac_addr);
+				ret = wfd_oem_connect(client_req->data.mac_addr, wfd_server->config_data.wps_config);
+			} else {
+				ret = wfd_oem_disconnect();
+			}
 			wfd_server_set_state(WIFI_DIRECT_STATE_DISCONNECTING);
 		
-			ret = wfd_oem_disconnect();
 			if (ret)
 			{
 				wfd_server_remember_connecting_peer(client_req->data.mac_addr);

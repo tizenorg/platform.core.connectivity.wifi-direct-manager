@@ -390,15 +390,12 @@ static gboolean wfd_connection_timeout_cb(void *user_data)
 	g_source_remove(wfd_server->connection_timer);
 	wfd_server->connection_timer = 0;
 	wfd_server->connecting_120 = 0;
+	wfd_oem_reject_connection(wfd_server->current_peer.mac_address);
 
 	if (wfd_oem_is_groupowner())
-	{
 		wfd_server_set_state(WIFI_DIRECT_STATE_GROUP_OWNER);
-	}
 	else
-	{
 		wfd_server_set_state(WIFI_DIRECT_STATE_ACTIVATED);
-	}
 
 #if 0
 	// disconnect the peer to reset state.
