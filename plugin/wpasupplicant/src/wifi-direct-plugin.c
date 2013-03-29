@@ -2764,8 +2764,6 @@ int wfd_ws_start_discovery(bool listen_only, int timeout)
 	int res_buffer_len=sizeof(res_buffer);
 	int result = 0;
 
-	wfd_ws_flush();
-
 	if (listen_only == true)
 	{
 		if (timeout > 0)
@@ -2778,6 +2776,8 @@ int wfd_ws_start_discovery(bool listen_only, int timeout)
 	}
 	else
 	{
+		wfd_ws_flush();
+
 		strncpy(cmd, CMD_START_DISCOVER, sizeof(cmd));
 		result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
 		WDP_LOGD( "__send_wpa_request(P2P_FIND) result=[%d]\n", result);

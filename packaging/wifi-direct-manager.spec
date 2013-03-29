@@ -1,6 +1,6 @@
 Name:       wifi-direct-manager
 Summary:    Wi-Fi Direct manger
-Version:    0.6.11
+Version:    0.6.12
 Release:    1
 Group:      TO_BE_FILLED
 License:    Apache License Version 2.0
@@ -49,8 +49,8 @@ make %{?jobs:-j%jobs}
 %install
 rm -rf %{buildroot}
 %make_install
-%__strip %{buildroot}%{_libdir}/wifi-direct-plugin-wpasupplicant.so
-%__strip %{buildroot}%{_bindir}/wfd-manager
+#%__strip %{buildroot}%{_libdir}/wifi-direct-plugin-wpasupplicant.so
+#%__strip %{buildroot}%{_bindir}/wfd-manager
 
 mkdir -p %{buildroot}/usr/share/license
 cp %{_builddir}/%{buildsubdir}/LICENSE.APLv2 %{buildroot}/usr/share/license/%{name}
