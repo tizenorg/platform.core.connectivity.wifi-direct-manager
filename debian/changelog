@@ -1,8 +1,24 @@
+wfi-direct-manager (0.6.13) precise; urgency=low
+
+  * Flush discovered peer data when starting new scan
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.6.13
+
+ -- Gibyoung Kim <lastkgb.kim@samsung.com>  Fri, 29 Mar 2013 21:46:28 +0900
+
+wfi-direct-manager (0.6.12) precise; urgency=low
+
+  * Flush discovered peer data when starting new scan
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.6.12
+
+ -- Gibyoung Kim <lastkgb.kim@samsung.com>  Fri, 29 Mar 2013 16:28:05 +0900
+
 wfi-direct-manager (0.6.11) precise; urgency=low
 
   * Flush discovered peer data when starting new scan
   * Git : framework/connectivity/wifi-direct-manager
-  * Tag : wifi-direct-manager_0.6.10
+  * Tag : wifi-direct-manager_0.6.11
 
  -- Gibyoung Kim <lastkgb.kim@samsung.com>  Wed, 13 Mar 2013 13:53:42 +0900
 

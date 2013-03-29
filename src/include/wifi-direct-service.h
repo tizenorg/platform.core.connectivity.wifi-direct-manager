@@ -97,6 +97,7 @@ typedef struct
 	wfd_config_data_s 	config_data;
 
 	wifi_direct_state_e	state;
+	int connecting_120;
 
 	wfd_discovery_entry_s current_peer;   // it is used during connecting/disconnecting
 

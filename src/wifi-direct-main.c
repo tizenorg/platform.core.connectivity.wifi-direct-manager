@@ -389,7 +389,7 @@ static gboolean wfd_connection_timeout_cb(void *user_data)
 
 	g_source_remove(wfd_server->connection_timer);
 	wfd_server->connection_timer = 0;
-
+	wfd_server->connecting_120 = 0;
 
 	if (wfd_oem_is_groupowner())
 	{
@@ -428,8 +428,6 @@ static gboolean wfd_connection_timeout_cb(void *user_data)
 #endif
 
 	memset(&noti, 0, sizeof(wifi_direct_client_noti_s));
-
-
 	snprintf(noti.param1, sizeof(noti.param1),MACSTR, MAC2STR(wfd_server->current_peer.mac_address));
 
 	noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
@@ -454,6 +452,7 @@ void wfd_timer_connection_start()
 		g_source_remove(wfd_server->connection_timer);
 
 	wfd_server->connection_timer = 0;
+	wfd_server->connecting_120 = 1;
 
 	wfd_server->connection_timer = g_timeout_add(120000 /* 120 seconds*/, (GSourceFunc)wfd_connection_timeout_cb , NULL);
 
@@ -624,10 +623,14 @@ int main(gint argc, gchar * argv[])
 	for (i = 0; i < argc; i++)
 		WDS_LOGD( "arg[%d]= %s", i, argv[i]);
 
+#if !GLIB_CHECK_VERSION (2, 31, 0)
 	if (!g_thread_supported())
 		g_thread_init(NULL);
+#endif
 
+#if !GLIB_CHECK_VERSION(2,35,0)
 	g_type_init();
+#endif
 
 	mainloop = g_main_loop_new(NULL, FALSE);
 
