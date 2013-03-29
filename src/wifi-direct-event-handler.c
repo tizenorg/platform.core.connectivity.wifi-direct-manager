@@ -601,10 +601,24 @@ void wfd_server_process_event(wfd_event_t event)
 			//case WFD_EVENT_GROUP_OWNER_NEGOTIATION_INFO_UNAVAIL:
 		case WFD_EVENT_GROUP_OWNER_NEGOTIATION_FAIL:
 		case WFD_EVENT_GROUP_OWNER_NEGOTIATION_FAIL_INTENT:
+		case WFD_EVENT_GROUP_OWNER_NEGOTIATION_FAIL_TIMEOUT:
 		case WFD_EVENT_WPS_WRONG_PIN:
 		case WFD_EVENT_WPS_TIMEOUT:
 		case WFD_EVENT_WPS_SESSION_OVERLAP:
 		case WFD_EVENT_CREATE_LINK_CANCEL:
+			if (event == WFD_EVENT_GROUP_OWNER_NEGOTIATION_FAIL_TIMEOUT) {
+				if (wfd_server->connecting_120) {
+					int wps_config = wfd_server->config_data.wps_config;
+
+					if (wfd_server->config_data.want_persistent_group == true)
+						wfd_oem_connect_for_persistent_group(wfd_server->current_peer.mac_address, wps_config);
+					else
+						wfd_oem_connect(wfd_server->current_peer.mac_address, wps_config);
+					WDS_LOGD("Retry connection with " MACSTR, MAC2STR(wfd_server->current_peer.mac_address));
+					break;
+				}
+			}
+
 			if (wfd_oem_is_groupowner())
 			{
 				wfd_server_set_state(WIFI_DIRECT_STATE_GROUP_OWNER);

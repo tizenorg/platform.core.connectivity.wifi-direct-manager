@@ -1157,7 +1157,11 @@ void __parsing_ws_event(char* buf, ws_event_s *event)
 		case WS_EVENT_GO_NEG_FAILURE:
 			{
 				WDP_LOGD("WS EVENT : [WS_EVENT_GO_NEG_FAILURE]");
+				char status[16] = {0, };
 				event->id = WS_EVENT_GO_NEG_FAILURE;
+				ptr = __extract_value_str(ptr, "status", status);
+				event->msg = atoi(status);
+				WDP_LOGD("Status [%d]", event->msg);
 			}
 		break;
 
@@ -1806,6 +1810,10 @@ static gboolean __ws_event_callback(GIOChannel * source,
 
 		case WS_EVENT_GO_NEG_FAILURE:
 			{
+				if (event.msg == -1) {
+					g_noti_cb(WFD_EVENT_GROUP_OWNER_NEGOTIATION_FAIL_TIMEOUT);
+					break;
+				}
 				wfd_ws_cancel();
 				wfd_ws_flush();
 				g_noti_cb(WFD_EVENT_GROUP_OWNER_NEGOTIATION_FAIL);
