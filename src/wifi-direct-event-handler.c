@@ -892,6 +892,7 @@ void wfd_server_process_event(wfd_event_t event)
 						 MAC2STR(g_incomming_peer_mac_address));
 
 				__wfd_server_send_client_event(&noti);
+				wfd_server->state = WIFI_DIRECT_STATE_CONNECTING;
 			}
 			break;
 

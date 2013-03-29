@@ -129,6 +129,17 @@ int wfd_oem_disconnect_sta(unsigned char mac_addr[6])
 	return (g_ops->wfd_oem_disconnect_sta(mac_addr));
 }
 
+int wfd_oem_reject_connection(unsigned char mac_addr[6])
+{
+	if (NULL == g_ops->wfd_oem_reject_connection)
+	{
+		WDS_LOGE( "g_ops->wfd_oem_reject_connection is NULL!!\n");
+		return false;
+	}
+
+	return (g_ops->wfd_oem_reject_connection(mac_addr));
+}
+
 bool wfd_oem_is_discovery_enabled()
 {
 	if (NULL == g_ops->wfd_oem_is_discovery_enabled)

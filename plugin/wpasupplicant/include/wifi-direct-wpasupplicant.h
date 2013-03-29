@@ -133,6 +133,7 @@ typedef void (*wfd_noti_cb) (int event_type);
 #define CMD_SEND_INVITE_REQ "P2P_INVITE"
 #define CMD_CREATE_GROUP "P2P_GROUP_ADD"
 #define CMD_CONNECT "P2P_CONNECT"
+#define CMD_REJECT "P2P_REJECT"
 #define CMD_PBC_STRING "pbc"
 #define CMD_DISPLAY_STRING "display"
 #define CMD_KEYPAD_STRING "keypad"
@@ -427,6 +428,7 @@ int wfd_ws_deactivate();
 int wfd_ws_connect(unsigned char mac_addr[6], wifi_direct_wps_type_e wps_config);
 int wfd_ws_disconnect();
 int wfd_ws_disconnect_sta(unsigned char mac_addr[6]);
+int wfd_ws_reject_connection(unsigned char mac_addr[6]);
 int wfd_ws_wps_pbc_start(unsigned char mac_addr[6]);
 int wfd_ws_wps_pin_start(unsigned char mac_addr[6]);
 bool wfd_ws_is_discovery_enabled();
