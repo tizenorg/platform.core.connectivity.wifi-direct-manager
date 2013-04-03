@@ -1,3 +1,11 @@
+wfi-direct-manager (0.6.15) precise; urgency=low
+
+  * Fix bug N_SE-30232(Retry connection during 120 secs on MT side)
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.6.15
+
+ -- Gibyoung Kim <lastkgb.kim@samsung.com>  Wed, 03 Apr 2013 17:13:22 +0900
+
 wfi-direct-manager (0.6.14) precise; urgency=low
 
   * Fix bug N_SE-26723(Send rejection message)
