@@ -642,8 +642,13 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 				}
 				else
 				{
-					ret = wfd_oem_send_provision_discovery_request(client_req->data.mac_addr, wps_config, wfd_server->current_peer.is_group_owner);
-					WDS_LOGI( "ProvisionDiscovery request: ret = %d\n", ret);
+					if (wfd_server->current_peer.is_group_owner) {
+						ret = wfd_oem_connect(client_req->data.mac_addr, wps_config);
+						WDS_LOGD("Connect Join because peer is GO");
+					} else {
+						ret = wfd_oem_send_provision_discovery_request(client_req->data.mac_addr, wps_config, wfd_server->current_peer.is_group_owner);
+						WDS_LOGI( "ProvisionDiscovery request: ret = %d\n", ret);
+					}
 				}
 			}
 
