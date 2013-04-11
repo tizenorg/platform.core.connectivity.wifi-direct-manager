@@ -1,3 +1,11 @@
+wfi-direct-manager (0.6.16) precise; urgency=low
+
+  * Fix bug N_SE-32967(Status is not changed to 'Activated')
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.6.16
+
+ -- Gibyoung Kim <lastkgb.kim@samsung.com>  Thu, 11 Apr 2013 16:06:45 +0900
+
 wfi-direct-manager (0.6.15) precise; urgency=low
 
   * Fix bug N_SE-30232(Retry connection during 120 secs on MT side)

@@ -3323,7 +3323,7 @@ int wfd_ws_create_group(char* ssid)
 	}
 	else
 	{
-                snprintf(cmd, sizeof(cmd), "%s %s", CMD_CREATE_GROUP, FREQUENCY_2G);
+		snprintf(cmd, sizeof(cmd), "%s %s", CMD_CREATE_GROUP, FREQUENCY_2G);
 	}
 
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
@@ -3558,7 +3558,8 @@ bool wfd_ws_dhcpc_get_ip_address(char *ipaddr_buf, int len, int is_IPv6)
 	}
 
 	memset(IfRequest.ifr_name, 0x00, DEFAULT_IF_NAME_LEN);
-	strncpy(IfRequest.ifr_name, DEFAULT_IF_NAME, DEFAULT_IF_NAME_LEN - 1);
+	strncpy(IfRequest.ifr_name, DEFAULT_IF_NAME, DEFAULT_IF_NAME_LEN-1);
+	IfRequest.ifr_name[DEFAULT_IF_NAME_LEN-1] = '\0';
 
 	if(ioctl(fd, SIOCGIFADDR, &IfRequest) < 0) {
 		WDP_LOGE( "Failed to get IP\n");
@@ -3567,10 +3568,12 @@ bool wfd_ws_dhcpc_get_ip_address(char *ipaddr_buf, int len, int is_IPv6)
 		return false;
 	}
 
-	sin = (struct sockaddr_in*)&IfRequest.ifr_broadaddr;
+	sin = (struct sockaddr_in*) &IfRequest.ifr_broadaddr;
 	if (ipaddr_buf != NULL)
-		strncpy(ipaddr_buf, (char*)inet_ntoa(sin->sin_addr), len);
+		strncpy(ipaddr_buf, (char*) inet_ntoa(sin->sin_addr), len);
 
+	if (fd > 2)
+		close(fd);
 	__WDP_LOG_FUNC_EXIT__;
 	return true;
 }
