@@ -1,3 +1,11 @@
+wfi-direct-manager (0.6.17) precise; urgency=low
+
+  * Fix bug N_SE-34851(Keypad popup disappeared and connection stoped)
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.6.17
+
+ -- Gibyoung Kim <lastkgb.kim@samsung.com>  Thu, 18 Apr 2013 20:52:52 +0900
+
 wfi-direct-manager (0.6.16) precise; urgency=low
 
   * Fix bug N_SE-32967(Status is not changed to 'Activated')
