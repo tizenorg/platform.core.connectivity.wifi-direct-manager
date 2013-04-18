@@ -52,6 +52,7 @@ static unsigned char g_assoc_sta_mac[6];
 static unsigned char g_disassoc_sta_mac[6];
 char g_wps_pin[WPS_PIN_LEN];
 static int g_wps_event_block;
+static unsigned char g_inviting_peer_mac_address[6];
 
 enum current_conn_direction
 {
@@ -109,6 +110,8 @@ static struct wfd_oem_operations supplicant_ops =
 	.wfd_oem_set_persistent_group_enabled = wfd_ws_set_persistent_reconnect,
 	.wfd_oem_connect_for_persistent_group = wfd_ws_connect_for_persistent_group,
 };
+
+static int wfd_ws_restart_discovery();
 
 int wfd_plugin_load( struct wfd_oem_operations **ops)
 {
@@ -1549,8 +1552,7 @@ static gboolean __ws_event_callback(GIOChannel * source,
 			wfd_server_control_t * wfd_server = wfd_server_get_control();
 
 			WDP_LOGD( "wfd_server->current_peer.is_group_owner=[%d]\n", wfd_server->current_peer.is_group_owner);
-			if (wfd_server->current_peer.is_group_owner == FALSE)
-				wfd_ws_connect(la_mac_addr, WIFI_DIRECT_WPS_TYPE_PBC);
+			wfd_ws_connect(la_mac_addr, WIFI_DIRECT_WPS_TYPE_PBC);
 		}
 		break;
 
@@ -1796,10 +1798,12 @@ static gboolean __ws_event_callback(GIOChannel * source,
 
 		case WS_EVENT_INVITATION_REQ:
 		{
+			wfd_ws_restart_discovery();
 			unsigned char la_mac_addr[6];
 			wfd_macaddr_atoe(event.peer_mac_address, la_mac_addr);
 			memcpy(&g_incomming_peer_mac_address, la_mac_addr, 6);
 			WDP_LOGD( "INVITATION REQ. RECEIVED:  mac[" MACSTR"]\n", MAC2STR(g_incomming_peer_mac_address));
+			memcpy(&g_inviting_peer_mac_address, la_mac_addr, 6);
 			g_noti_cb(WFD_EVENT_INVITE_REQUEST);
 		}
 		break;
@@ -2099,6 +2103,16 @@ int __wfd_ws_reinvoke_persistent_group(int network_id)
 	return true;
 }
 
+static int __is_zero_addr(unsigned char *addr)
+{
+	if (!addr[0] && !addr[1] && !addr[2] &&
+		!addr[3] && !addr[4] && !addr[5]) {
+		WDP_LOGD("NULL address");
+		return true;
+	}
+	return false;
+}
+
 int wfd_ws_init(wfd_oem_event_cb event_callback)
 {
 	__WDP_LOG_FUNC_ENTER__;
@@ -2120,6 +2134,7 @@ int wfd_ws_init(wfd_oem_event_cb event_callback)
 
 	memset(g_incomming_peer_mac_address, 0, sizeof(g_incomming_peer_mac_address));
 	memset(g_incomming_peer_ssid, 0, sizeof(g_incomming_peer_ssid));
+	memset(g_inviting_peer_mac_address, 0, sizeof(g_inviting_peer_mac_address));
 
 	__WDP_LOG_FUNC_EXIT__;
 	return true;
@@ -2247,6 +2262,7 @@ int wfd_ws_deactivate()
 	int result = 0;
 
 	g_wps_event_block = 0;
+	memset(g_inviting_peer_mac_address, 0, sizeof(g_inviting_peer_mac_address));
 
 	// stop p2p_find
 	wfd_ws_cancel_discovery();
@@ -2418,22 +2434,22 @@ int wfd_ws_connect(unsigned char mac_addr[6], wifi_direct_wps_type_e wps_config)
 		WDP_LOGD( "__send_wpa_request(WPS_PBC) result=[%d]\n", result);
 	}
 
-	if (wfd_server->current_peer.is_group_owner)
+	snprintf(mac_str, MACSTR_LEN, MACSTR, MAC2STR(mac_addr));
+	if (wfd_server->current_peer.is_group_owner || !__is_zero_addr(g_inviting_peer_mac_address))
 	{
-		snprintf(mac_str, MACSTR_LEN, MACSTR, MAC2STR(mac_addr));
 		if (wps_config == WIFI_DIRECT_WPS_TYPE_PIN_KEYPAD || 
 			wps_config == WIFI_DIRECT_WPS_TYPE_PIN_DISPLAY) {
-			snprintf(cmd, sizeof(cmd),"%s %s %s join", CMD_CONNECT, mac_str, g_wps_pin);
+			snprintf(cmd, sizeof(cmd),"WPS_ENROLLEE %s %s %s", mac_str, g_wps_pin, __convert_wps_config_methods_value(wps_config));
 		}else {
-			snprintf(cmd, sizeof(cmd),"%s %s %s join", CMD_CONNECT, mac_str, __convert_wps_config_methods_value(wps_config));
+			snprintf(cmd, sizeof(cmd),"WPS_ENROLLEE %s pbc", mac_str);
 		}
-		WDP_LOGD("Join command: [%s]", cmd);
+		WDP_LOGD("WPS Enrollee start, because GO is already known");
 		result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-		WDP_LOGD( "__send_wpa_request(CMD_CONNECT join) result=[%d]\n", result);
+		memset(g_inviting_peer_mac_address, 0, sizeof(g_inviting_peer_mac_address));
+		WDP_LOGD( "__send_wpa_request(WPS_ENROLLEE) result=[%d]\n", result);
 	}
 	else
 	{
-		snprintf(mac_str, MACSTR_LEN, MACSTR, MAC2STR(mac_addr));
 		WDP_LOGD( "MAC ADDR = [%s]\t PIN = [%s]\n",
 				mac_str, g_wps_pin);
 
@@ -2845,6 +2861,36 @@ int wfd_ws_start_discovery(bool listen_only, int timeout)
  	return true;
 }
 
+int wfd_ws_restart_discovery()
+{
+	__WDP_LOG_FUNC_ENTER__;
+
+	char cmd[16] = {0, };
+	char res_buffer[1024]={0,};
+	int res_buffer_len=sizeof(res_buffer);
+	int result = 0;
+
+	strncpy(cmd, CMD_START_DISCOVER, sizeof(cmd));
+	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
+	WDP_LOGD( "__send_wpa_request(P2P_FIND) result=[%d]\n", result);
+
+	if (result < 0)
+	{
+		WDP_LOGE( "__send_wpa_request FAILED!!\n");
+	 	__WDP_LOG_FUNC_EXIT__;
+	 	return false;
+	}
+
+	if ( (result == 0) || (strncmp(res_buffer, "FAIL", 4) == 0))
+	{
+	 	__WDP_LOG_FUNC_EXIT__;
+	 	return false;
+	}
+
+	__WDP_LOG_FUNC_EXIT__;
+	return true;
+}
+
 int wfd_ws_cancel_discovery()
 {
 	__WDP_LOG_FUNC_ENTER__;
@@ -3157,21 +3203,10 @@ int wfd_ws_send_provision_discovery_request(unsigned char mac_addr[6], wifi_dire
 
 	WDP_LOGD("Outgoing PROV_DISC");
 
-	if (is_peer_go && config_method == WIFI_DIRECT_WPS_TYPE_PBC)
-	{
-		snprintf(mac_str, MACSTR_LEN, MACSTR, MAC2STR(mac_addr));
-		snprintf(cmd, sizeof(cmd),"%s %s %s join", CMD_CONNECT, mac_str, __convert_wps_config_methods_value(config_method));
-		result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-		WDP_LOGD("Join command: [%s]", cmd);
-		WDP_LOGD( "__send_wpa_request(P2P_PROV_DISC) result=[%d]\n", result);
-	}
-	else
-	{
-		snprintf(mac_str, MACSTR_LEN, MACSTR, MAC2STR(mac_addr));
-		snprintf(cmd, sizeof(cmd),"%s %s %s", CMD_SEND_PROVISION_DISCOVERY_REQ, mac_str, __convert_wps_config_methods_value(config_method));
-		result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
-		WDP_LOGD( "__send_wpa_request(P2P_PROV_DISC) result=[%d]\n", result);
-	}
+	snprintf(mac_str, MACSTR_LEN, MACSTR, MAC2STR(mac_addr));
+	snprintf(cmd, sizeof(cmd),"%s %s %s", CMD_SEND_PROVISION_DISCOVERY_REQ, mac_str, __convert_wps_config_methods_value(config_method));
+	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
+	WDP_LOGD( "__send_wpa_request(P2P_PROV_DISC) result=[%d]\n", result);
 
 	if (result < 0)
 	{
@@ -3270,8 +3305,6 @@ int wfd_ws_send_invite_request(unsigned char dev_mac_addr[6])
 
 	/* invite request sometimes failed in listen only mode */
 	wfd_server_control_t * wfd_server = wfd_server_get_control();
-	if (wfd_server->config_data.listen_only)
-		wfd_ws_start_discovery(false, 0);
 
 	if(wfd_ws_get_go_dev_addr(p2p_device_address) == false)
 	{
