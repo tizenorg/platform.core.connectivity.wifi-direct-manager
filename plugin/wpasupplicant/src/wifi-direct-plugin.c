@@ -1853,14 +1853,14 @@ unsigned short __convert_category_from_type(char *pri_dev_type)
 	if(pri_dev_type == NULL)
 	{
 		WDP_LOGE( "Incorrect parameter\n");
-		return -1;
+		return 0;
 	}
 
 	token = strtok_r(pri_dev_type, "-", &saveptr);
 	if(token == NULL)
 	{
 		WDP_LOGD( "Extracting failed\n");
-		return -1;
+		return 0;
 	}
 
 	if(!strcmp(token, "255"))
@@ -1890,10 +1890,8 @@ unsigned short __convert_category_from_type(char *pri_dev_type)
 	else
 	{
 		WDP_LOGD( "Unknown device type [%s]\n", token);
-		return -1;
+		return 0;
 	}
-	__WDP_LOG_FUNC_EXIT__;
-	return 0;
 }
 
 
@@ -3890,7 +3888,7 @@ int wfd_ws_get_connected_peers_info(wfd_connected_peer_info_s ** peer_list, int*
 		}
 
 		tmp_peer_list[i].category = __convert_category_from_type(pri_dev_type);
-		if(tmp_peer_list[i].category < 0)
+		if(tmp_peer_list[i].category == 0)
 		{
 			WDP_LOGE( "Category converting error\n");
 			*peer_list = NULL;
