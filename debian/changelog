@@ -1,3 +1,11 @@
+wfi-direct-manager (0.6.19) precise; urgency=low
+
+  * License file changed
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.6.19
+
+ -- Gibyoung Kim <lastkgb.kim@samsung.com>  Mon, 22 Apr 2013 20:29:32 +0900
+
 wfi-direct-manager (0.6.18) precise; urgency=low
 
   * Fix prevent #38619
