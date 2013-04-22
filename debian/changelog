@@ -1,3 +1,11 @@
+wfi-direct-manager (0.6.18) precise; urgency=low
+
+  * Fix prevent #38619
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.6.18
+
+ -- sunil85.kim <isurit@sunil85.kim>  Mon, 22 Apr 2013 16:41:35 +0900
+
 wfi-direct-manager (0.6.17) precise; urgency=low
 
   * Fix bug N_SE-34851(Keypad popup disappeared and connection stoped)
