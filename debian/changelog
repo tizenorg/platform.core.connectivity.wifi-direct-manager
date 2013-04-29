@@ -1,3 +1,12 @@
+wfi-direct-manager (0.6.20) precise; urgency=low
+
+  * N_SE-36637(Incorrect popup displayed)
+  * Flora license file updated
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.6.20
+
+ -- Gibyoung Kim <lastkgb.kim@samsung.com>  Mon, 29 Apr 2013 16:34:49 +0900
+
 wfi-direct-manager (0.6.19) precise; urgency=low
 
   * License file changed

@@ -942,6 +942,8 @@ void wfd_server_process_event(wfd_event_t event)
 							WIFI_DIRECT_WPS_TYPE_PBC;
 						if (wfd_oem_disconnect() == false)
 							WDS_LOGF("Error!!! wfd_oem_disconnect() failed!!..\n");
+						else
+							wfd_server_set_state(WIFI_DIRECT_STATE_DISCONNECTING);
 					}
 					noti.event = WIFI_DIRECT_CLI_EVENT_DISASSOCIATION_IND;
 					__wfd_server_send_client_event(&noti);
