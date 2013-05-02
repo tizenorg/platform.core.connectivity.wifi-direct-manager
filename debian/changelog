@@ -1,3 +1,11 @@
+wfi-direct-manager (0.6.21) precise; urgency=low
+
+  * Boilerplate updated
+  * Git : framework/connectivity/wifi-direct-manager
+  * Tag : wifi-direct-manager_0.6.21
+
+ -- Gibyoung Kim <lastkgb.kim@samsung.com>  Thu, 2 May 2013 18:02:12 +0900
+
 wfi-direct-manager (0.6.20) precise; urgency=low
 
   * N_SE-36637(Incorrect popup displayed)
