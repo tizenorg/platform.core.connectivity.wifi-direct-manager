@@ -183,6 +183,7 @@ int wfd_get_phone_device_name(char* str, int len)
 	{
 		WDS_LOGF( "VCONFKEY_WIFI_STATE(%s) : %d\n", VCONFKEY_SETAPPL_DEVICE_NAME_STR, get_str);
 		strncpy(str, get_str, len);
+		str[len-1] = '\0';
 		return 0;
 	}
 }
@@ -197,6 +198,7 @@ void wfd_set_device_name()
 	if (wfd_get_phone_device_name(device_name, WIFI_DIRECT_MAX_DEVICE_NAME_LEN) != -1)
 	{
 		strncpy(wfd_server->config_data.device_name, device_name, WIFI_DIRECT_MAX_DEVICE_NAME_LEN);
+		wfd_server->config_data.device_name[WIFI_DIRECT_MAX_DEVICE_NAME_LEN] ='\0';
 		wfd_oem_set_ssid(device_name);
 
 		// In WIFI_DIRECT_STATE_ACTIVATED  state, devie name will be applied immediately.
@@ -838,7 +840,6 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 
 			if (wfd_oem_connect(client_req->data.mac_addr, wps_config))
 			{
-				//strncpy(noti.param1, client_req->data.mac_addr, strlen(client_req->data.mac_addr));
 				snprintf(noti.param1, sizeof(noti.param1), MACSTR, MAC2STR(client_req->data.mac_addr));
 
 				noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_START;
@@ -986,10 +987,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 
 	case WIFI_DIRECT_CMD_GET_DEVICE_NAME:
 	{
-		char device_name[WIFI_DIRECT_MAX_DEVICE_NAME_LEN+1];
-
-		strncpy(device_name, wfd_server->config_data.device_name, WIFI_DIRECT_MAX_DEVICE_NAME_LEN);
-		snprintf(resp.param2, sizeof(resp.param2), "%s", device_name);
+		snprintf(resp.param2, sizeof(resp.param2), "%s", wfd_server->config_data.device_name);
 		resp.result = WIFI_DIRECT_ERROR_NONE;
 
 		if (wfd_server_send_response(client->sync_sockfd, &resp, sizeof(wifi_direct_client_response_s)) < 0)
@@ -1016,6 +1014,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 
 		memset(wfd_server->config_data.device_name, 0, WIFI_DIRECT_MAX_DEVICE_NAME_LEN+1);
 		strncpy(wfd_server->config_data.device_name, device_name, WIFI_DIRECT_MAX_DEVICE_NAME_LEN);
+		wfd_server->config_data.device_name[WIFI_DIRECT_MAX_DEVICE_NAME_LEN] = '\0';
 		ret = wfd_oem_set_ssid(device_name);
 
 		if (ret == TRUE)
@@ -1292,6 +1291,7 @@ void wfd_server_process_client_request(wifi_direct_client_request_s * client_req
 			WDS_LOGD("Connected peer info found [%s]", wfd_server->connected_peers[i].peer.device_name);
 
 			strncpy(plist[j].device_name, wfd_server->connected_peers[i].peer.device_name, WIFI_DIRECT_MAX_DEVICE_NAME_LEN);
+			plist[j].device_name[WIFI_DIRECT_MAX_DEVICE_NAME_LEN] = '\0';
 			memcpy(&plist[j].intf_mac_address[0], wfd_server->connected_peers[i].int_address, 6);
 			memcpy(&plist[j].mac_address[0], wfd_server->connected_peers[i].peer.mac_address, 6);
 			plist[j].services = wfd_server->connected_peers[i].peer.services;

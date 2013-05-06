@@ -964,10 +964,8 @@ void wfd_server_process_event(wfd_event_t event)
 			{
 				if (state == WIFI_DIRECT_STATE_GROUP_OWNER)
 				{
-					WDS_LOGI(
-								   "Peer's Dev MAC is " MACSTR "\n",
-								   MAC2STR(wfd_server->current_peer.
-										   mac_address));
+					WDS_LOGI("Peer's Dev MAC is " MACSTR "\n",
+								   MAC2STR(wfd_server->current_peer.mac_address));
 					snprintf(noti.param1, sizeof(noti.param1), MACSTR,
 							 MAC2STR(wfd_server->current_peer.mac_address));
 

@@ -154,6 +154,21 @@ char *wfd_server_print_cmd(wifi_direct_cmd_e cmd)
 		return "WIFI_DIRECT_CMD_IS_DISCOVERABLE";
 	case WIFI_DIRECT_CMD_GET_OWN_GROUP_CHANNEL:
 		return "WIFI_DIRECT_CMD_GET_OWN_GROUP_CHANNEL";
+	case WIFI_DIRECT_CMD_DEACTIVATE_PERSISTENT_GROUP:
+		return "WIFI_DIRECT_CMD_DEACTIVATE_PERSISTENT_GROUP";
+	case WIFI_DIRECT_CMD_IS_PERSISTENT_GROUP:
+		return "WIFI_DIRECT_CMD_IS_PERSISTENT_GROUP";
+	case WIFI_DIRECT_CMD_GET_PERSISTENT_GROUP_INFO:
+		return "WIFI_DIRECT_CMD_GET_PERSISTENT_GROUP_INFO";
+	case WIFI_DIRECT_CMD_REMOVE_PERSISTENT_GROUP:
+		return "WIFI_DIRECT_CMD_REMOVE_PERSISTENT_GROUP";
+	case WIFI_DIRECT_CMD_GET_DEVICE_NAME:
+		return "WIFI_DIRECT_CMD_GET_DEVICE_NAME";
+	case WIFI_DIRECT_CMD_SET_DEVICE_NAME:
+		return "WIFI_DIRECT_CMD_SET_DEVICE_NAME";
+	case WIFI_DIRECT_CMD_SET_OEM_LOGLEVEL:
+		return "WIFI_DIRECT_CMD_SET_OEM_LOGLEVEL";
+
 	default:
 		return "WIFI_DIRECT_CMD_INVALID";
 
@@ -232,7 +247,8 @@ static int wfd_server_create_socket(void)
 	/** It is safe to Unlink the path.*/
 	unlink(WFD_SERVER_SOCKET_PATH);
 	errno = 0;
-	if ((sockfd = socket(PF_LOCAL, SOCK_STREAM, 0)) == -1)
+	sockfd = socket(PF_LOCAL, SOCK_STREAM, 0);
+	if (sockfd < 3)
 	{
 		WDS_LOGE( "Failed to create UNIX socket. Error = [%s]", strerror(errno));
 		__WDS_LOG_FUNC_EXIT__;

@@ -150,7 +150,7 @@ int __send_wpa_request(int sockfd, char *cmd, char *reply, size_t reply_buf_len)
 	struct pollfd pollfd;
 	int timeout = 6000; /** for 6.0 sec */
 
-	if (sockfd <=0 )
+	if (sockfd < 3 )
 	{
 		WDP_LOGE("Invalid argument sfd=[%d]\n", sockfd);
 		return false;
@@ -842,9 +842,9 @@ int __parsing_persistent_group(char* buf, ws_network_info_s ws_persistent_group_
 		ptr = __get_persistent_group_value(ptr, &group);
 
 		ws_persistent_group_list[count].network_id = group.network_id;
-		strncpy(ws_persistent_group_list[count].ssid, group.ssid, sizeof(ws_persistent_group_list[count].ssid));
-		strncpy(ws_persistent_group_list[count].bssid, group.bssid, sizeof(ws_persistent_group_list[count].bssid));
-		strncpy(ws_persistent_group_list[count].flags, group.flags, sizeof(ws_persistent_group_list[count].flags));
+		snprintf(ws_persistent_group_list[count].ssid, NETWORK_SSID_LEN, "%s", group.ssid);
+		snprintf(ws_persistent_group_list[count].bssid, NETWORK_BSSID_LEN, "%s", group.bssid);
+		snprintf(ws_persistent_group_list[count].flags, NETWORK_FLAGS_LEN, "%s", group.flags);
 		count++;
 	}
 
@@ -1603,10 +1603,12 @@ static gboolean __ws_event_callback(GIOChannel * source,
 			memcpy(&g_incomming_peer_mac_address, la_mac_addr, 6);
 			memset(g_incomming_peer_ssid, 0, sizeof(g_incomming_peer_ssid));
 			strncpy(g_incomming_peer_ssid, event.peer_ssid, sizeof(g_incomming_peer_ssid));
+			g_incomming_peer_ssid[32] = '\0';
 
 			WDP_LOGD( "NEW PIN RECEIVED = %s\n", event.wps_pin);
 			memset(g_wps_pin, 0x00, sizeof(g_wps_pin));
 			strncpy(g_wps_pin, event.wps_pin, WPS_PIN_LEN);
+			g_wps_pin[WPS_PIN_LEN-1] = '\0';
 
 			WDP_LOGD( "Prov Req:  mac[" MACSTR"] ssid=[%s]\n",
 				MAC2STR(g_incomming_peer_mac_address), g_incomming_peer_ssid);
@@ -1904,7 +1906,7 @@ int __wpa_ctrl_attach(int sockfd)
 	int res_buffer_len=sizeof(res_buffer);
 	int result= 0;
 
-	strncpy(cmd, CMD_ATTACH, sizeof(cmd));
+	snprintf(cmd, sizeof(cmd), CMD_ATTACH);
 	result = __send_wpa_request(sockfd, cmd, (char*)res_buffer,  res_buffer_len);
 	WDP_LOGE( "__send_wpa_request(ATTACH) result=[%d]\n", result);
 	
@@ -2168,7 +2170,7 @@ int wfd_ws_activate()
 		return false;
 	}
 
-	strncpy(cmd, CMD_INTERFACE, sizeof(cmd));
+	snprintf(cmd, sizeof(cmd), CMD_INTERFACE);
 	result = __send_wpa_request(g_global_sockfd, cmd, res_buffer,  res_buffer_len);
 	WDP_LOGE( "__send_wpa_request(LOG_LEVEL) result=[%d]\n", result);
 	if(!strstr(res_buffer, "wlan0"))
@@ -2266,7 +2268,7 @@ int wfd_ws_deactivate()
 	wfd_ws_cancel_discovery();
 
 	// detach monitor interface
-	strncpy(cmd, CMD_DETACH, sizeof(cmd));
+	snprintf(cmd, sizeof(cmd), CMD_DETACH);
 	result = __send_wpa_request(g_monitor_sockfd, cmd, (char*)res_buffer, res_buffer_len);
 	WDP_LOGD( "__send_wpa_request(CMD_DETACH) result=[%d]\n", result);
 	if (result < 0)
@@ -2291,7 +2293,7 @@ int wfd_ws_deactivate()
 		close(g_monitor_sockfd);
 
 	// terminate wpasupplicant
-	strncpy(cmd, CMD_TERMINATE, sizeof(cmd));
+	snprintf(cmd, sizeof(cmd), CMD_TERMINATE);
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
 	WDP_LOGD( "__send_wpa_request(CMD_TERMINATE) result=[%d]\n", result);
 	if (result < 0)
@@ -2427,7 +2429,7 @@ int wfd_ws_connect(unsigned char mac_addr[6], wifi_direct_wps_type_e wps_config)
 
 	if (wfd_ws_is_groupowner()==true)
 	{
-		strncpy(cmd, CMD_WPS_PUSHBUTTON_START, sizeof(cmd));
+		snprintf(cmd, sizeof(cmd), CMD_WPS_PUSHBUTTON_START);
 		result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
 		WDP_LOGD( "__send_wpa_request(WPS_PBC) result=[%d]\n", result);
 	}
@@ -2744,7 +2746,7 @@ bool wfd_ws_cancel()
         int res_buffer_len=sizeof(res_buffer);
         int result = 0;
 
-        strncpy(cmd, CMD_CANCEL, sizeof(cmd));
+        snprintf(cmd, sizeof(cmd), CMD_CANCEL);
         result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
         WDP_LOGD("__send_wpa_request(CMD_CANCEL) result=[%d]\n", result);
 
@@ -2785,7 +2787,7 @@ bool wfd_ws_flush()
 	g_wps_event_block = 0;
 
 	// Skip checking result..
-	strncpy(cmd, CMD_FLUSH, sizeof(cmd));
+	snprintf(cmd, sizeof(cmd), CMD_FLUSH);
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
 	WDP_LOGD( "__send_wpa_request(P2P_FLUSH) result=[%d]\n", result);
 
@@ -2820,9 +2822,9 @@ int wfd_ws_start_discovery(bool listen_only, int timeout)
 	if (listen_only == true)
 	{
 		if (timeout > 0)
-			snprintf(cmd, sizeof(cmd), "%s %d", CMD_START_LISTEN, timeout);
+			snprintf(cmd, sizeof(cmd), CMD_START_LISTEN " %d", timeout);
 		else
-			strncpy(cmd, CMD_START_LISTEN, sizeof(cmd));
+			snprintf(cmd, sizeof(cmd), CMD_START_LISTEN);
 
 			result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
 			WDP_LOGD( "__send_wpa_request(P2P_LISTEN) result=[%d]\n", result);
@@ -2831,7 +2833,7 @@ int wfd_ws_start_discovery(bool listen_only, int timeout)
 	{
 		wfd_ws_flush();
 
-		strncpy(cmd, CMD_START_DISCOVER, sizeof(cmd));
+		snprintf(cmd, sizeof(cmd), CMD_START_DISCOVER);
 		result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
 		WDP_LOGD( "__send_wpa_request(P2P_FIND) result=[%d]\n", result);
 	}
@@ -2868,7 +2870,7 @@ int wfd_ws_restart_discovery()
 	int res_buffer_len=sizeof(res_buffer);
 	int result = 0;
 
-	strncpy(cmd, CMD_START_DISCOVER, sizeof(cmd));
+	snprintf(cmd, sizeof(cmd), CMD_START_DISCOVER);
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
 	WDP_LOGD( "__send_wpa_request(P2P_FIND) result=[%d]\n", result);
 
@@ -2898,7 +2900,7 @@ int wfd_ws_cancel_discovery()
 	int res_buffer_len=sizeof(res_buffer);
 	int result = 0;
 
-	strncpy(cmd, CMD_CANCEL_DISCOVER, sizeof(cmd));
+	snprintf(cmd, sizeof(cmd), CMD_CANCEL_DISCOVER);
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
 	WDP_LOGD( "__send_wpa_request(P2P_STOP_FIND) result=[%d]\n", result);
 
@@ -2940,7 +2942,7 @@ int wfd_ws_get_discovery_result(wfd_discovery_entry_s ** peer_list, int* peer_nu
 	memset(&wfd_peer_list, 0, (sizeof(wfd_discovery_entry_s)*16));
 	
 	/* Reading first discovered peer */
-	strncpy(cmd, CMD_GET_FIRST_DISCOVERED_PEER, sizeof(cmd));
+	snprintf(cmd, sizeof(cmd), CMD_GET_FIRST_DISCOVERED_PEER);
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
 	WDP_LOGD( "__send_wpa_request(P2P_PEER FIRST) result=[%d]\n", result);
 	if (result < 0)
@@ -2970,7 +2972,8 @@ int wfd_ws_get_discovery_result(wfd_discovery_entry_s ** peer_list, int* peer_nu
 	 	memset(mac_str, 0x0, MACSTR_LEN);
 		memset(res_buffer, 0, sizeof(res_buffer));
 
-		strncpy(mac_str, ws_peer_list[peer_count-1].mac, sizeof(mac_str));
+		strncpy(mac_str, ws_peer_list[peer_count-1].mac, MACSTR_LEN);
+		mac_str[MACSTR_LEN-1] = '\0';
 		snprintf(cmd, sizeof(cmd), "%s%s", CMD_GET_NEXT_DISCOVERED_PEER, mac_str);
 		result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
 		WDP_LOGD( "__send_wpa_request(P2P_PEER NEXT-) result=[%d]\n", result);
@@ -3242,7 +3245,7 @@ bool wfd_ws_get_go_dev_addr(char* p2p_device_address)
 	 	return false;
 	}
 
-	strncpy(cmd, CMD_STATUS_P2P, sizeof(cmd));
+	snprintf(cmd, sizeof(cmd), CMD_STATUS_P2P);
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
 	WDP_LOGD( "__send_wpa_request(STATUS P2P) result=[%d]\n", result);
 
@@ -3268,7 +3271,7 @@ bool wfd_ws_get_go_dev_addr(char* p2p_device_address)
 	}
 
 	char item[32];
-	char value[32];
+	char value[MACSTR_LEN];
 
 	if (__get_item_value(ptr, item, value) == NULL)
 	{
@@ -3284,7 +3287,7 @@ bool wfd_ws_get_go_dev_addr(char* p2p_device_address)
 	    return false;
 	}
 
-	strncpy(p2p_device_address, value, sizeof(value));
+	snprintf(p2p_device_address, MACSTR_LEN, "%s", value);
 
 	__WDP_LOG_FUNC_EXIT__;
  	return true;
@@ -3297,7 +3300,7 @@ int wfd_ws_send_invite_request(unsigned char dev_mac_addr[6])
 	char cmd[128] = {0, };
 	char mac_str[MACSTR_LEN] = {0, };
 	char res_buffer[1024]={0,};
-	char p2p_device_address[32];
+	char p2p_device_address[MACSTR_LEN];
 	int res_buffer_len = sizeof(res_buffer);
 	int result;
 
@@ -3421,7 +3424,7 @@ int wfd_ws_activate_pushbutton()
 	int res_buffer_len = sizeof(res_buffer);
 	int result;
 
-	strncpy(cmd, CMD_WPS_PUSHBUTTON_START, sizeof(cmd));
+	snprintf(cmd, sizeof(cmd), CMD_WPS_PUSHBUTTON_START);
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
 	WDP_LOGD( "__send_wpa_request(WPS_PBC) result=[%d]\n", result);
 	if (result < 0)
@@ -3452,7 +3455,7 @@ bool wfd_ws_is_groupowner()
 	int res_buffer_len = sizeof(res_buffer);
 	int result;
 
-	strncpy(cmd, CMD_STATUS_P2P, sizeof(cmd));
+	snprintf(cmd, sizeof(cmd), CMD_STATUS_P2P);
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
 	WDP_LOGD( "__send_wpa_request(STATUS P2P) result=[%d]\n", result);
 
@@ -3488,7 +3491,7 @@ bool wfd_ws_is_groupclient()
 	int res_buffer_len = sizeof(res_buffer);
 	int result;
 
-	strncpy(cmd, CMD_STATUS_P2P, sizeof(cmd));
+	snprintf(cmd, sizeof(cmd), CMD_STATUS_P2P);
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
 	WDP_LOGD( "__send_wpa_request(STATUS P2P) result=[%d]\n", result);
 
@@ -3532,7 +3535,7 @@ int wfd_ws_get_ssid(char* ssid, int len)
 		return -1;
 	}
 
-	strncpy(cmd, CMD_STATUS_P2P, sizeof(cmd));
+	snprintf(cmd, sizeof(cmd), CMD_STATUS_P2P);
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
 	WDP_LOGD( "__send_wpa_request(STATUS) result=[%d]\n", result);
 
@@ -3583,7 +3586,8 @@ bool wfd_ws_dhcpc_get_ip_address(char *ipaddr_buf, int len, int is_IPv6)
 	if (ipaddr_buf == NULL)
 		return false;
 
-	if((fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP)) < 0) {
+	fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+	if(fd < 3) {
 		WDP_LOGE( "Failed to open socket\n");
 		return false;
 	}
@@ -3600,8 +3604,10 @@ bool wfd_ws_dhcpc_get_ip_address(char *ipaddr_buf, int len, int is_IPv6)
 	}
 
 	sin = (struct sockaddr_in*) &IfRequest.ifr_broadaddr;
-	if (ipaddr_buf != NULL)
+	if (ipaddr_buf != NULL) {
 		strncpy(ipaddr_buf, (char*) inet_ntoa(sin->sin_addr), len);
+		ipaddr_buf[len-1] = '\0';
+	}
 
 	if (fd > 2)
 		close(fd);
@@ -4046,7 +4052,7 @@ int wfd_ws_get_device_mac_address(unsigned char* device_mac)
 	int res_buffer_len = sizeof(res_buffer);
 	int result;
 
-	strncpy(cmd, CMD_STATUS, sizeof(cmd));
+	snprintf(cmd, sizeof(cmd), CMD_STATUS);
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
 	WDP_LOGD( "__send_wpa_request(STATUS) result=[%d]\n", result);
 
@@ -4149,7 +4155,7 @@ int wfd_ws_get_operating_channel(void)
 	int channel;
 
 
-	strncpy(cmd, CMD_STATUS_P2P, sizeof(cmd));
+	snprintf(cmd, sizeof(cmd), CMD_STATUS_P2P);
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
 	WDP_LOGD( "__send_wpa_request(STATUS P2P) result=[%d]\n", result);
 
@@ -4337,7 +4343,7 @@ int wfd_ws_get_persistent_group_info(wfd_persistent_group_info_s **persistent_gr
 	/* Reading lists the configured networks, including stored information for persistent groups. 
 	The identifier in this is used with p2p_group_add and p2p_invite to indicate witch persistent
 	group is to be reinvoked. */
-	strncpy(cmd, CMD_GET_LIST_NETWORKS, sizeof(cmd));
+	snprintf(cmd, sizeof(cmd), CMD_GET_LIST_NETWORKS);
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
 	WDP_LOGD( "__send_wpa_request(LIST_NETWORKS) result=[%d]\n", result);
 	if (result < 0)
@@ -4419,7 +4425,7 @@ int wfd_ws_remove_persistent_group(wfd_persistent_group_info_s *persistent_group
 	memset(go_mac_str, 0x0, sizeof(go_mac_str));
 	snprintf(go_mac_str, MACSTR_LEN, MACSTR, MAC2STR(persistent_group->go_mac_address));
 
-	strncpy(cmd, CMD_GET_LIST_NETWORKS, sizeof(cmd));
+	snprintf(cmd, sizeof(cmd), CMD_GET_LIST_NETWORKS);
 	result = __send_wpa_request(g_control_sockfd, cmd, (char*)res_buffer, res_buffer_len);
 	WDP_LOGD( "__send_wpa_request(LIST_NETWORKS) result=[%d]\n", result);
 	if (result < 0)
