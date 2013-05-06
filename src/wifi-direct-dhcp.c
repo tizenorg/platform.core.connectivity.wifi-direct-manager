@@ -356,8 +356,8 @@ void __wfd_DHCP_lease_add_cb(keynode_t *key, void* data)
 
 			//Send event to client with [dev_mac, ip]
 			noti.event = WIFI_DIRECT_CLI_EVENT_IP_LEASED_IND;
-			snprintf(noti.param1, 18, MACSTR, MAC2STR(wfd_server->connected_peers[i].peer.mac_address));
-			strncpy(noti.param2, ip_str, strlen(ip_str));
+			snprintf(noti.param1, 64, MACSTR, MAC2STR(wfd_server->connected_peers[i].peer.mac_address));
+			snprintf(noti.param2, 64, "%s", ip_str);
 			__wfd_server_send_client_event(&noti);
         		break;
         	}
@@ -392,7 +392,7 @@ int wfd_get_dhcpc_server_ip(char* str, int len)
 	else
 	{
 		WDS_LOGD("VCONFKEY_WIFI_STATE(%s) : %d\n", VCONFKEY_DHCPC_SERVER_IP, get_str);
-		strncpy(str, get_str, len);
+		snprintf(str, len, get_str);
 		return 0;
 	}
 
