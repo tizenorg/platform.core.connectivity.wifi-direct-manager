@@ -56,23 +56,15 @@ int wfd_macaddr_atoe(char *p, unsigned char mac[]);
 
 #else /** _DLOG_UTIL */
 
-#define WDS_LOGV(format, args...) \
-	printf("[V/WIFI_DIRECT_MANAGER] %s: %s()(%4d)> "format, __FILE__, __FUNCTION__, __LINE__, ##args)
-#define WDS_LOGD(format, args...) \
-	printf("[D/WIFI_DIRECT_MANAGER] %s: %s()(%4d)> "format, __FILE__, __FUNCTION__, __LINE__, ##args)
-#define WDS_LOGI(format, args...) \
-	printf("[I/WIFI_DIRECT_MANAGER] %s: %s()(%4d)> "format, __FILE__, __FUNCTION__, __LINE__, ##args)
-#define WDS_LOGW(format, args...) \
-	printf("[W/WIFI_DIRECT_MANAGER] %s: %s()(%4d)> "format, __FILE__, __FUNCTION__, __LINE__, ##args)
-#define WDS_LOGE(format, args...) \
-	printf("[E/WIFI_DIRECT_MANAGER] %s: %s()(%4d)> "format, __FILE__, __FUNCTION__, __LINE__, ##args)
-#define WDS_LOGF(format, args...) \
-	printf("[F/WIFI_DIRECT_MANAGER] %s: %s()(%4d)> "format, __FILE__, __FUNCTION__, __LINE__, ##args)
+#define WDS_LOGV(format, args...)
+#define WDS_LOGD(format, args...)
+#define WDS_LOGI(format, args...)
+#define WDS_LOGW(format, args...)
+#define WDS_LOGE(format, args...)
+#define WDS_LOGF(format, args...)
 
-#define __WDS_LOG_FUNC_ENTER__ \
-	printf("[V/WIFI_DIRECT_MANAGER] %s: %s()(%4d)> Enter", __FILE__, __FUNCTION__, __LINE__)
-#define __WDS_LOG_FUNC_EXIT__ \
-	printf("[V/WIFI_DIRECT_MANAGER] %s: %s()(%4d)> Exit", __FILE__, __FUNCTION__, __LINE__)
+#define __WDS_LOG_FUNC_ENTER__
+#define __WDS_LOG_FUNC_EXIT__
 
 #endif /** _DLOG_UTIL */
 

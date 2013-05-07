@@ -37,8 +37,7 @@ int wfd_gettid()
 #ifdef __NR_gettid
 	return syscall(__NR_gettid);
 #else
-	fprintf(stderr,
-			"__NR_gettid is not defined, please include linux/unistd.h ");
+	WDS_LOGE("__NR_gettid is not defined, please include linux/unistd.h ");
 	return -1;
 #endif
 }
@@ -138,7 +137,7 @@ int wfd_macaddr_atoe(char *p, unsigned char mac[])
 {
 	int i = 0;
 
-	printf("MAC [%s]\n", p);
+	WDS_LOGD("MAC [%s]\n", p);
 
 	for (;;)
 	{
