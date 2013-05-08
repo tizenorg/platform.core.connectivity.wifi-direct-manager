@@ -325,13 +325,9 @@ static int __read_socket_cb(int sockfd, char *dataptr, int datalen)
 		return -1;
 	}
 
-	//printf("@@@@@@@ len = %d  @@@@@@@@@@@\n", datalen);
-
 	pollfd.fd = sockfd;
 	pollfd.events = POLLIN | POLLERR | POLLHUP;
 	pollret = poll(&pollfd, 1, timeout);
-
-	//printf("POLL ret = %d,  \n", pollret);
 
 	if (pollret > 0)
 	{
@@ -642,8 +638,6 @@ int __parsing_peer(char* buf, ws_discovered_peer_info_s* peer)
 		ptr = __get_item_value(ptr, item, value);
 		if (ptr==NULL)
 			break;
-
-		//printf("item=%s, value=%s\n", item,value);
 
 		i=0;
 		item_id = WS_PEER_INFO_NONE;
