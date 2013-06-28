@@ -5,6 +5,7 @@ Release:    1
 Group:      TO_BE_FILLED
 License:    Apache License Version 2.0
 Source0:    %{name}-%{version}.tar.gz
+Source1001: 	wifi-direct-manager.manifest
 Requires(post): /usr/bin/vconftool
 BuildRequires:  pkgconfig(wifi-direct)
 BuildRequires:  pkgconfig(dbus-glib-1)
@@ -28,6 +29,7 @@ wifi drect plugin for wpa supplicant
 
 %prep
 %setup -q
+cp %{SOURCE1001} .
 
 %build
 
@@ -74,7 +76,7 @@ vconftool set -t string memory/private/wifi_direct_manager/dhcpc_server_ip 0.0.0
 %postun
 
 %files
-%manifest wifi-direct-manager.manifest
+%manifest %{name}.manifest
 %defattr(-,root,root,-)
 %{_bindir}/wfd-manager
 /usr/etc/wifi-direct/dhcpd.p2p.conf
@@ -94,7 +96,7 @@ vconftool set -t string memory/private/wifi_direct_manager/dhcpc_server_ip 0.0.0
 /usr/share/license/%{name}
 
 %files -n wifi-direct-plugin-wpasupplicant
-%manifest wifi-direct-plugin-wpasupplicant.manifest
+%manifest %{name}.manifest
 %defattr(-,root,root,-)
 %{_libdir}/wifi-direct-plugin-wpasupplicant.so
 /usr/share/license/wifi-direct-plugin-wpasupplicant
