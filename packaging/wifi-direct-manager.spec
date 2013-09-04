@@ -2,8 +2,8 @@ Name:       wifi-direct-manager
 Summary:    Wi-Fi Direct manger
 Version:    0.6.24
 Release:    1
-Group:      TO_BE_FILLED
-License:    Apache License Version 2.0
+Group:      Network & Connectivity/Wireless
+License:    Apache-2.0
 Source0:    %{name}-%{version}.tar.gz
 Source1001: 	wifi-direct-manager.manifest
 Requires(post): /usr/bin/vconftool
@@ -19,12 +19,12 @@ BuildRequires:  cmake
 Wi-Fi Direct manager
 
 %package -n wifi-direct-plugin-wpasupplicant
-Summary:    wifi drect plugin for wpa supplicant
-Group:      TO_BE_FILLED
+Summary:    Wifi direct plugin for wpa supplicant
+Group:      Network & Connectivity/Wireless
 Requires:   %{name} = %{version}-%{release}
 
 %description -n wifi-direct-plugin-wpasupplicant
-wifi drect plugin for wpa supplicant
+Wifi direct plugin for wpa supplicant
 
 
 %prep
