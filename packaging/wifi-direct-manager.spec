@@ -1,11 +1,10 @@
 Name:       wifi-direct-manager
 Summary:    Wi-Fi Direct manger
-Version:    0.6.24
+Version:    1.0.0
 Release:    1
 Group:      Network & Connectivity/Wireless
 License:    Apache-2.0
 Source0:    %{name}-%{version}.tar.gz
-Source1001: 	wifi-direct-manager.manifest
 Requires(post): /usr/bin/vconftool
 BuildRequires:  pkgconfig(wifi-direct)
 BuildRequires:  pkgconfig(dbus-glib-1)
@@ -29,7 +28,6 @@ Wifi direct plugin for wpa supplicant
 
 %prep
 %setup -q
-cp %{SOURCE1001} .
 
 %build
 
@@ -46,7 +44,8 @@ export ARCH=i586
 %endif
 
 cmake . -DCMAKE_INSTALL_PREFIX=%{_prefix} -DARCHITECTURE=$ARCH
-make %{?jobs:-j%jobs}
+#make %{?jobs:-j%jobs}
+make %{?_smp_mflags}
 
 %install
 rm -rf %{buildroot}
@@ -57,12 +56,9 @@ rm -rf %{buildroot}
 mkdir -p %{buildroot}/usr/share/license
 cp %{_builddir}/%{buildsubdir}/LICENSE.APLv2 %{buildroot}/usr/share/license/%{name}
 cp %{_builddir}/%{buildsubdir}/LICENSE.APLv2 %{buildroot}/usr/share/license/wifi-direct-plugin-wpasupplicant
-cp %{_builddir}/%{buildsubdir}/LICENSE.Flora %{buildroot}/usr/share/license/p2p_supplicant
 
 %post
 chmod 644 /usr/etc/wifi-direct/dhcpd.p2p.conf
-chmod 644 /usr/etc/wifi-direct/dhcpd.wl0.conf
-chmod 644 /usr/etc/wifi-direct/dhcpd.eth.conf
 chmod 755 /usr/bin/dhcpd-notify.sh
 chmod 755 /usr/etc/wifi-direct/udhcp_script.non-autoip
 chmod 755 /usr/bin/wifi-direct-server.sh
@@ -80,10 +76,8 @@ vconftool set -t string memory/private/wifi_direct_manager/dhcpc_server_ip 0.0.0
 %defattr(-,root,root,-)
 %{_bindir}/wfd-manager
 /usr/etc/wifi-direct/dhcpd.p2p.conf
-/usr/etc/wifi-direct/dhcpd.wl0.conf
-/usr/etc/wifi-direct/dhcpd.eth.conf
 /usr/etc/wifi-direct/udhcp_script.non-autoip
-/usr/etc/wifi-direct/p2p_suppl.conf
+/usr/etc/wifi-direct/p2p_supp.conf
 %{_bindir}/dhcpd-notify.sh
 %{_bindir}/wifi-direct-server.sh
 %{_bindir}/wifi-direct-dhcp.sh
@@ -100,6 +94,4 @@ vconftool set -t string memory/private/wifi_direct_manager/dhcpc_server_ip 0.0.0
 %defattr(-,root,root,-)
 %{_libdir}/wifi-direct-plugin-wpasupplicant.so
 /usr/share/license/wifi-direct-plugin-wpasupplicant
-/usr/share/license/p2p_supplicant
-%attr(755,-,-) %{_sbindir}/p2p_supplicant
 

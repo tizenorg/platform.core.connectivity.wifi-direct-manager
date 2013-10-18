@@ -17,13 +17,20 @@
  *
  */
 
-#ifndef __WIFI_DIRECT_CLIENT_HANDLER_H_
-#define __WIFI_DIRECT_CLIENT_HANDLER_H_
+/**
+ * This file declares wifi direct event functions.
+ *
+ * @file		wifi-direct-event.h
+ * @author	Gibyoung Kim (lastkgb.kim@samsung.com)
+ * @version	0.7
+ */
 
-#include "wifi-direct.h"
+#ifndef __WIFI_DIRECT_EVENT_H__
+#define __WIFI_DIRECT_EVENT_H__
 
-//void wfd_server_process_client_request(wifi_direct_client_request_s * client_req);
 
 
-#endif		//__WIFI_DIRECT_CLIENT_HANDLER_H_
+int wfd_event_notify_clients(wfd_manager_s *manager, wifi_direct_client_noti_s *noti);
+int wfd_process_event(void *user_data, void *data);
 
+#endif /* __WIFI_DIRECT_EVENT_H__ */

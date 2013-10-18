@@ -17,18 +17,19 @@
  *
  */
 
-#ifndef __WIFI_DIRECT_STUB_H_
-#define __WIFI_DIRECT_STUB_H_
+/**
+ * This file declares wifi direct client functions.
+ *
+ * @file		wifi-direct-state.h
+ * @author	Gibyoung Kim (lastkgb.kim@samsung.com)
+ * @version	0.7
+ */
 
-#include "wifi-direct-internal.h"
-#include "wifi-direct-utils.h"
+#ifndef __WIFI_DIRECT_STATE_H__
+#define __WIFI_DIRECT_STATE_H__
 
-int wfd_server_is_fd_writable(int fd);
-bool wfd_server_register_client(int sockfd);
-void wfd_server_process_client_request(wifi_direct_client_request_s * client_req);
-void wfd_server_reset_client(int sync_sockfd);
-void wfd_server_print_client();
-int wfd_server_read_socket_event(int sockfd, char* dataptr, int datalen);
 
-#endif		//__WIFI_DIRECT_STUB_H_
+int wfd_state_set(wfd_manager_s *manager, int state);
+int wfd_state_get(wfd_manager_s *manager, int *state);
 
+#endif /* __WIFI_DIRECT_STATE_H__ */

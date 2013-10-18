@@ -1,4 +1,5 @@
 #!/bin/sh
+INTERFACE_NAME="p2p-wlan0-0"
 INTERFACE_PREFIX="p2p"
 TARGET="REDWOOD"
 DEFAULT_IP="192.168.49.1"
@@ -26,7 +27,7 @@ if [ "${val}" -eq "1" ]; then
 	TARGET="EMUL"
 fi
 
-interface=`ifconfig|grep ^${INTERFACE_PREFIX}|cut -d" " -f1`
+interface=`ifconfig|grep ^${INTERFACE_NAME}|cut -d" " -f1`
 echo "Target is ${TARGET} and interface ${INTERFACE_PREFIX}: ${interface}."
 
 start_dhcp_server()
