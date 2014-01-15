@@ -71,6 +71,7 @@
 
 #endif /* USE_DLOG */
 
+gboolean wfd_util_execute_file(const char *file_path, char *const args[], char *const envs[]);
 int wfd_util_freq_to_channel(int freq);
 int wfd_util_get_phone_name(char *phone_name);
 void wfd_util_set_dev_name_notification();

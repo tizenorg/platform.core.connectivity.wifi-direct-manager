@@ -33,6 +33,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <net/if.h>
+#include <unistd.h>
 #include <errno.h>
 
 #include <glib.h>
@@ -79,6 +80,48 @@ static int _txt_to_ip(char *txt, unsigned char *ip)
 
 	WDS_LOGD("Converted IP address [" IPSTR "]", IP2STR(ip));
 	return 0;
+}
+
+gboolean wfd_util_execute_file(const char *file_path,
+	char *const args[], char *const envs[])
+{
+	pid_t pid = 0;
+	int rv = 0;
+	errno = 0;
+	register unsigned int index = 0;
+
+	while (args[index] != NULL) {
+		WDS_LOGD("[%s]", args[index]);
+		index++;
+	}
+
+	if (!(pid = fork())) {
+		WDS_LOGD("pid(%d), ppid(%d)", getpid(), getppid());
+		WDS_LOGD("Inside child, exec (%s) command", file_path);
+
+		errno = 0;
+		if (execve(file_path, args, envs) == -1) {
+			WDS_LOGE("Fail to execute command (%s)", strerror(errno));
+			exit(1);
+		}
+	} else if (pid > 0) {
+		if (waitpid(pid, &rv, 0) == -1)
+			WDS_LOGD("wait pid (%u) rv (%d)", pid, rv);
+		if (WIFEXITED(rv)) {
+			WDS_LOGD("exited, rv=%d", WEXITSTATUS(rv));
+		} else if (WIFSIGNALED(rv)) {
+			WDS_LOGD("killed by signal %d", WTERMSIG(rv));
+		} else if (WIFSTOPPED(rv)) {
+			WDS_LOGD("stopped by signal %d", WSTOPSIG(rv));
+		} else if (WIFCONTINUED(rv)) {
+			WDS_LOGD("continued");
+		}
+
+		return TRUE;
+	}
+
+	WDS_LOGE("failed to fork (%s)", strerror(errno));
+	return FALSE;
 }
 
 int wfd_util_freq_to_channel(int freq)
@@ -463,11 +506,20 @@ static gboolean _polling_ip(gpointer user_data)
 int wfd_util_dhcps_start()
 {
 	__WDS_LOG_FUNC_ENTER__;
-	int res = 0;
+	gboolean rv = FALSE;
+	const char *path = "/usr/bin/wifi-direct-dhcp.sh";
+	char *const args[] = { "/usr/bin/wifi-direct-dhcp.sh", "server", NULL };
+	char *const envs[] = { NULL };
 
 	vconf_set_int(VCONFKEY_DHCPS_IP_LEASE, 0);
-	res = system("/usr/bin/wifi-direct-dhcp.sh server");
-	WDS_LOGD("[/usr/bin/wifi-direct-dhcp.sh server] returns %d", res);
+
+	rv = wfd_util_execute_file(path, args, envs);
+
+	if (rv != TRUE) {
+		WDS_LOGE("Failed to start wifi-direct-dhcp.sh server");
+		return -1;
+	}
+	WDS_LOGD("Successfully started wifi-direct-dhcp.sh server");
 
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
@@ -492,13 +544,21 @@ int wfd_util_dhcps_wait_ip_leased(wfd_device_s *peer)
 int wfd_util_dhcps_stop()
 {
 	__WDS_LOG_FUNC_ENTER__;
-	int res = 0;
+	gboolean rv = FALSE;
+	const char *path = "/usr/bin/wifi-direct-dhcp.sh";
+	char *const args[] = { "/usr/bin/wifi-direct-dhcp.sh", "stop", NULL };
+	char *const envs[] = { NULL };
 
 	vconf_ignore_key_changed(VCONFKEY_DHCPS_IP_LEASE, _dhcps_ip_leased_cb);
 	vconf_set_int(VCONFKEY_DHCPS_IP_LEASE, 0);
 
-	res = system("/usr/bin/wifi-direct-dhcp.sh stop");
-	WDS_LOGD("[/usr/bin/wifi-direct-dhcp.sh stop] returns %d", res);
+	rv = wfd_util_execute_file(path, args, envs);
+
+	if (rv != TRUE) {
+		WDS_LOGE("Failed to stop wifi-direct-dhcp.sh");
+		return -1;
+	}
+	WDS_LOGD("Successfully stopped wifi-direct-dhcp.sh");
 
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
@@ -507,15 +567,24 @@ int wfd_util_dhcps_stop()
 int wfd_util_dhcpc_start(wfd_device_s *peer)
 {
 	__WDS_LOG_FUNC_ENTER__;
-	int res = 0;
+	gboolean rv = FALSE;
+	const char *path = "/usr/bin/wifi-direct-dhcp.sh";
+	char *const args[] = { "/usr/bin/wifi-direct-dhcp.sh", "client", NULL };
+	char *const envs[] = { NULL };
 
 	if (!peer) {
 		WDS_LOGE("Invalid parameter");
 		return -1;
 	}
 
-	res = system("/usr/bin/wifi-direct-dhcp.sh client");
-	WDS_LOGD("[/usr/bin/wifi-direct-dhcp.sh client] returns %d", res);
+	rv = wfd_util_execute_file(path, args, envs);
+
+	if (rv != TRUE) {
+		WDS_LOGE("Failed to start wifi-direct-dhcp.sh client");
+		return -1;
+	}
+	WDS_LOGD("Successfully started wifi-direct-dhcp.sh client");
+
 	g_timeout_add(250, (GSourceFunc) _polling_ip, peer);
 
 	__WDS_LOG_FUNC_EXIT__;
@@ -525,10 +594,18 @@ int wfd_util_dhcpc_start(wfd_device_s *peer)
 int wfd_util_dhcpc_stop()
 {
 	__WDS_LOG_FUNC_ENTER__;
-	int res = 0;
+	gboolean rv = FALSE;
+	const char *path = "/usr/bin/wifi-direct-dhcp.sh";
+	char *const args[] = { "/usr/bin/wifi-direct-dhcp.sh", "stop", NULL };
+	char *const envs[] = { NULL };
 
-	res = system("/usr/bin/wifi-direct-dhcp.sh stop");
-	WDS_LOGD("[/usr/bin/wifi-direct-dhcp.sh stop] returns %d", res);
+	rv = wfd_util_execute_file(path, args, envs);
+
+	if (rv != TRUE) {
+		WDS_LOGE("Failed to stop wifi-direct-dhcp.sh");
+		return -1;
+	}
+	WDS_LOGD("Successfully stopped wifi-direct-dhcp.sh");
 
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;

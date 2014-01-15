@@ -1,3 +1,6 @@
+Tue, 15 Jan 2014 Jiung Yu <jiung.yu@samaung.com> (1.0.7)
+  * Replace file execution method
+
 Tue, 15 Jan 2014 Jiung Yu <jiung.yu@samaung.com> (1.0.6)
   * Add cancel connection fuction to manager
   * Add reject connection fuction to manager

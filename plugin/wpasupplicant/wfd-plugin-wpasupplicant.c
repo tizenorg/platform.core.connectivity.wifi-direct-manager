@@ -32,9 +32,12 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
+#include <fcntl.h>
 #define _GNU_SOURCE
 #include <poll.h>
 #include <errno.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
 
 #include <glib.h>
 
@@ -284,6 +287,48 @@ static int _ws_freq_to_channel(int freq)
 		return 14;
 	else
 		return -1;
+}
+
+gboolean _ws_util_execute_file(const char *file_path,
+	char *const args[], char *const envs[])
+{
+	pid_t pid = 0;
+	int rv = 0;
+	errno = 0;
+	register unsigned int index = 0;
+
+	while (args[index] != NULL) {
+		WDP_LOGD("[%s]", args[index]);
+		index++;
+	}
+
+	if (!(pid = fork())) {
+		WDP_LOGD("pid(%d), ppid(%d)", getpid(), getppid());
+		WDP_LOGD("Inside child, exec (%s) command", file_path);
+
+		errno = 0;
+		if (execve(file_path, args, envs) == -1) {
+			WDP_LOGE("Fail to execute command (%s)", strerror(errno));
+			exit(1);
+		}
+	} else if (pid > 0) {
+		if (waitpid(pid, &rv, 0) == -1)
+			WDP_LOGD("wait pid (%u) rv (%d)", pid, rv);
+		if (WIFEXITED(rv)) {
+			WDP_LOGD("exited, rv=%d", WEXITSTATUS(rv));
+		} else if (WIFSIGNALED(rv)) {
+			WDP_LOGD("killed by signal %d", WTERMSIG(rv));
+		} else if (WIFSTOPPED(rv)) {
+			WDP_LOGD("stopped by signal %d", WSTOPSIG(rv));
+		} else if (WIFCONTINUED(rv)) {
+			WDP_LOGD("continued");
+		}
+
+		return TRUE;
+	}
+
+	WDP_LOGE("failed to fork (%s)", strerror(errno));
+	return FALSE;
 }
 
 static int _ws_check_socket(int sock)
