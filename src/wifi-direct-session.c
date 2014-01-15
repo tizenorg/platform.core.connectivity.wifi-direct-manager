@@ -48,21 +48,40 @@ static gboolean _session_timeout_cb(gpointer *user_data)
 	__WDS_LOG_FUNC_ENTER__;
 	wfd_manager_s *manager = wfd_get_manager();
 	wfd_session_s *session = (wfd_session_s*) manager->session;
+	wifi_direct_client_noti_s noti;
+	unsigned char *peer_addr = NULL;
 
 	if (!session) {
 		WDS_LOGE("Invalid parameter");
 		return FALSE;
 	}
-
 	session->connecting_120 = 0;
 	session->timer = 0;
-	wfd_destroy_session(manager);
+	WDS_LOGD("Session timer expired");
+
+	peer_addr = wfd_session_get_peer_addr(session);
+
+	memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
+	noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
+	noti.error = WIFI_DIRECT_ERROR_CONNECTION_CANCELED;
+	snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
+	wfd_event_notify_clients(manager, &noti);
+
+	wfd_session_cancel(session, peer_addr);
+
+	if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
+		wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
+		wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
+	} else {
+		wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
+		wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
+	}
 
 	__WDS_LOG_FUNC_EXIT__;
 	return FALSE;
 }
 
-static int _session_timer(wfd_session_s *session, int start)
+int wfd_session_timer(wfd_session_s *session, int start)
 {
 	__WDS_LOG_FUNC_ENTER__;
 
@@ -168,7 +187,7 @@ int wfd_destroy_session(void *data)
 		WDS_LOGE("Session not found");
 		return -1;
 	}
-	_session_timer(session, 0);
+	wfd_session_timer(session, 0);
 	peer = session->peer;
 	
 	if (session->state == SESSION_STATE_COMPLETED)
@@ -208,7 +227,7 @@ int wfd_session_start(wfd_session_s *session)
 
 	session->state = SESSION_STATE_STARTED;
 	peer = session->peer;
-	if (peer->dev_role == WFD_DEV_ROLE_GO || session->invitation)
+	if (peer->dev_role == WFD_DEV_ROLE_GO || session->type == SESSION_TYPE_INVITE)
 		join = 1;
 	res = wfd_oem_prov_disc_req(manager->oem_ops, peer->dev_addr,
 					session->req_wps_mode, join);
@@ -221,7 +240,7 @@ int wfd_session_start(wfd_session_s *session)
 		return -1;
 	}
 
-	_session_timer(session, 1);
+	wfd_session_timer(session, 1);
 
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
@@ -289,7 +308,7 @@ int wfd_session_connect(wfd_session_s *session)
 
 	memset(&param, 0x00, sizeof(wfd_oem_conn_param_s));
 	param.wps_mode = session->wps_mode;
-	if (peer->dev_role == WFD_DEV_ROLE_GO)
+	if (peer->dev_role == WFD_DEV_ROLE_GO || session->type == SESSION_TYPE_INVITE)
 		param.conn_flags |= WFD_OEM_CONN_TYPE_JOIN;
 	param.go_intent = session->go_intent;
 	param.freq = session->freq;
@@ -307,13 +326,46 @@ int wfd_session_connect(wfd_session_s *session)
 		return -1;
 	}
 
-	_session_timer(session, 1);
+	wfd_session_timer(session, 1);
 
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
 }
 
-int wfd_session_reject(wfd_session_s *session)
+int wfd_session_cancel(wfd_session_s *session, unsigned char *peer_addr)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_manager_s *manager = wfd_get_manager();
+	int res = 0;
+
+	if (!session || !session->peer) {
+		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
+		return WIFI_DIRECT_ERROR_NOT_PERMITTED;
+	}
+
+	if (memcmp(peer_addr, session->peer->dev_addr, MACADDR_LEN)) {
+		WDS_LOGE("Peer is not included in this session");
+		return WIFI_DIRECT_ERROR_NOT_PERMITTED;
+	}
+
+	if (session->state > SESSION_STATE_GO_NEG)
+		res = wfd_oem_wps_cancel(manager->oem_ops);
+	else
+		res = wfd_oem_cancel_connection(manager->oem_ops, peer_addr);
+
+	if (res < 0) {
+		WDS_LOGE("Failed to cancel connection");
+		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
+	}
+
+	wfd_destroy_session(manager);
+
+	__WDS_LOG_FUNC_EXIT__;
+	return 0;
+}
+
+int wfd_session_reject(wfd_session_s *session, unsigned char *peer_addr)
 {
 	__WDS_LOG_FUNC_ENTER__;
 	wfd_manager_s *manager = wfd_get_manager();
@@ -389,7 +441,7 @@ int wfd_session_join(wfd_session_s *session)
 		return -1;
 	}
 
-	_session_timer(session, 1);
+	wfd_session_timer(session, 1);
 
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
@@ -428,7 +480,7 @@ int wfd_session_invite(wfd_session_s *session)
 		return -1;
 	}
 
-	_session_timer(session, 1);
+	wfd_session_timer(session, 1);
 
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
@@ -589,7 +641,7 @@ int wfd_session_process_event(wfd_manager_s *manager, wfd_oem_event_s *event)
 				session->wps_pin[PINSTR_LEN] = '\0';
 			}
 			session->state = SESSION_STATE_STARTED;
-			_session_timer(session, 1);
+			wfd_session_timer(session, 1);
 
 			manager->local->wps_mode = event->wps_mode;
 
@@ -619,7 +671,7 @@ int wfd_session_process_event(wfd_manager_s *manager, wfd_oem_event_s *event)
 				session->req_wps_mode = WFD_WPS_MODE_PBC;
 			}
 			session->state = SESSION_STATE_STARTED;
-			_session_timer(session, 1);
+			wfd_session_timer(session, 1);
 
 			manager->local->wps_mode = event->wps_mode;
 			WDS_LOGD("Local WPS mode is %d", session->wps_mode);

@@ -336,7 +336,10 @@ int wfd_process_event(void *user_data, void *data)
 			WDS_LOGE("Failed to create session");
 			return -1;
 		}
-		session->invitation = 1;
+		session->type = SESSION_TYPE_INVITE;
+		wfd_session_timer(session, 1);
+
+		wfd_state_set(manager, WIFI_DIRECT_STATE_CONNECTING);
 
 		wifi_direct_client_noti_s noti;
 		memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
@@ -354,10 +357,8 @@ int wfd_process_event(void *user_data, void *data)
 	case WFD_OEM_EVENT_CONNECTED:
 	case WFD_OEM_EVENT_STA_CONNECTED:
 	{
-		// Move this code to plugin
-		unsigned char intf_addr[MACADDR_LEN] = {0, };
-		wfd_local_get_intf_mac(intf_addr);
-		if (!memcmp(event->intf_addr, intf_addr, MACADDR_LEN)) {
+		// FIXME: Move this code to plugin
+		if (!memcmp(event->intf_addr, manager->local->intf_addr, MACADDR_LEN)) {
 			WDS_LOGD("Ignore this event");
 			break;
 		}
@@ -388,7 +389,8 @@ int wfd_process_event(void *user_data, void *data)
 			return -1;
 		}
 		memcpy(peer->intf_addr, event->intf_addr, MACADDR_LEN);
-		peer->state = WFD_PEER_STATE_CONNECTED
+		session->state = SESSION_STATE_COMPLETED;
+		peer->state = WFD_PEER_STATE_CONNECTED;
 		group->members = g_list_prepend(group->members, peer);
 		group->member_count++;
 
@@ -590,7 +592,7 @@ int wfd_process_event(void *user_data, void *data)
 		/* After connection failed, scan again */
 		wfd_oem_scan_param_s param;
 		memset(&param, 0x0, sizeof(wfd_oem_scan_param_s));
-		param.scan_mode = WFD_SCAN_MODE_ACTIVE;
+		param.scan_mode = WFD_OEM_SCAN_MODE_ACTIVE;
 		param.scan_time = 2;
 		param.scan_type = WFD_OEM_SCAN_TYPE_SOCIAL;
 		wfd_oem_start_scan(manager->oem_ops, &param);

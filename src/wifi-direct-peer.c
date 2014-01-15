@@ -110,7 +110,7 @@ int wfd_update_peer_time(void*data, unsigned char *peer_addr)
 
 	peer = wfd_peer_find_by_dev_addr(manager, peer_addr);
 	if (!peer) {
-		WDS_SECLOG("Peer not found [" MACSTR "]", MAC2STR(peer_addr));
+		WDS_LOGE("Peer not found [" MACSTR "]", MAC2STR(peer_addr));
 		return -1;
 	}
 
@@ -282,7 +282,7 @@ wfd_device_s *wfd_peer_find_by_addr(void *data, unsigned char *addr)
 		peer = temp->data;
 		if (!memcmp(peer->dev_addr, addr, MACADDR_LEN) ||
 				!memcmp(peer->intf_addr, addr, MACADDR_LEN)) {
-			WDS_SECLOG("Peer device found[" MACSTR "]", MAC2STR(addr));
+			WDS_LOGE("Peer device found[" MACSTR "]", MAC2STR(addr));
 			break;
 		}
 		temp = g_list_next(temp);

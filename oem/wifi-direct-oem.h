@@ -235,6 +235,7 @@ typedef struct _wfd_oem_ops_s {
 	int (*get_connected_peers) (GList **peers, int *peer_count);
 	int (*wps_start) (unsigned char *peer_addr, int wps_mode, const char *pin);
 	int (*enrollee_start) (unsigned char *peer_addr, int wps_mode, const char *pin);
+	int (*wps_cancel) (void);
 	int (*get_pin) (char *pin);
 	int (*set_pin) (char *pin);
 //	int (*generate_pin) (char *pin);
@@ -274,6 +275,7 @@ int wfd_oem_cancel_connection(wfd_oem_ops_s *ops, unsigned char *peer_addr);
 int wfd_oem_get_connected_peers(wfd_oem_ops_s *ops, GList **peers, int *peer_count);
 int wfd_oem_wps_start(wfd_oem_ops_s *ops, unsigned char *peer_addr, int wps_mode, const char *pin);
 int wfd_oem_enrollee_start(wfd_oem_ops_s *ops, unsigned char *peer_addr, int wps_mode, const char *pin);
+int wfd_oem_wps_cancel(wfd_oem_ops_s *ops);
 int wfd_oem_get_pin(wfd_oem_ops_s *ops, char *pin);
 int wfd_oem_set_pin(wfd_oem_ops_s *ops, char *pin);
 //int wfd_oem_generate_pin(wfd_oem_ops_s *ops, char *pin);

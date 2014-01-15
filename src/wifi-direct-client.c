@@ -953,9 +953,8 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 		break;
 	case WIFI_DIRECT_CMD_CANCEL_CONNECTION:
 		{
-			wfd_session_s *session = manager->session;
-			if (!session || manager->state != WIFI_DIRECT_STATE_CONNECTING) {
-				WDS_LOGE("It's not permitted with this state [%d]", manager->state);
+			if (!manager->session || manager->state != WIFI_DIRECT_STATE_CONNECTING) {
+				WDS_LOGE("It's not CONNECTING state");
 				rsp.result = WIFI_DIRECT_ERROR_NOT_PERMITTED;
 				break;
 			}

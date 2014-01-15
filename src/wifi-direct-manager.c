@@ -559,7 +559,7 @@ int wfd_manager_connect(wfd_manager_s *manager, unsigned char *peer_addr)
 	}
 
 	session = (wfd_session_s*) manager->session;
-	if (session && !session->invitation) {
+	if (session && session->type != SESSION_TYPE_INVITE) {
 		WDS_LOGE("Session already exist or not an invitaion session");
 		return WIFI_DIRECT_ERROR_NOT_PERMITTED;
 	}
@@ -573,8 +573,8 @@ int wfd_manager_connect(wfd_manager_s *manager, unsigned char *peer_addr)
 		}
 	}
 
-	if (manager->local->dev_role == WFD_DEV_ROLE_GO && !session->invitation) {
-		session->invitation = 1;
+	if (manager->local->dev_role == WFD_DEV_ROLE_GO && session->type != SESSION_TYPE_INVITE) {
+		session->type = SESSION_TYPE_INVITE;
 		res = wfd_session_invite(session);
 	} else {
 		/* joining to group or starting connection with PD */
@@ -702,8 +702,6 @@ int wfd_manager_get_peers(wfd_manager_s *manager, wfd_discovery_entry_s **peers_
 				temp = g_list_next(temp);
 				manager->peers = g_list_remove(manager->peers, peer);
 				manager->peer_count--;
-				if (peer->display)
-					free(peer->display);
 				free(peer);
 				peer = NULL;
 				continue;

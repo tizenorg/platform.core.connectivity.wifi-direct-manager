@@ -108,6 +108,7 @@
 #define WS_CMD_WPS_PBC "WPS_PBC "
 #define WS_CMD_WPS_PIN "WPS_PIN "
 #define WS_CMD_WPS_ENROLLEE "WPS_ENROLLEE "
+#define WS_CMD_WPS_CANCEL "WPS_CANCEL"
 #define WS_CMD_SET "SET "
 #define WS_CMD_GET "GET "
 #define WS_CMD_STATUS "STATUS"
@@ -471,6 +472,7 @@ int ws_destroy_group(const char *ifname);
 int ws_invite(unsigned char *peer_addr, wfd_oem_invite_param_s *param);
 int ws_wps_start(unsigned char *peer_addr, int wps_mode, const char *pin);
 int ws_enrollee_start(unsigned char *peer_addr, int wps_mode, const char *pin);
+int ws_wps_cancel();
 int ws_get_dev_name(char *dev_name);
 int ws_set_dev_name(char *dev_name);
 int ws_get_dev_mac(char *dev_mac);

@@ -179,6 +179,7 @@ static wfd_oem_ops_s supplicant_ops = {
 	.invite = ws_invite,
 	.wps_start = ws_wps_start,
 	.enrollee_start = ws_enrollee_start,
+	.wps_cancel = ws_wps_cancel,
 
 	.get_dev_name = ws_get_dev_name,
 	.set_dev_name = ws_set_dev_name,
@@ -2518,6 +2519,36 @@ int ws_enrollee_start(unsigned char *peer_addr, int wps_mode, const char *pin)
 		return -1;
 	}
 	WDP_LOGD("Succeeded to start WPS");
+
+	__WDP_LOG_FUNC_EXIT__;
+	return 0;
+}
+
+int ws_wps_cancel()
+{
+	__WDP_LOG_FUNC_ENTER__;
+	ws_sock_data_s *sock = g_pd->common;
+	char reply[1024]={0,};
+	int res;
+
+	if (!sock) {
+		WDP_LOGE("Socket is NULL");
+		return -1;
+	}
+
+	res = _ws_send_cmd(sock->ctrl_sock, WS_CMD_WPS_CANCEL, reply, sizeof(reply));
+	if (res < 0) {
+			WDP_LOGE("Failed to send command to wpa_supplicant");
+			__WDP_LOG_FUNC_EXIT__;
+			return -1;
+	}
+
+	if (strstr(reply, "FAIL")) {
+		WDP_LOGE("Failed to cancel WPS");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+	WDP_LOGD("Succeeded to cancel WPS");
 
 	__WDP_LOG_FUNC_EXIT__;
 	return 0;

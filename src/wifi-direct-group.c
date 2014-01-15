@@ -148,8 +148,17 @@ int wfd_group_complete(void *data, char *ifname, int role, unsigned char *go_dev
 	memcpy(group->go_dev_addr, go_dev_addr, MACADDR_LEN);
 	group->pending = 0;
 
-	peer = wfd_group_find_peer_by_dev_addr(group, go_dev_addr);
-	wfd_util_dhcpc_start(peer);
+	peer = wfd_session_get_peer(manager->session);
+	if (!peer && !(group->flags & WFD_GROUP_FLAG_AUTONOMOUS)) {
+		WDS_LOGE("Failed to find peer by device address[" MACSTR "]", go_dev_addr);
+		return -1;
+	}
+	if (group->role == WFD_DEV_ROLE_GO) {
+		wfd_util_dhcps_start();
+		WDS_LOGD("Role is Group Owner. DHCP Server started");
+	} else {
+		wfd_util_dhcpc_start(peer);
+	}
 
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;

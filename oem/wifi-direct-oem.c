@@ -275,6 +275,16 @@ int wfd_oem_enrollee_start(wfd_oem_ops_s *ops, unsigned char *peer_addr, int wps
 	return ops->enrollee_start(peer_addr, wps_mode, pin);
 }
 
+int wfd_oem_wps_cancel(wfd_oem_ops_s *ops)
+{
+	if (!ops) {
+		WDS_LOGE("Invalid parameter");
+		return -1;
+	}
+
+	return ops->wps_cancel();
+}
+
 int wfd_oem_get_dev_name(wfd_oem_ops_s *ops, char *dev_name)
 {
 	if (!ops || !ops->get_dev_name) {

@@ -1,3 +1,7 @@
+Tue, 15 Jan 2014 Jiung Yu <jiung.yu@samaung.com> (1.0.3)
+  * Add wps_cancel operation
+  * Add session type and session management related operation
+
 Tue, 15 Jan 2014 Jiung Yu <jiung.yu@samaung.com> (1.0.2)
   * Add update peer by time operation
 

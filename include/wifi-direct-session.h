@@ -29,6 +29,13 @@
 #define __WIFI_DIRECT_SESSION_H__
 
 typedef enum {
+	SESSION_TYPE_NORMAL,
+	SESSION_TYPE_INVITE,
+	SESSION_TYPE_JOIN,
+	SESSION_TYPE_MULTI,
+} session_type_e;
+
+typedef enum {
 	SESSION_STATE_CREATED,
 	SESSION_STATE_STARTED,
 	SESSION_STATE_GO_NEG,
@@ -44,11 +51,11 @@ typedef enum {
 } session_direction_e;
 
 typedef struct {
+	int type;
 	int state;
 	int timer;
 	int connecting_120;
 	int direction;
-	int invitation;
 	wfd_device_s *peer;
 	int wps_mode;
 	int req_wps_mode;
@@ -61,7 +68,8 @@ wfd_session_s *wfd_create_session(void *data, unsigned char *peer_addr, int wps_
 int wfd_destroy_session(void *data);
 int wfd_session_start(wfd_session_s *session);
 int wfd_session_connect(wfd_session_s *session);
-int wfd_session_reject(wfd_session_s *session);
+int wfd_session_cancel(wfd_session_s *session, unsigned char *peer_addr);
+int wfd_session_reject(wfd_session_s *session, unsigned char *peer_addr);
 int wfd_session_wps(wfd_session_s *session);
 int wfd_session_invite(wfd_session_s *session);
 int wfd_session_join(wfd_session_s *session);
@@ -70,6 +78,7 @@ unsigned char *wfd_session_get_peer_addr(wfd_session_s *session);
 int wfd_session_get_state(wfd_session_s *session);
 int wfd_session_stop(wfd_session_s *session);
 int wfd_session_complete(wfd_session_s *session);
+int wfd_session_timer(wfd_session_s *session, int start);
 
 int wfd_session_process_event(wfd_manager_s *manager, wfd_oem_event_s *event);
 
