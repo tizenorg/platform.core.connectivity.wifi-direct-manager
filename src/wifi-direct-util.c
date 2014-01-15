@@ -551,8 +551,10 @@ int wfd_util_dhcpc_get_ip(char *ifname, unsigned char *ip_addr, int is_IPv6)
 
 	errno = 0;
 	sock = socket(AF_INET, SOCK_DGRAM, 0);
-	if (sock < 0) {
+	if (sock < SOCK_FD_MIN) {
 		WDS_LOGE("Failed to create socket. [%s]", strerror(errno));
+		if (sock >= 0)
+			close(sock);
 		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}

@@ -47,8 +47,15 @@ wfd_group_s *wfd_create_group(void *data, char *ifname, int role, unsigned char 
 	wfd_group_s *group = NULL;
 	wfd_manager_s *manager = (wfd_manager_s*) data;
 
-	if (!data || !ifname || !go_dev_addr) {
+	if (!manager || !ifname || !go_dev_addr) {
 		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
+		return NULL;
+	}
+
+	group = manager->group;
+	if (group) {
+		WDS_LOGE("Group already exist");
 		__WDS_LOG_FUNC_EXIT__;
 		return NULL;
 	}
@@ -67,13 +74,9 @@ wfd_group_s *wfd_create_group(void *data, char *ifname, int role, unsigned char 
 	memcpy(group->go_dev_addr, go_dev_addr, MACADDR_LEN);
 	group->pending = 0;
 
-	if (!manager->session)
-		group->flags |= WFD_GROUP_FLAG_AUTONOMOUS;
 	wfd_util_dhcps_start();
 	WDS_LOGD("Role is Group Owner. DHCP Server started");
 
-	manager->local->dev_role = role;	// temporary
- 
 	__WDS_LOG_FUNC_EXIT__;
 	return group;
 }
@@ -85,7 +88,7 @@ wfd_group_s *wfd_create_pending_group(void *data, unsigned char * bssid)
 	wfd_group_s *group = NULL;
 	wfd_manager_s *manager = (wfd_manager_s*) data;
 
-	if (!data || !bssid) {
+	if (!manager || !bssid) {
 		WDS_LOGE("Invalid parameter");
 		__WDS_LOG_FUNC_EXIT__;
 		return NULL;

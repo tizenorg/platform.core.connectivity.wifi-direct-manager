@@ -1,3 +1,11 @@
+Mon, 14 Oct 2013 Jiung Yu <jiung.yu@samaung.com> (1.0.1)
+  * Add interface name #define.
+  * Add new scan mode SCAN_MODE_NONE.
+  * Add channel information to peer
+  * Add initializing WPS mode and fix bugs
+  * clean the group when group formation is failed
+  * Sync some variable names with libwifi-direct
+
 Mon, 14 Oct 2013 Gibyoung Kim <lastkgb.kim@samaung.com> (1.0.0)
   * Premitive type of some variables were changed.
   * Some local device functions were added.

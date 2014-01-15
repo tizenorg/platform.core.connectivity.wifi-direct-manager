@@ -222,6 +222,7 @@ int wfd_process_event(void *user_data, void *data)
 
 	switch (event->event_id) {
 	case WFD_OEM_EVENT_DEACTIVATED:
+		manager->req_wps_mode = WFD_WPS_MODE_PBC;
 		break;
 	case WFD_OEM_EVENT_PEER_FOUND:
 	{
@@ -275,7 +276,7 @@ int wfd_process_event(void *user_data, void *data)
 		wfd_event_notify_clients(manager, &noti);
 	}
 	break;
-	case WFD_OEM_EVENT_DISCOVER_FINISHED:
+	case WFD_OEM_EVENT_DISCOVERY_FINISHED:
 	{
 		if (manager->state != WIFI_DIRECT_STATE_DISCOVERING &&
 				manager->state != WIFI_DIRECT_STATE_ACTIVATED) {
@@ -290,6 +291,7 @@ int wfd_process_event(void *user_data, void *data)
 			wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
 			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
 		}
+		manager->scan_mode = WFD_SCAN_MODE_NONE;
 
 		wifi_direct_client_noti_s noti;
 		memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
@@ -302,6 +304,8 @@ int wfd_process_event(void *user_data, void *data)
 	{
 		wfd_device_s *peer = NULL;
 		wfd_session_s *session = NULL;
+		wfd_oem_invite_data_s *edata = (wfd_oem_invite_data_s*) event->edata;
+
 		peer = wfd_peer_find_by_dev_addr(manager, event->dev_addr);
 		if (!peer) {
 			WDS_LOGD("Invitation from unknown peer. Add new peer");
@@ -311,12 +315,11 @@ int wfd_process_event(void *user_data, void *data)
 				return -1;
 			}
 		}
-		wfd_oem_invite_data_s *edata = (wfd_oem_dev_data_s*) event->edata;
 		peer->dev_role = WFD_DEV_ROLE_GO;
 		memcpy(peer->intf_addr, edata->bssid, MACADDR_LEN);
 
 		session = wfd_create_session(manager, event->dev_addr,
-						manager->local->wps_mode, SESSION_DIRECTION_INCOMING);
+						manager->req_wps_mode, SESSION_DIRECTION_INCOMING);
 		if (!session) {
 			WDS_LOGE("Failed to create session");
 			return -1;
@@ -477,6 +480,7 @@ int wfd_process_event(void *user_data, void *data)
 		group->pass[PASSPHRASE_LEN] = '\0';
 		group->freq = edata->freq;
 		manager->group = group;
+		manager->local->dev_role = event->dev_role;
 
 		wifi_direct_client_noti_s noti;
 		memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
@@ -544,6 +548,7 @@ int wfd_process_event(void *user_data, void *data)
 		wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
 	}
 	break;
+	case WFD_OEM_EVENT_PROV_DISC_FAIL:
 	case WFD_OEM_EVENT_GO_NEG_FAIL:
 	case WFD_OEM_EVENT_WPS_FAIL:
 	case WFD_OEM_EVENT_KEY_NEG_FAIL:
@@ -575,7 +580,9 @@ int wfd_process_event(void *user_data, void *data)
 		param.scan_mode = WFD_SCAN_MODE_ACTIVE;
 		param.scan_time = 2;
 		param.scan_type = WFD_OEM_SCAN_TYPE_SOCIAL;
-		wfd_oem_start_scan(manager->oem_ops, &param);	}
+		wfd_oem_start_scan(manager->oem_ops, &param);
+		manager->scan_mode = WFD_SCAN_MODE_ACTIVE;
+	}
 	break;
 	default:
 		WDS_LOGE("Unknown event [event ID: %d]", event->event_id);

@@ -32,7 +32,7 @@
 #define WFD_SERVER_SOCK_MODE (S_IRWXU | S_IRWXG | S_IRWXO)
 #define WFD_MAX_CLIENT 16
 
-#define SOCK_FD_MIN 3
+//#define SOCK_FD_MIN 3
 #define WFD_POLL_TIMEOUT 2000
 
 typedef struct {

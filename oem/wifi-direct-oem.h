@@ -42,7 +42,7 @@ typedef enum {
 	WFD_OEM_EVENT_DEACTIVATED,
 	WFD_OEM_EVENT_PEER_FOUND,
 	WFD_OEM_EVENT_PEER_DISAPPEARED,
-	WFD_OEM_EVENT_DISCOVER_FINISHED,
+	WFD_OEM_EVENT_DISCOVERY_FINISHED,
 
 	WFD_OEM_EVENT_PROV_DISC_REQ,	// 5
 	WFD_OEM_EVENT_PROV_DISC_DISPLAY,
@@ -78,10 +78,11 @@ typedef enum {
 } wfd_oem_event_e;
 
 typedef struct {
-	char dev_name[OEM_DEV_NAME_LEN];
+	char dev_name[OEM_DEV_NAME_LEN+1];
 	unsigned char dev_addr[OEM_MACADDR_LEN];
 	unsigned char intf_addr[OEM_MACADDR_LEN];
 	unsigned char go_dev_addr[OEM_MACADDR_LEN];
+	int channel;
 	int dev_role;
 	int config_methods;
 	int pri_dev_type;
@@ -151,7 +152,7 @@ typedef enum {
 
 typedef enum {
 	WFD_OEM_SCAN_MODE_ACTIVE,
-	WFD_OEM_SCAN_MODE_PASSICE,
+	WFD_OEM_SCAN_MODE_PASSIVE,
 } wfd_oem_scan_mode_e;
 
 typedef enum {

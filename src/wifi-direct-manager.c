@@ -97,7 +97,7 @@ static int _wfd_local_init_device(wfd_manager_s *manager)
 		WDS_LOGE("Failed to allocate memory for local device [%s]", strerror(errno));
 		return -1;
 	}
-	
+
 	res = wfd_util_get_phone_name(local->dev_name);
 	if (res < 0) {
 		WDS_LOGE("Failed to get phone name of local device. Use default device name");
@@ -195,11 +195,12 @@ int wfd_local_set_dev_name(char *dev_name)
 		wfd_oem_set_dev_name(g_manager->oem_ops, dev_name);
 
 		wfd_oem_scan_param_s param;
-		param.scan_mode = WFD_SCAN_MODE_ACTIVE;
+		param.scan_mode = WFD_OEM_SCAN_MODE_ACTIVE;
 		param.scan_type = WFD_OEM_SCAN_TYPE_FULL;
 		param.scan_time = 5;
 		param.refresh = TRUE;
 		wfd_oem_start_scan(g_manager->oem_ops, &param);
+		g_manager->scan_mode = WFD_SCAN_MODE_ACTIVE;
 		WDS_LOGD("Device name changed. Active scan started");
 	}
 
@@ -539,6 +540,8 @@ int wfd_manager_deactivate(wfd_manager_s *manager)
 	wfd_state_set(manager, WIFI_DIRECT_STATE_DEACTIVATED);
 	wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_DEACTIVATED);
 
+	manager->req_wps_mode = WFD_WPS_MODE_PBC;
+
 	__WDS_LOG_FUNC_EXIT__;
 	return WIFI_DIRECT_ERROR_NONE;
 }
@@ -562,7 +565,7 @@ int wfd_manager_connect(wfd_manager_s *manager, unsigned char *peer_addr)
 
 	if (!session) {
 		session = wfd_create_session(manager, peer_addr,
-					manager->local->wps_mode, SESSION_DIRECTION_OUTGOING);
+					manager->req_wps_mode, SESSION_DIRECTION_OUTGOING);
 		if (!session) {
 			WDS_LOGE("Failed to create new session");
 			return WIFI_DIRECT_ERROR_OPERATION_FAILED;
@@ -583,7 +586,6 @@ int wfd_manager_connect(wfd_manager_s *manager, unsigned char *peer_addr)
 	}
 	if (res < 0) {
 		WDS_LOGE("Failed to start session");
-
 		wfd_destroy_session(manager);
 		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
 	}
@@ -687,7 +689,7 @@ int wfd_manager_get_peers(wfd_manager_s *manager, wfd_discovery_entry_s **peers_
 			strncpy(peers[count].device_name, peer->dev_name, DEV_NAME_LEN);
 			peers[count].device_name[DEV_NAME_LEN] = '\0';
 			memcpy(peers[count].mac_address, peer->dev_addr, MACADDR_LEN);
-			memcpy(peers[count].intf_mac_address, peer->intf_addr, MACADDR_LEN);
+			memcpy(peers[count].intf_address, peer->intf_addr, MACADDR_LEN);
 			peers[count].channel = 1;
 			peers[count].services = 0;
 			peers[count].is_group_owner = peer->dev_role == WFD_DEV_ROLE_GO;
@@ -705,6 +707,7 @@ int wfd_manager_get_peers(wfd_manager_s *manager, wfd_discovery_entry_s **peers_
 		peer = NULL;
 	}
 	WDS_LOGD("%d peers converted", count);
+	WDS_LOGD("Final peer count is %d", manager->peer_count);
 
 	*peers_data = peers;
 
@@ -753,10 +756,11 @@ int wfd_manager_get_connected_peers(wfd_manager_s *manager, wfd_connected_peer_i
 			strncpy(peers[count].device_name, peer->dev_name, DEV_NAME_LEN);
 			peers[count].device_name[DEV_NAME_LEN] = '\0';
 			memcpy(peers[count].mac_address, peer->dev_addr, MACADDR_LEN);
-			memcpy(peers[count].intf_mac_address, peer->intf_addr, MACADDR_LEN);
+			memcpy(peers[count].intf_address, peer->intf_addr, MACADDR_LEN);
 			memcpy(peers[count].ip_address, peer->ip_addr, IPADDR_LEN);
 			peers[count].category = peer->pri_dev_type;
-			peers[count].channel = 1;
+			peers[count].subcategory = peer->sec_dev_type;
+			peers[count].channel = peer->channel;
 			peers[count].is_p2p = 1;
 			peers[count].services = 0;
 			WDS_LOGD("%dth member converted[%s]", count, peers[count].device_name);
@@ -856,7 +860,7 @@ static wfd_manager_s *wfd_manager_init()
 	}
 	WDS_LOGD("Succeeded to initialize local device");
 
-	manager->exit_timer = g_timeout_add(120000, 
+	manager->exit_timer = g_timeout_add(120000,
 						(GSourceFunc) _wfd_exit_timeout_cb, manager);
 	WDS_LOGD("Exit timer started");
 
@@ -892,7 +896,7 @@ static void *wfd_plugin_init(wfd_manager_s *manager)
 	__WDS_LOG_FUNC_ENTER__;
 	void *handle;
 	struct utsname kernel_info;
-	int res;    
+	int res;
 
 	if (!manager) {
 		WDS_LOGE("Invalid parameter");

@@ -29,6 +29,8 @@
 #define __WIFI_DIRECT_MANAGER_H__
 
 #define DEFAULT_DEVICE_NAME "Tizen_Device"
+#define DEFAULT_IFNAME "p2p0"
+#define GROUP_IFNAME "p2p-wlan0-0"
 #define WFD_MAX_CLIENT 16
 #define WFD_MAX_STATION 8
 
@@ -65,6 +67,7 @@ typedef enum {
 } wfd_dev_role_e;
 
 typedef enum {
+	WFD_SCAN_MODE_NONE,
 	WFD_SCAN_MODE_ACTIVE,
 	WFD_SCAN_MODE_PASSIVE,
 } wfd_scan_mode_e;
@@ -74,6 +77,7 @@ typedef struct {
 	unsigned char dev_addr[MACADDR_LEN];
 	unsigned char intf_addr[MACADDR_LEN];
 	unsigned char go_dev_addr[MACADDR_LEN];
+	int channel;
 	int dev_role;
 	int config_methods;
 	int pri_dev_type;

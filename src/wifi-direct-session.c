@@ -100,13 +100,18 @@ static int _session_timer(wfd_session_s *session, int start)
 wfd_session_s *wfd_create_session(void *data, unsigned char *peer_addr, int wps_mode, int direction)
 {
 	__WDS_LOG_FUNC_ENTER__;
+	wfd_manager_s *manager = (wfd_manager_s*) data;
 	wfd_session_s *session = NULL;
 	wfd_device_s *peer = NULL;
-	wfd_manager_s *manager = (wfd_manager_s*) data;
 
 	if (!data || !peer_addr) {
 		WDS_LOGE("Invalid parameter");
 		__WDS_LOG_FUNC_EXIT__;
+		return NULL;
+	}
+
+	if (manager->session) {
+		WDS_LOGE("Session already exist");
 		return NULL;
 	}
 
@@ -125,18 +130,20 @@ wfd_session_s *wfd_create_session(void *data, unsigned char *peer_addr, int wps_
 		return NULL;
 	}
 	session->peer = peer;
-	session->wps_mode = wps_mode;
+	session->req_wps_mode = wps_mode;
 	if (wps_mode == WFD_WPS_MODE_DISPLAY)
-		session->req_wps_mode = WFD_WPS_MODE_KEYPAD;
+		session->wps_mode = WFD_WPS_MODE_KEYPAD;
 	else if (wps_mode == WFD_WPS_MODE_KEYPAD)
-		session->req_wps_mode = WFD_WPS_MODE_DISPLAY;
+		session->wps_mode = WFD_WPS_MODE_DISPLAY;
 	else
-		session->req_wps_mode = wps_mode;
+		session->wps_mode = wps_mode;
 	session->direction = direction;
 	session->state = SESSION_STATE_CREATED;
 
 	manager->session = session;
-	manager->local->wps_mode = wps_mode;
+	manager->local->wps_mode = session->wps_mode;
+	if (peer->dev_role == WFD_DEV_ROLE_GO)
+		manager->local->dev_role = WFD_DEV_ROLE_GC;
 
 	__WDS_LOG_FUNC_EXIT__;
 	return session;
@@ -174,6 +181,9 @@ int wfd_destroy_session(void *data)
 	free(session);
 	manager->session = NULL;
 	manager->local->wps_mode = WFD_WPS_MODE_PBC;
+	manager->autoconnection = 0;
+	if (manager->local->dev_role == WFD_DEV_ROLE_GC)
+		manager->local->dev_role = WFD_DEV_ROLE_NONE;
 
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
@@ -195,6 +205,8 @@ int wfd_session_start(wfd_session_s *session)
 
 	// Check: Invitation Received in Incomming case -> send prov_disc join
 	// Check: User select peer to connect with in Outgoing case -> send prov_disc wps_mdde
+
+	wfd_oem_stop_scan(manager->oem_ops);
 
 	session->state = SESSION_STATE_STARTED;
 	peer = session->peer;
@@ -555,15 +567,26 @@ int wfd_session_process_event(wfd_manager_s *manager, wfd_oem_event_s *event)
 	case WFD_OEM_EVENT_PROV_DISC_KEYPAD:
 	{
 		if (!session) {
+			int req_wps_mode = WFD_WPS_MODE_NONE;
+			int wps_mode = event->wps_mode;
+
+			if (wps_mode == WFD_WPS_MODE_DISPLAY) {
+				req_wps_mode = WFD_WPS_MODE_KEYPAD;
+			} else if (wps_mode == WFD_WPS_MODE_KEYPAD) {
+				req_wps_mode = WFD_WPS_MODE_DISPLAY;
+			} else {
+				req_wps_mode = WFD_WPS_MODE_PBC;
+			}
+
 			session = wfd_create_session(manager, event->dev_addr,
-										event->wps_mode, SESSION_DIRECTION_INCOMING);
+										req_wps_mode, SESSION_DIRECTION_INCOMING);
 			if (!session) {
 				WDS_LOGE("Failed to create session with peer [" MACSTR "]", MAC2STR(event->dev_addr));
 				break;
 			}
 
 			/* Update session */
-			if (event->wps_mode == WFD_OEM_WPS_MODE_DISPLAY) {
+			if (wps_mode == WFD_WPS_MODE_DISPLAY) {
 				strncpy(session->wps_pin, event->wps_pin, PINSTR_LEN);
 				session->wps_pin[PINSTR_LEN] = '\0';
 			}
@@ -581,7 +604,8 @@ int wfd_session_process_event(wfd_manager_s *manager, wfd_oem_event_s *event)
 			snprintf(noti.param1, sizeof(noti.param1), MACSTR, MAC2STR(event->dev_addr));
 			wfd_event_notify_clients(manager, &noti);
 		} else {
-			if (session->state > SESSION_STATE_STARTED) {
+			if (session->state > SESSION_STATE_STARTED ||
+					session->direction == SESSION_DIRECTION_INCOMING) {
 				WDS_LOGE("Unexpected event. Session is already started");
 				break;
 			}
@@ -658,7 +682,6 @@ int wfd_session_process_event(wfd_manager_s *manager, wfd_oem_event_s *event)
 			if (session->direction == SESSION_DIRECTION_OUTGOING)
 				wfd_session_connect(session);
 		}
-		
 		break;
 	case WFD_OEM_EVENT_GO_NEG_DONE:
 		if (!session) {

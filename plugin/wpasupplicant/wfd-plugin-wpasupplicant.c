@@ -198,7 +198,6 @@ static gboolean ws_event_handler(GIOChannel *source,
 							   GIOCondition condition,
 							   gpointer data);
 
-
 int wfd_plugin_load(wfd_oem_ops_s **ops)
 {
 	if (!ops) {
@@ -224,6 +223,7 @@ static int _ws_txt_to_devtype(char *txt, int *pri, int *sec)
 	}
 
 	*pri = (int) strtoul(txt, &txt, 0);
+	txt = strrchr(txt, '-');
 	*sec = (int) strtoul(txt+1, &txt, 16);
 
 	return 0;
@@ -266,6 +266,23 @@ static char *_ws_wps_to_txt(int wps_mode)
 		return "";
 		break;
 	}
+}
+
+static int _ws_freq_to_channel(int freq)
+{
+	if (freq < 2412 || freq > 5825) {
+		WDP_LOGE("Invalid parameter");
+		return -1;
+	}
+
+	if (freq >= 5180)
+		return 36 + (freq - 5180)/5;
+	else if (freq <= 2472)
+		return 1 + (freq - 2412)/5;
+	else if (freq == 2484)
+		return 14;
+	else
+		return -1;
 }
 
 static int _ws_check_socket(int sock)
@@ -334,7 +351,7 @@ static int _ws_read_sock(int sock, char *data, int data_len)
 				return -1;
 			}
 			WDP_LOGD("===== Read Data =====\n%s", data);
-
+			data[data_len-1] = '\0';
 			__WDP_LOG_FUNC_EXIT__;
 			return rbytes;
 		} else if (p_fd.revents & POLLERR) {
@@ -578,14 +595,14 @@ static int _connect_to_supplicant(char *ifname, ws_sock_data_s **sock_data)
 
 	for(i = 0; i < WS_CONN_RETRY_COUNT; i++) {
 		ctrl_sock = _create_ctrl_intf(ctrl_path, suppl_path);
-		if (ctrl_sock < 0) {
+		if (ctrl_sock < SOCK_FD_MIN) {
 			WDP_LOGE("Failed to create control interface socket for %s", ifname);
 			continue;
 		}
 		WDP_LOGD("Succeeded to create control interface socket[%d] for %s", ctrl_sock, ifname);
 
 		mon_sock = _create_ctrl_intf(mon_path, suppl_path);
-		if (mon_sock < 0) {
+		if (mon_sock < SOCK_FD_MIN) {
 			WDP_LOGE("Failed to create monitor interface socket for %s", ifname);
 			close(ctrl_sock);
 			ctrl_sock = -1;
@@ -596,6 +613,10 @@ static int _connect_to_supplicant(char *ifname, ws_sock_data_s **sock_data)
 		res = _attach_mon_intf(mon_sock);
 		if (res < 0) {
 			WDP_LOGE("Failed to attach monitor interface for event");
+			close(ctrl_sock);
+			ctrl_sock = -1;
+			close(mon_sock);
+			mon_sock = -1;
 			continue;
 		}
 		WDP_LOGD("Succeeded to attach monitor interface for event");
@@ -630,6 +651,28 @@ static int _connect_to_supplicant(char *ifname, ws_sock_data_s **sock_data)
 	return 0;
 }
 
+static gboolean _remove_event_source(gpointer data)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	int source_id = (int) data;
+	int res = 0;
+
+	if (source_id < 0) {
+		WDP_LOGE("Invalid source ID [%d]", source_id);
+		return FALSE;
+	}
+
+	res = g_source_remove(source_id);
+	if (!res) {
+		WDP_LOGE("Failed to remove GSource");
+		return FALSE;
+	}
+	WDP_LOGD("Succeeded to remove GSource");
+
+	__WDP_LOG_FUNC_EXIT__;
+	return FALSE;
+}
+
 static int _disconnect_from_supplicant(char *ifname, ws_sock_data_s *sock_data)
 {
 	__WDP_LOG_FUNC_ENTER__;
@@ -652,24 +695,27 @@ static int _disconnect_from_supplicant(char *ifname, ws_sock_data_s *sock_data)
 	} else {
 		if (!strncmp(reply, "FAIL", 4)) {
 			WDP_LOGE( "Failed to detach monitor sock [%d]", sock_data->mon_sock);
+			// TODO: I think there is no need to exit
+		 	__WDP_LOG_FUNC_EXIT__;
+		 	return -1;
 		}
 		WDP_LOGD("Succeeded to detach monitor sock for %s", ifname ? ifname : "NULL");
 	}
 
 	if (sock_data->gsource > 0)
-		g_source_remove(sock_data->gsource);
+		g_idle_add(_remove_event_source, (gpointer) sock_data->gsource);
 	sock_data->gsource = 0;
 
 	// close control interface
 	snprintf(ctrl_path, sizeof(ctrl_path), "/tmp/%s_control", ifname);
 	snprintf(mon_path, sizeof(mon_path), "/tmp/%s_monitor", ifname);
 
-	if (sock_data->ctrl_sock >= 0)
+	if (sock_data->ctrl_sock >= SOCK_FD_MIN)
 		close(sock_data->ctrl_sock);
 	sock_data->ctrl_sock = -1;
 	unlink(ctrl_path);
 
-	if (sock_data->mon_sock >= 0)
+	if (sock_data->mon_sock >= SOCK_FD_MIN)
 		close(sock_data->mon_sock);
 	sock_data->mon_sock = -1;
 	unlink(mon_path);
@@ -812,6 +858,11 @@ static int _parsing_peer_info(char *msg, wfd_oem_device_s *peer)
 		case WS_PEER_INFO_AGE:
 			break;
 		case WS_PEER_INFO_LISTEN_FREQ:
+			{
+				int freq = 0;
+				freq = (int) strtoul(infos[i].string, NULL, 10);
+				peer->channel = _ws_freq_to_channel(freq);
+			}
 			break;
 		case WS_PEER_INFO_LEVEL:
 			break;
@@ -820,9 +871,15 @@ static int _parsing_peer_info(char *msg, wfd_oem_device_s *peer)
 		case WS_PEER_INFO_INTERFACE_ADDR:
 			break;
 		case WS_PEER_INFO_MEMBER_IN_GO_DEV:
-			res = _ws_txt_to_mac(infos[i].string, peer->go_dev_addr);
-			if (res < 0)
-				memset(peer->go_dev_addr, 0x00, OEM_MACADDR_LEN);
+			{
+				res = _ws_txt_to_mac(infos[i].string, peer->go_dev_addr);
+				if (res < 0)
+					memset(peer->go_dev_addr, 0x00, OEM_MACADDR_LEN);
+
+				unsigned char null_mac[OEM_MACADDR_LEN] = {0, 0, 0, 0, 0, 0};
+				if (memcmp(peer->go_dev_addr, null_mac, OEM_MACADDR_LEN))
+					peer->dev_role = WFD_OEM_DEV_ROLE_GC;
+			}
 			break;
 		case WS_PEER_INFO_MEMBER_IN_GO_IFACE:
 			break;
@@ -1316,6 +1373,7 @@ static int _parsing_event_info(char *ifname, char *msg, wfd_oem_event_s *data)
 
 		}
 		break;
+	case WS_EVENT_PROV_DISC_FAILURE:
 	case WS_EVENT_GO_NEG_FAILURE:
 	case WS_EVENT_WPS_FAIL:		// M_id(msg), error(config_error)
 		break;
@@ -1526,23 +1584,19 @@ static gboolean ws_event_handler(GIOChannel *source,
 		event_id = WFD_OEM_EVENT_PEER_DISAPPEARED;
 		break;
 	case WS_EVENT_FIND_STOPED:
-		event_id = WFD_OEM_EVENT_DISCOVER_FINISHED;
+		event_id = WFD_OEM_EVENT_DISCOVERY_FINISHED;
 		break;
 	case WS_EVENT_PROV_DISC_PBC_REQ:
 		event_id = WFD_OEM_EVENT_PROV_DISC_REQ;
-		ws_stop_scan();
 		break;
 	case WS_EVENT_PROV_DISC_PBC_RESP:
 		event_id = WFD_OEM_EVENT_PROV_DISC_RESP;
-		ws_stop_scan();
 		break;
 	case WS_EVENT_PROV_DISC_SHOW_PIN:
 		event_id = WFD_OEM_EVENT_PROV_DISC_DISPLAY;
-		ws_stop_scan();
 		break;
 	case WS_EVENT_PROV_DISC_ENTER_PIN:
 		event_id = WFD_OEM_EVENT_PROV_DISC_KEYPAD;
-		ws_stop_scan();
 		break;
 	case WS_EVENT_GO_NEG_REQUEST:
 		event_id = WFD_OEM_EVENT_GO_NEG_REQ;
@@ -1566,7 +1620,12 @@ static gboolean ws_event_handler(GIOChannel *source,
 		// TODO: connect to supplicant via group interface
 		break;
 	case WS_EVENT_CONNECTED:
-		event_id = WFD_OEM_EVENT_CONNECTED;
+		{
+			unsigned char null_mac[OEM_MACADDR_LEN] = {0, 0, 0, 0, 0, 0};
+			if (!memcmp(event->intf_addr, null_mac, OEM_MACADDR_LEN))
+				goto done;
+			event_id = WFD_OEM_EVENT_CONNECTED;
+		}
 		break;
 	case WS_EVENT_STA_CONNECTED:
 		event_id = WFD_OEM_EVENT_STA_CONNECTED;
@@ -1583,8 +1642,10 @@ static gboolean ws_event_handler(GIOChannel *source,
 		event_id = WFD_OEM_EVENT_GROUP_DESTROYED;
 		if (g_pd->group) {
 			res = _disconnect_from_supplicant(GROUP_IFACE_NAME, g_pd->group);
-			if (res < 0)
+			if (res < 0) {
 				WDP_LOGE("Failed to disconnect from group interface of supplicant");
+				goto done;
+			}
 			g_pd->group = NULL;
 		}
 		break;
@@ -2070,7 +2131,6 @@ int ws_prov_disc_req(unsigned char *peer_addr, wfd_oem_wps_mode_e wps_mode, int 
 		return -1;
 	}
 
-	ws_stop_scan();
 
 	snprintf(cmd, sizeof(cmd), WS_CMD_P2P_PROV_DISC MACSTR "%s",
 							MAC2STR(peer_addr), _ws_wps_to_txt(wps_mode));
@@ -2215,7 +2275,6 @@ int ws_cancel_connection(unsigned char *peer_addr)
 	__WDP_LOG_FUNC_ENTER__;
 
 	_ws_cancel();
-	_ws_flush();
 
 	__WDP_LOG_FUNC_EXIT__;
 	return 0;
@@ -2324,6 +2383,8 @@ int ws_destroy_group(const char *ifname)
 		return -1;
 	}
 	WDP_LOGD("Succeeded to remove group");
+
+	_ws_flush();
 
 	__WDP_LOG_FUNC_EXIT__;
 	return 0;

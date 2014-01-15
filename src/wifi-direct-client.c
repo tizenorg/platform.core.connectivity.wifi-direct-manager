@@ -37,6 +37,7 @@
 #include <errno.h>
 
 #include <glib.h>
+#include <vconf.h>
 
 #include <wifi-direct.h>
 #include <wifi-direct-internal.h>
@@ -127,8 +128,8 @@ char *wfd_server_print_cmd(wifi_direct_cmd_e cmd)
 		return "WIFI_DIRECT_CMD_SET_REQ_WPS_MODE";
 	case WIFI_DIRECT_CMD_GET_CONNECTED_PEERS_INFO:
 		return "WIFI_DIRECT_CMD_GET_CONNECTED_PEERS_INFO";
-	case WIFI_DIRECT_CMD_CANCEL_GROUP:
-		return "WIFI_DIRECT_CMD_CANCEL_GROUP";
+	case WIFI_DIRECT_CMD_DESTROY_GROUP:
+		return "WIFI_DIRECT_CMD_DESTROY_GROUP";
 
 	case WIFI_DIRECT_CMD_DISCONNECT:
 		return "WIFI_DIRECT_CMD_DISCONNECT";
@@ -153,8 +154,8 @@ char *wfd_server_print_cmd(wifi_direct_cmd_e cmd)
 		return "WIFI_DIRECT_CMD_IS_DISCOVERABLE";
 	case WIFI_DIRECT_CMD_IS_LISTENING_ONLY:
 		return "WIFI_DIRECT_CMD_IS_LISTENING_ONLY";
-	case WIFI_DIRECT_CMD_GET_OWN_GROUP_CHANNEL:
-		return "WIFI_DIRECT_CMD_GET_OWN_GROUP_CHANNEL";
+	case WIFI_DIRECT_CMD_GET_OPERATING_CHANNEL:
+		return "WIFI_DIRECT_CMD_GET_OPERATING_CHANNEL";
 	case WIFI_DIRECT_CMD_ACTIVATE_PERSISTENT_GROUP:
 		return "WIFI_DIRECT_CMD_ACTIVATE_PERSISTENT_GROUP";
 	case WIFI_DIRECT_CMD_DEACTIVATE_PERSISTENT_GROUP:
@@ -184,7 +185,7 @@ static wfd_client_s *_wfd_client_find_by_id(GList *clients, int client_id)
 	__WDS_LOG_FUNC_ENTER__;
 	wfd_client_s *client = NULL;
 	GList *temp = NULL;
-	
+
 	if (!clients || client_id < 0) {
 		WDS_LOGE("Invalid parameter(client_id:%d)", client_id);
 		return NULL;
@@ -339,6 +340,7 @@ int wfd_client_send_event(wfd_manager_s *manager, wifi_direct_client_noti_s *not
 
 	if (!manager || !noti) {
 		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
@@ -445,7 +447,29 @@ send_response:
 	}
 done:
 	__WDS_LOG_FUNC_EXIT__;
-	return 0; 
+	return 0;
+}
+
+static gboolean _wfd_remove_event_source(gpointer data)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	int source_id = (int) data;
+	int res = 0;
+
+	if (source_id < 0) {
+		WDS_LOGE("Invalid source ID [%d]", source_id);
+		return FALSE;
+	}
+
+	res = g_source_remove(source_id);
+	if (!res) {
+		WDS_LOGE("Failed to remove GSource");
+		return FALSE;
+	}
+	WDS_LOGD("Succeeded to remove GSource");
+
+	__WDS_LOG_FUNC_EXIT__;
+	return FALSE;
 }
 
 static int _wfd_deregister_client(void *data, int client_id)
@@ -469,7 +493,7 @@ static int _wfd_deregister_client(void *data, int client_id)
 	if (client->ssock >= SOCK_FD_MIN)
 		close(client->ssock);
 	client->ssock = -1;
-	g_source_remove(client->gsource_id);
+	g_idle_add((GSourceFunc) _wfd_remove_event_source, (gpointer) client->gsource_id);
 	client->gsource_id = 0;
 
 	if (client)
@@ -497,8 +521,10 @@ static int _wfd_create_server_socket(wfd_manager_s *manager)
 
 	errno = 0;
 	sock = socket(AF_UNIX, SOCK_STREAM, 0);
-	if (sock < 0) {
+	if (sock < SOCK_FD_MIN) {
 		WDS_LOGE("Failed to create server socket. [%s]", strerror(errno));
+		if (sock >= 0)
+			close(sock);
 		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}
@@ -597,7 +623,7 @@ int wfd_client_handler_init(wfd_manager_s *manager)
 	if (res < 0) {
 		WDS_LOGE("Failed to create server socket");
 		return -1;
-	}	
+	}
 
 	GIOChannel *gio = g_io_channel_unix_new(manager->serv_sock);
 	manager->client_handle = g_io_add_watch(gio, G_IO_IN,
@@ -618,6 +644,8 @@ int wfd_client_handler_deinit(wfd_manager_s *manager)
 	if (manager->serv_sock >= SOCK_FD_MIN)
 		close(manager->serv_sock);
 	manager->serv_sock = -1;
+	g_source_remove(manager->client_handle);
+	manager->client_handle = 0;
 
 	temp = g_list_first(manager->clients);
 	while(temp) {
@@ -755,10 +783,10 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 		wfd_state_set(manager, WIFI_DIRECT_STATE_DEACTIVATED);
 		wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_DEACTIVATED);
 
+		wfd_destroy_group(manager, GROUP_IFNAME);
+		wfd_destroy_session(manager);
 		wfd_peer_clear_all(manager);
 		WDS_LOGD("peer count[%d], peers[%d]", manager->peer_count, manager->peers);
-		wfd_destroy_group(manager, "all");
-		wfd_destroy_session(manager);
 		wfd_local_reset_data(manager);
 		goto done;
 		break;
@@ -777,7 +805,10 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 
 			wfd_oem_scan_param_s param;
 			memset(&param, 0x0, sizeof(wfd_oem_scan_param_s));
-			param.scan_mode = req.data.int1;	// listen_only
+			if (req.data.int1)	// listen_only
+				param.scan_mode = WFD_OEM_SCAN_MODE_PASSIVE;
+			else
+				param.scan_mode = WFD_OEM_SCAN_MODE_ACTIVE;
 			param.scan_time = req.data.int2;	// timeout
 			if (manager->local->dev_role == WFD_DEV_ROLE_GO)
 				param.scan_type = WFD_OEM_SCAN_TYPE_SOCIAL;
@@ -805,8 +836,7 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 		break;
 	case WIFI_DIRECT_CMD_CANCEL_DISCOVERY:
 		if (manager->state != WIFI_DIRECT_STATE_ACTIVATED &&
-				manager->state != WIFI_DIRECT_STATE_DISCOVERING &&
-				manager->state != WIFI_DIRECT_STATE_GROUP_OWNER) {
+				manager->state != WIFI_DIRECT_STATE_DISCOVERING) {
 			rsp.result = WIFI_DIRECT_ERROR_NOT_PERMITTED;
 			break;
 		}
@@ -956,9 +986,16 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 		break;
 	case WIFI_DIRECT_CMD_REJECT_CONNECTION:
 		{
-			wfd_session_s *session = manager->session;
+			wfd_session_s *session = (wfd_session_s*) manager->session;
+
 			if (!session || manager->state != WIFI_DIRECT_STATE_CONNECTING) {
 				WDS_LOGE("It's not permitted with this state [%d]", manager->state);
+				rsp.result = WIFI_DIRECT_ERROR_NOT_PERMITTED;
+				break;
+			}
+
+			if (session->direction != SESSION_DIRECTION_INCOMING) {
+				WDS_LOGE("Only incomming session can be rejected");
 				rsp.result = WIFI_DIRECT_ERROR_NOT_PERMITTED;
 				break;
 			}
@@ -1119,8 +1156,6 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 			rsp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 		}
 		break;
-	case WIFI_DIRECT_CMD_SEND_PROVISION_DISCOVERY_REQ:
-		break;
 	case WIFI_DIRECT_CMD_CREATE_GROUP:	// group
 		{
 			wfd_group_s *group = manager->group;
@@ -1134,20 +1169,24 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 			if (!group) {
 				WDS_LOGE("Failed to create pending group");
 				rsp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+				break;
 			}
 			group->flags |= WFD_GROUP_FLAG_AUTONOMOUS;
+			manager->group = group;
+			WDS_LOGD("Succeeded to create pending group");
 
 			res = wfd_oem_create_group(manager->oem_ops, 0, 0);
 			if (res < 0) {
 				WDS_LOGE("Failed to create group");
+				wfd_destroy_group(manager, GROUP_IFNAME);
 				rsp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 			}
 		}
 		break;
-	case WIFI_DIRECT_CMD_CANCEL_GROUP:
+	case WIFI_DIRECT_CMD_DESTROY_GROUP:
 		{
 			wfd_group_s *group = manager->group;
-			if (!group || manager->state < WIFI_DIRECT_STATE_CONNECTED) {
+			if (!group && manager->state < WIFI_DIRECT_STATE_CONNECTED) {
 				WDS_LOGE("Group not exist");
 				rsp.result = WIFI_DIRECT_ERROR_NOT_PERMITTED;
 				break;
@@ -1159,8 +1198,17 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 				rsp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 				break;
 			}
+
+			res = wfd_destroy_group(manager, group->ifname);
+			if (res < 0)
+				WDS_LOGE("Failed to destroy group");
+
 			wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
 			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
+
+			noti = (wifi_direct_client_noti_s*) calloc(1, sizeof(wifi_direct_client_noti_s));
+			noti->event = WIFI_DIRECT_CLI_EVENT_GROUP_DESTROY_RSP;
+			noti->error = WIFI_DIRECT_ERROR_NONE;
 		}
 		break;
 	case WIFI_DIRECT_CMD_IS_GROUPOWNER:
@@ -1191,7 +1239,7 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 			rsp.param1 = group->flags & WFD_GROUP_FLAG_PERSISTENT;
 		}
 		break;
-	case WIFI_DIRECT_CMD_GET_OWN_GROUP_CHANNEL:
+	case WIFI_DIRECT_CMD_GET_OPERATING_CHANNEL:
 		{
 			wfd_group_s *group = manager->group;
 			if (!group) {

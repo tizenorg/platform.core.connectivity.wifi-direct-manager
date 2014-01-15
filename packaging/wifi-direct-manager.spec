@@ -1,6 +1,6 @@
 Name:       wifi-direct-manager
 Summary:    Wi-Fi Direct manger
-Version:    1.0.0
+Version:    1.0.1
 Release:    1
 Group:      Network & Connectivity/Wireless
 License:    Apache-2.0
@@ -90,7 +90,7 @@ vconftool set -t string memory/private/wifi_direct_manager/dhcpc_server_ip 0.0.0
 /usr/share/license/%{name}
 
 %files -n wifi-direct-plugin-wpasupplicant
-%manifest %{name}.manifest
+%manifest wifi-direct-plugin-wpasupplicant.manifest
 %defattr(-,root,root,-)
 %{_libdir}/wifi-direct-plugin-wpasupplicant.so
 /usr/share/license/wifi-direct-plugin-wpasupplicant
