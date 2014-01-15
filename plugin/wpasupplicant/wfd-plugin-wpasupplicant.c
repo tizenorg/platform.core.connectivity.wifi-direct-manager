@@ -856,6 +856,7 @@ static int _parsing_peer_info(char *msg, wfd_oem_device_s *peer)
 	for (i = 0; i < info_cnt; i++) {
 		switch (infos[i].index){
 		case WS_PEER_INFO_AGE:
+			peer->age = (int) strtoul(infos[i].string, NULL, 10);
 			break;
 		case WS_PEER_INFO_LISTEN_FREQ:
 			{

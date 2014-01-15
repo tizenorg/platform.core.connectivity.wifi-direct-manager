@@ -97,6 +97,73 @@ int wfd_remove_peer(void *data, unsigned char *dev_addr)
 	return 0;
 }
 
+int wfd_update_peer_time(void*data, unsigned char *peer_addr)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_manager_s *manager = (wfd_manager_s*) data;
+	wfd_device_s *peer = NULL;
+
+	if (!manager || !peer_addr) {
+		WDS_LOGE("Invalid parameter");
+		return -1;
+	}
+
+	peer = wfd_peer_find_by_dev_addr(manager, peer_addr);
+	if (!peer) {
+		WDS_SECLOG("Peer not found [" MACSTR "]", MAC2STR(peer_addr));
+		return -1;
+	}
+
+	struct timeval tval;
+	gettimeofday(&tval, NULL);
+	peer->time = tval.tv_sec;
+
+	__WDS_LOG_FUNC_EXIT__;
+	return 0;
+}
+
+int wfd_update_peer(void *data, wfd_device_s *peer)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_manager_s *manager = (wfd_manager_s*) data;
+	wfd_oem_device_s *oem_dev = NULL;
+	int res = 0;
+
+	if (!peer) {
+		WDS_LOGE("Invalid parameter");
+		return -1;
+	}
+
+	res = wfd_oem_get_peer_info(manager->oem_ops, peer->dev_addr, &oem_dev);
+	if (res < 0) {
+		WDS_LOGE("Failed to get peer information");
+		return -1;
+	}
+
+	if (oem_dev->age > 4 && peer->state == WFD_PEER_STATE_DISCOVERED) {
+		WDS_LOGE("Too old age to update peer");
+		return -1;
+	}
+	strncpy(peer->dev_name, oem_dev->dev_name, DEV_NAME_LEN);
+	peer->dev_name[DEV_NAME_LEN] = '\0';
+	memcpy(peer->intf_addr, oem_dev->intf_addr, MACADDR_LEN);
+	memcpy(peer->go_dev_addr, oem_dev->go_dev_addr, MACADDR_LEN);
+	peer->dev_role = oem_dev->dev_role;
+	peer->config_methods = oem_dev->config_methods;
+	peer->pri_dev_type = oem_dev->pri_dev_type;
+	peer->sec_dev_type = oem_dev->sec_dev_type;
+	peer->dev_flags = oem_dev->dev_flags;
+	peer->group_flags = oem_dev->group_flags;
+	peer->wps_mode =  oem_dev->wps_mode;
+
+	struct timeval tval;
+	gettimeofday(&tval, NULL);
+	peer->time = tval.tv_sec;
+
+	__WDS_LOG_FUNC_EXIT__;
+	return 0;
+}
+
 int wfd_peer_clear_all(void *data)
 {
 	__WDS_LOG_FUNC_ENTER__;
@@ -183,6 +250,39 @@ wfd_device_s *wfd_peer_find_by_intf_addr(void *data, unsigned char *intf_addr)
 		peer = temp->data;
 		if (!memcmp(peer->intf_addr, intf_addr, MACADDR_LEN)) {
 			WDS_LOGD("Peer device found[" MACSTR "]", MAC2STR(intf_addr));
+			break;
+		}
+		temp = g_list_next(temp);
+		peer = NULL;
+	}
+
+	__WDS_LOG_FUNC_EXIT__;
+	return peer;
+}
+
+wfd_device_s *wfd_peer_find_by_addr(void *data, unsigned char *addr)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_manager_s *manager = (wfd_manager_s*) data;
+	wfd_device_s *peer = NULL;
+	GList *temp = NULL;
+
+	if (!data || !addr) {
+		WDS_LOGE("Invalid parameter");
+		return NULL;
+	}
+
+	if (manager->peer_count == 0) {
+		WDS_LOGE("There is no peer data");
+		return NULL;
+	}
+
+	temp = g_list_first(manager->peers);
+	while (temp) {
+		peer = temp->data;
+		if (!memcmp(peer->dev_addr, addr, MACADDR_LEN) ||
+				!memcmp(peer->intf_addr, addr, MACADDR_LEN)) {
+			WDS_SECLOG("Peer device found[" MACSTR "]", MAC2STR(addr));
 			break;
 		}
 		temp = g_list_next(temp);

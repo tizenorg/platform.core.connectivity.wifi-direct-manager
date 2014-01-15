@@ -72,7 +72,16 @@ typedef enum {
 	WFD_SCAN_MODE_PASSIVE,
 } wfd_scan_mode_e;
 
+typedef enum {
+	WFD_PEER_STATE_DISCOVERED,
+	WFD_PEER_STATE_CONNECTING,
+	WFD_PEER_STATE_CONNECTED,
+} wfd_peer_state_e;
+
 typedef struct {
+	int state;
+	unsigned long time;
+
 	char dev_name[DEV_NAME_LEN+1];
 	unsigned char dev_addr[MACADDR_LEN];
 	unsigned char intf_addr[MACADDR_LEN];

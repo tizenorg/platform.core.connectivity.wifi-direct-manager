@@ -34,6 +34,7 @@
 #include <wifi-direct-internal.h>
 
 #include "wifi-direct-manager.h"
+#include "wifi-direct-peer.h"
 #include "wifi-direct-oem.h"
 #include "wifi-direct-group.h"
 #include "wifi-direct-util.h"

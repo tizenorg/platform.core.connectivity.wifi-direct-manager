@@ -31,9 +31,12 @@
 
 wfd_device_s *wfd_add_peer(void *data, unsigned char *dev_addr, char *dev_name);
 int wfd_remove_peer(void *data, unsigned char *dev_addr);
+int wfd_update_peer(void *data, wfd_device_s *peer);
+int wfd_update_peer_time(void*data, unsigned char *peer_addr);
 int wfd_peer_clear_all(void *data);
 wfd_device_s *wfd_peer_find_by_dev_addr(void *data, unsigned char *dev_addr);
 wfd_device_s *wfd_peer_find_by_intf_addr(void *data, unsigned char *intf_addr);
+wfd_device_s *wfd_peer_find_by_addr(void *data, unsigned char *addr);
 wfd_device_s *wfd_peer_find_current_peer(void *data);
 int wfd_peer_set_data(unsigned char *dev_addr, int type, int data);
 int wfd_peer_get_data(unsigned char *dev_addr, int type, int data);

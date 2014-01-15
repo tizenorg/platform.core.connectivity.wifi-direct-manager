@@ -129,6 +129,8 @@ wfd_session_s *wfd_create_session(void *data, unsigned char *peer_addr, int wps_
 		__WDS_LOG_FUNC_EXIT__;
 		return NULL;
 	}
+	peer->state = WFD_PEER_STATE_CONNECTING;
+
 	session->peer = peer;
 	session->req_wps_mode = wps_mode;
 	if (wps_mode == WFD_WPS_MODE_DISPLAY)
@@ -169,14 +171,10 @@ int wfd_destroy_session(void *data)
 	_session_timer(session, 0);
 	peer = session->peer;
 	
-	if (session->state != SESSION_STATE_COMPLETED) {
-		wifi_direct_client_noti_s noti;
-		memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
-		noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
-		noti.error = WIFI_DIRECT_ERROR_CONNECTION_FAILED;
-		snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer->dev_addr));
-		wfd_event_notify_clients(manager, &noti);
-	}
+	if (session->state == SESSION_STATE_COMPLETED)
+		peer->state = WFD_PEER_STATE_CONNECTED;
+	else
+		peer->state = WFD_PEER_STATE_DISCOVERED;
 
 	free(session);
 	manager->session = NULL;

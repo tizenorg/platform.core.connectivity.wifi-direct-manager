@@ -78,6 +78,7 @@ typedef enum {
 } wfd_oem_event_e;
 
 typedef struct {
+	int age;
 	char dev_name[OEM_DEV_NAME_LEN+1];
 	unsigned char dev_addr[OEM_MACADDR_LEN];
 	unsigned char intf_addr[OEM_MACADDR_LEN];

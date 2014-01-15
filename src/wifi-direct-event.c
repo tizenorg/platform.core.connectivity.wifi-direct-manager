@@ -28,6 +28,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <poll.h>
+#include <time.h>
+#include <unistd.h>
 #include <errno.h>
 
 #include <glib.h>
@@ -202,6 +204,12 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	peer->group_flags = data->group_flags;
 	peer->dev_role = data->dev_role;
 
+	struct timeval tval;
+	gettimeofday(&tval, NULL);
+	peer->time = tval.tv_sec;
+
+	WDS_LOGI("Update time [%s - %ld]", peer->dev_name, peer->time);
+
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
 }
@@ -257,7 +265,10 @@ int wfd_process_event(void *user_data, void *data)
 				WDS_LOGE("Failed to add peer for invitation");
 				return -1;
 			}
+			peer->state = WFD_PEER_STATE_CONNECTING;
+			wfd_update_peer(manager, peer);
 		}
+		wfd_update_peer_time(manager, event->dev_addr);
 
 		res = wfd_session_process_event(manager, event);
 		if (res < 0) {
@@ -317,6 +328,7 @@ int wfd_process_event(void *user_data, void *data)
 		}
 		peer->dev_role = WFD_DEV_ROLE_GO;
 		memcpy(peer->intf_addr, edata->bssid, MACADDR_LEN);
+		wfd_update_peer_time(manager, event->dev_addr);
 
 		session = wfd_create_session(manager, event->dev_addr,
 						manager->req_wps_mode, SESSION_DIRECTION_INCOMING);
@@ -376,7 +388,7 @@ int wfd_process_event(void *user_data, void *data)
 			return -1;
 		}
 		memcpy(peer->intf_addr, event->intf_addr, MACADDR_LEN);
-
+		peer->state = WFD_PEER_STATE_CONNECTED
 		group->members = g_list_prepend(group->members, peer);
 		group->member_count++;
 
@@ -440,6 +452,7 @@ int wfd_process_event(void *user_data, void *data)
 			wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
 			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
 		} else {
+			wfd_destroy_group(manager, GROUP_IFNAME);
 			wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
 			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
 		}

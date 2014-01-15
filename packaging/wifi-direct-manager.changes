@@ -1,4 +1,7 @@
-Mon, 14 Oct 2013 Jiung Yu <jiung.yu@samaung.com> (1.0.1)
+Tue, 15 Jan 2014 Jiung Yu <jiung.yu@samaung.com> (1.0.2)
+  * Add update peer by time operation
+
+Tue, 15 Jan 2014 Jiung Yu <jiung.yu@samaung.com> (1.0.1)
   * Add interface name #define.
   * Add new scan mode SCAN_MODE_NONE.
   * Add channel information to peer

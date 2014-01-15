@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <dlfcn.h>
 #include <sys/utsname.h>
+#include <time.h>
 #include <errno.h>
 
 #include <glib.h>
@@ -669,6 +670,12 @@ int wfd_manager_get_peers(wfd_manager_s *manager, wfd_discovery_entry_s **peers_
 		return -1;
 	}
 
+	unsigned long time = 0;
+	struct timeval tval;
+	gettimeofday(&tval, NULL);
+	time = tval.tv_sec;
+	WDS_LOGI("Current time [%ld]", time);
+
 	peer_count = manager->peer_count;
 	if (peer_count < 0)
 		return -1;
@@ -685,24 +692,41 @@ int wfd_manager_get_peers(wfd_manager_s *manager, wfd_discovery_entry_s **peers_
 	temp = g_list_first(manager->peers);
 	while (temp && count < peer_count) {
 		peer = temp->data;
-		{
-			strncpy(peers[count].device_name, peer->dev_name, DEV_NAME_LEN);
-			peers[count].device_name[DEV_NAME_LEN] = '\0';
-			memcpy(peers[count].mac_address, peer->dev_addr, MACADDR_LEN);
-			memcpy(peers[count].intf_address, peer->intf_addr, MACADDR_LEN);
-			peers[count].channel = 1;
-			peers[count].services = 0;
-			peers[count].is_group_owner = peer->dev_role == WFD_DEV_ROLE_GO;
-			peers[count].is_persistent_go = peer->group_flags & WFD_OEM_GROUP_FLAG_PERSISTENT_GROUP;
-			peers[count].is_connected = peer->dev_role == WFD_DEV_ROLE_GC;
-			peers[count].wps_device_pwd_id = 0;
-			peers[count].wps_cfg_methods = peer->config_methods;
-			peers[count].category = peer->pri_dev_type;
-			peers[count].subcategory = peer->sec_dev_type;
-			peers[count].is_wfd_device = 0;
-			count++;
-			WDS_LOGD("%dth peer [%d]", count, peer->dev_name);
+		if (!peer)
+			goto next;
+		if (peer->time + 4 < time) {
+			WDS_LOGD("Device data is too old to report to application [%s]", peer->dev_name);
+			res = wfd_update_peer(manager, peer);
+			if (res < 0) {
+				WDS_LOGE("This device is disappeared [%s]", peer->dev_name);
+				temp = g_list_next(temp);
+				manager->peers = g_list_remove(manager->peers, peer);
+				manager->peer_count--;
+				if (peer->display)
+					free(peer->display);
+				free(peer);
+				peer = NULL;
+				continue;
+			}
 		}
+
+		strncpy(peers[count].device_name, peer->dev_name, DEV_NAME_LEN);
+		peers[count].device_name[DEV_NAME_LEN] = '\0';
+		memcpy(peers[count].mac_address, peer->dev_addr, MACADDR_LEN);
+		memcpy(peers[count].intf_address, peer->intf_addr, MACADDR_LEN);
+		peers[count].channel = peer->channel;
+		peers[count].services = 0;
+		peers[count].is_group_owner = peer->dev_role == WFD_DEV_ROLE_GO;
+		peers[count].is_persistent_go = peer->group_flags & WFD_OEM_GROUP_FLAG_PERSISTENT_GROUP;
+		peers[count].is_connected = peer->dev_role == WFD_DEV_ROLE_GC;
+		peers[count].wps_device_pwd_id = 0;
+		peers[count].wps_cfg_methods = peer->config_methods;
+		peers[count].category = peer->pri_dev_type;
+		peers[count].subcategory = peer->sec_dev_type;
+
+		count++;
+		WDS_LOGD("%dth peer [%s]", count, peer->dev_name);
+next:
 		temp = g_list_next(temp);
 		peer = NULL;
 	}
