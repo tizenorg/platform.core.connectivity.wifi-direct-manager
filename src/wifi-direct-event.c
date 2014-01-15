@@ -330,35 +330,33 @@ int wfd_process_event(void *user_data, void *data)
 		if (!session) {
 			WDS_LOGE("Unexpected event. Session is NULL [peer: " MACSTR "]",
 										MAC2STR(event->dev_addr));
-			return -1;
+			wfd_oem_destroy_group(manager->oem_ops, GROUP_IFNAME);
+			wfd_destroy_group(manager, GROUP_IFNAME);
+			wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
+			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
+			break;
 		} 
-		// TODO: check whether here is complete location. How about Group Created event
-		session->state = SESSION_STATE_COMPLETED;
+
+		wfd_device_s *peer = wfd_session_get_peer(session);
+		if (!peer) {
+			WDS_LOGE("Peer not found");
+			break;
+		}
 
 		wfd_group_s *group = (wfd_group_s*) manager->group;
 		if (!group) {
 			group = wfd_create_pending_group(manager, event->intf_addr);
 			if (!group) {
 				WDS_LOGE("Failed to create pending group");
-				return -1;
+				break;
 			}
 			manager->group = group;
 		}
+		wfd_group_add_member(group, peer->dev_addr);
 
-		wfd_device_s *peer = session->peer;
-		if (!peer) {
-			WDS_LOGE("Peer not found");
-			// TODO: remove pending group
-			return -1;
-		}
-		memcpy(peer->intf_addr, event->intf_addr, MACADDR_LEN);
 		session->state = SESSION_STATE_COMPLETED;
+		memcpy(peer->intf_addr, event->intf_addr, MACADDR_LEN);
 		peer->state = WFD_PEER_STATE_CONNECTED;
-		group->members = g_list_prepend(group->members, peer);
-		group->member_count++;
-
-		manager->peers = g_list_remove(manager->peers, peer);
-		manager->peer_count--;
 
 		if (event->event_id == WFD_OEM_EVENT_STA_CONNECTED) {	// GO
 			wifi_direct_client_noti_s noti;
@@ -378,42 +376,56 @@ int wfd_process_event(void *user_data, void *data)
 	case WFD_OEM_EVENT_DISCONNECTED:
 	case WFD_OEM_EVENT_STA_DISCONNECTED:
 	{
-		wfd_group_s *group = NULL;
+		wfd_group_s *group = (wfd_group_s*) manager->group;
+		wfd_session_s *session = (wfd_session_s*) manager->session;
 		wfd_device_s *peer = NULL;
-		group = (wfd_group_s*) manager->group;
-		if (!group) {
-			WDS_LOGE("Group not found");
-			break;
-		}
-
-		peer = wfd_group_find_peer_by_intf_addr(group, event->intf_addr);
-		if (!peer) {
-			WDS_LOGE("Failed to find peer by interface address");
-			break;
-		}
-
-		group->members = g_list_remove(group->members, peer);
-		group->member_count--;
-
+		unsigned char peer_addr[MACADDR_LEN] = {0, };
 		wifi_direct_client_noti_s noti;
 		memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
+
+		peer = wfd_group_find_member_by_addr(group, event->intf_addr);
+		if (!peer) {
+			WDS_LOGE("Failed to find connected peer");
+			peer = wfd_session_get_peer(session);
+			if (!peer) {
+				WDS_LOGE("Failed to find connecting peer");
+				break;
+			}
+		}
+		memcpy(peer_addr, peer->dev_addr, MACADDR_LEN);
+
 		/* If state is not DISCONNECTING, connection is finished by peer */
 		if (manager->state >= WIFI_DIRECT_STATE_CONNECTED) {
+			wfd_group_remove_member(group, peer_addr);
 			if (group->member_count)
 				noti.event = WIFI_DIRECT_CLI_EVENT_DISASSOCIATION_IND;
 			else
 				noti.event = WIFI_DIRECT_CLI_EVENT_DISCONNECTION_IND;
 			noti.error = WIFI_DIRECT_ERROR_NONE;
-			snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer->dev_addr));
-			wfd_client_send_event(manager, &noti);
+			snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
+			/* If there is no member, GO should be destroyed */
+			if (!group->member_count) {
+				wfd_oem_destroy_group(manager->oem_ops, group->ifname);
+				wfd_destroy_group(manager, group->ifname);
+			}
 		} else if (manager->state == WIFI_DIRECT_STATE_DISCONNECTING) {
 			noti.event = WIFI_DIRECT_CLI_EVENT_DISCONNECTION_RSP;
 			noti.error = WIFI_DIRECT_ERROR_NONE;
-			snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer->dev_addr));
-			wfd_client_send_event(manager, &noti);
+			snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
+		} else if (manager->state == WIFI_DIRECT_STATE_CONNECTING &&
+					/* Some devices(GO) send disconnection message before connection completed.
+					 * This message should be ignored when device is not GO */
+					manager->local->dev_role == WFD_DEV_ROLE_GO) {
+			noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
+			noti.error = WIFI_DIRECT_ERROR_CONNECTION_FAILED;
+			snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
+		} else {
+			WDS_LOGE("Unexpected event. Ignore it");
+			break;
 		}
+		wfd_client_send_event(manager, &noti);
 
-		if (group->role == WFD_DEV_ROLE_GO) {
+		if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
 			wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
 			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
 		} else {
@@ -421,32 +433,36 @@ int wfd_process_event(void *user_data, void *data)
 			wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
 			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
 		}
-
-		if (!group->member_count && group->role == WFD_DEV_ROLE_GO)
-			wfd_oem_destroy_group(manager->oem_ops, group->ifname);
-
-		if (peer)
-			free(peer);
+		wfd_destroy_session(manager);
 	}
 	break;
 	case WFD_OEM_EVENT_GROUP_CREATED:
 	{
-		wfd_oem_group_data_s *edata = NULL;
-		edata = event->edata;
+		wfd_oem_group_data_s *edata = event->edata;
+		wfd_group_s *group = (wfd_group_s*) manager->group;
 
-		wfd_group_s *group = NULL;
-		group = (wfd_group_s*) manager->group;
 		if (!group) {
-			group = wfd_create_group(manager, event->ifname, event->dev_role, edata->go_dev_addr /* event->intf_addr */);
+			if (!manager->session) {
+				WDS_LOGE("Unexpected Event. Group should be removed(Client)");
+				wfd_oem_destroy_group(manager->oem_ops, event->ifname);
+				break;
+			}
+
+			group = wfd_create_group(manager, event->ifname, event->dev_role, edata->go_dev_addr);
 			if (!group) {
 				WDS_LOGE("Failed to create group");
 				break;
 			}
 		} else {
+			if (!manager->session && !(group->flags & WFD_GROUP_FLAG_AUTONOMOUS)) {
+				WDS_LOGE("Unexpected Event. Group should be removed(Owner)");
+				wfd_oem_destroy_group(manager->oem_ops, group->ifname);
+				break;
+			}
+
 			if (group->pending) {
 				wfd_group_complete(manager, event->ifname, event->dev_role, edata->go_dev_addr);
 			} else {
-				// TODO: ignore it
 				WDS_LOGE("Unexpected event. Group already exist");
 				break;
 			}
@@ -463,67 +479,44 @@ int wfd_process_event(void *user_data, void *data)
 		wifi_direct_client_noti_s noti;
 		memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
 		if (group->role == WFD_DEV_ROLE_GC) {
-			if (!manager->session) {
-				WDS_LOGE("Unexpected Event. Group should be removed(Client)");
-				wfd_oem_destroy_group(manager->oem_ops, group->ifname);
-				break;
-			}
-			wfd_peer_clear_all(manager);
-			wfd_state_set(manager, WIFI_DIRECT_STATE_CONNECTED);
-			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_CONNECTED);
 			wfd_destroy_session(manager);
-			manager->local->dev_role = WFD_DEV_ROLE_GC;
+			wfd_peer_clear_all(manager);
 		} else {
 			if (group->flags & WFD_GROUP_FLAG_AUTONOMOUS) {
 				noti.event = WIFI_DIRECT_CLI_EVENT_GROUP_CREATE_RSP;
 				wfd_client_send_event(manager, &noti);
-			} else if (!manager->session) {
-				WDS_LOGE("Unexpected Event. Group should be removed(Owner)");
-				wfd_oem_destroy_group(manager->oem_ops, group->ifname);
-				break;
+				wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
+				wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
 			}
-			wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
-			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
-			manager->local->dev_role = WFD_DEV_ROLE_GO;
 		}
 	}
 	break;
 	case WFD_OEM_EVENT_GROUP_DESTROYED:
 	{
-		wfd_group_s *group = (wfd_group_s*) manager->group;
-		if (!group) {
-			WDS_LOGE("Unexpected event. Group not found. But set state");
-			wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
-			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
-			break;
-		}
-
-		if (manager->state == WIFI_DIRECT_STATE_DISCONNECTING &&
-				group->role == WFD_DEV_ROLE_GO) {
-			wifi_direct_client_noti_s noti;
-			memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
+		wifi_direct_client_noti_s noti;
+		memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
+		if (manager->state == WIFI_DIRECT_STATE_DISCONNECTING) {
 			noti.event = WIFI_DIRECT_CLI_EVENT_DISCONNECTION_RSP;
 			noti.error = WIFI_DIRECT_ERROR_NONE;
-			wfd_client_send_event(manager, &noti);
-		} else {
-			wifi_direct_client_noti_s noti;
-			memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
+		} else if (manager->state == WIFI_DIRECT_STATE_CONNECTING && manager->session){
+			noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
+			noti.error = WIFI_DIRECT_ERROR_CONNECTION_FAILED;
+			unsigned char *peer_addr = wfd_session_get_peer_addr(manager->session);
+			snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
+		} else if (manager->state >= WIFI_DIRECT_STATE_CONNECTED) {
 			noti.event = WIFI_DIRECT_CLI_EVENT_GROUP_DESTROY_RSP;
 			noti.error = WIFI_DIRECT_ERROR_NONE;
-			wfd_client_send_event(manager, &noti);
-		}
-
-		res = wfd_destroy_group(manager, event->ifname);
-		if (res < 0) {
-			WDS_LOGE("Failed to destroy group");
+		} else {
+			WDS_LOGD("Unexpected event(GROUP_DESTROYED). Ignore it");
 			break;
 		}
+		wfd_client_send_event(manager, &noti);
 
-		wfd_destroy_session(manager);
-		manager->local->dev_role = WFD_DEV_ROLE_NONE;
-		memset(manager->local->ip_addr, 0x0, IPADDR_LEN);
 		wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
 		wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
+		wfd_destroy_group(manager, event->ifname);
+		wfd_destroy_session(manager);
+		manager->local->dev_role = WFD_DEV_ROLE_NONE;
 	}
 	break;
 	case WFD_OEM_EVENT_PROV_DISC_FAIL:
@@ -543,7 +536,13 @@ int wfd_process_event(void *user_data, void *data)
 			break;
 		}
 
-		wfd_destroy_session(manager);
+		wifi_direct_client_noti_s noti;
+		memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
+		noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
+		noti.error = WIFI_DIRECT_ERROR_CONNECTION_FAILED;
+		snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
+		wfd_client_send_event(manager, &noti);
+
 		if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
 			wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
 			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
@@ -551,6 +550,8 @@ int wfd_process_event(void *user_data, void *data)
 			wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
 			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
 		}
+
+		wfd_destroy_session(manager);
 
 		/* After connection failed, scan again */
 		wfd_oem_scan_param_s param;

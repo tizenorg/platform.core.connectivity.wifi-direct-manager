@@ -61,14 +61,13 @@ wfd_group_s *wfd_create_group(void *data, char *ifname, int role, unsigned char 
 wfd_group_s *wfd_create_pending_group(void *data, unsigned char * bssid);
 int wfd_group_complete(void *data, char *ifname, int role, unsigned char *go_dev_addr);
 int wfd_destroy_group(void * data, char *ifname);
-int wfd_group_get_channel(void *data, unsigned char *bssid);
-int wfd_group_is_autonomous(void *data);
+int wfd_group_add_member(wfd_group_s *group, unsigned char *addr);
+int wfd_group_remove_member(wfd_group_s *group, unsigned char *addr);
+int wfd_group_get_channel(wfd_group_s *group);
+int wfd_group_is_autonomous(wfd_group_s *group);
 int wfd_group_get_members();
 int wfd_group_make_persistent();
-int wfd_group_get_flags(void *data, unsigned char *bssid);
-wfd_device_s *wfd_group_find_peer_by_intf_addr(wfd_group_s *group, unsigned char *intf_addr);
-wfd_device_s *wfd_group_find_peer_by_dev_addr(wfd_group_s *group, unsigned char *dev_addr);
-int wfd_group_add_member(void *data, unsigned char *bssid, unsigned char *peer);
-int wfd_group_remove_member(void *data, unsigned char *bssid, unsigned char *peer);
+int wfd_group_get_flags(wfd_group_s *group);
+wfd_device_s *wfd_group_find_member_by_addr(wfd_group_s *group, unsigned char *addr);
 
 #endif /* __WIFI_DIRECT_GROUP_H__ */

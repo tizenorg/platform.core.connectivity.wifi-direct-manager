@@ -39,7 +39,7 @@
 #include "wifi-direct-group.h"
 #include "wifi-direct-util.h"
 #include "wifi-direct-session.h"
-#include "wifi-direct-event.h"
+#include "wifi-direct-client.h"
 
 // Check the group instance which has same interface name, before using this function
 wfd_group_s *wfd_create_group(void *data, char *ifname, int role, unsigned char *go_dev_addr)
@@ -195,7 +195,6 @@ int wfd_destroy_group(void *data, char *ifname)
 	temp = g_list_first(group->members);
 	while(temp && count < group->member_count) {
 		member = temp->data;
-		//member->my_group = 0;
 		WDS_LOGD("%dth member[%s] freed", count, member->dev_name);
 		if (member)	// Temporary. Sometimes manager crashed
 			free(member);
@@ -211,21 +210,12 @@ int wfd_destroy_group(void *data, char *ifname)
 	return 0;
 }
 
-int wfd_group_get_channel(void *data, unsigned char *bssid)
+int wfd_group_get_channel(wfd_group_s *group)
 {
 	__WDS_LOG_FUNC_ENTER__;
-	wfd_group_s *group = NULL;
-	wfd_manager_s *manager = (wfd_manager_s*) data;
 
-	if (!data || !bssid) {
-		WDS_LOGE("Invalid parameter");
-		__WDS_LOG_FUNC_EXIT__;
-		return -1;
-	}
-
-	group = manager->group;
 	if (!group) {
-		WDS_LOGE("Group not found [bssid: " MACSTR "]", MAC2STR(bssid));
+		WDS_LOGE("Invalid parameter");
 		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}
@@ -234,21 +224,12 @@ int wfd_group_get_channel(void *data, unsigned char *bssid)
 	return group->freq;
 }
 
-int wfd_group_is_autonomous(void *data)
+int wfd_group_is_autonomous(wfd_group_s *group)
 {
 	__WDS_LOG_FUNC_ENTER__;
-	wfd_group_s *group = NULL;
-	wfd_manager_s *manager = (wfd_manager_s*) data;
 
-	if (!data) {
-		WDS_LOGE("Invalid parameter");
-		__WDS_LOG_FUNC_EXIT__;
-		return -1;
-	}
-
-	group = manager->group;
 	if (!group) {
-		WDS_LOGE("Group not found");
+		WDS_LOGE("Invalid parameter");
 		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}
@@ -273,21 +254,12 @@ int wfd_group_make_persistent()
 	return 0;
 }
 
-int wfd_group_get_flags(void *data, unsigned char *bssid)
+int wfd_group_get_flags(wfd_group_s *group)
 {
 	__WDS_LOG_FUNC_ENTER__;
-	wfd_group_s *group = NULL;
-	wfd_manager_s *manager = (wfd_manager_s*) data;
 
-	if (!data || !bssid) {
-		WDS_LOGE("Invalid parameter");
-		__WDS_LOG_FUNC_EXIT__;
-		return -1;
-	}
-
-	group = manager->group;
 	if (!group) {
-		WDS_LOGE("Group not found [bssid: " MACSTR "]", MAC2STR(bssid));
+		WDS_LOGE("Invalid parameter");
 		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}
@@ -296,19 +268,19 @@ int wfd_group_get_flags(void *data, unsigned char *bssid)
 	return group->flags;
 }
 
-wfd_device_s *wfd_group_find_peer_by_dev_addr(wfd_group_s *group, unsigned char *dev_addr)
+wfd_device_s *wfd_group_find_member_by_addr(wfd_group_s *group, unsigned char *addr)
 {
 	__WDS_LOG_FUNC_ENTER__;
 	GList *temp = NULL;
 	wfd_device_s *member = NULL;
 
-	if (!group || !dev_addr) {
+	if (!group || !addr) {
 		WDS_LOGE("Invalid parameter");
 		__WDS_LOG_FUNC_EXIT__;
 		return NULL;
 	}
 
-	if (group->member_count == 0) {
+	if (!group->member_count) {
 		WDS_LOGE("There is no members");
 		__WDS_LOG_FUNC_EXIT__;
 		return NULL;
@@ -317,10 +289,12 @@ wfd_device_s *wfd_group_find_peer_by_dev_addr(wfd_group_s *group, unsigned char 
 	temp = g_list_first(group->members);
 	while (temp) {
 		member = temp->data;
-		if (!memcmp(member->dev_addr, dev_addr, MACADDR_LEN)) {
+		if (!memcmp(member->intf_addr, addr, MACADDR_LEN) ||
+				!memcmp(member->dev_addr, addr, MACADDR_LEN)) {
 			WDS_LOGD("Member found");
 			break;
 		}
+next:
 		temp = g_list_next(temp);
 		member = NULL;
 	}
@@ -329,86 +303,48 @@ wfd_device_s *wfd_group_find_peer_by_dev_addr(wfd_group_s *group, unsigned char 
 	return member;
 }
 
-wfd_device_s *wfd_group_find_peer_by_intf_addr(wfd_group_s *group, unsigned char *intf_addr)
+int wfd_group_add_member(wfd_group_s *group, unsigned char *addr)
 {
 	__WDS_LOG_FUNC_ENTER__;
-	GList *temp = NULL;
 	wfd_device_s *member = NULL;
+	wfd_manager_s *manager = wfd_get_manager();
 
-	if (!group || !intf_addr) {
-		WDS_LOGE("Invalid parameter");
-		__WDS_LOG_FUNC_EXIT__;
-		return NULL;
-	}
-
-	if (group->member_count == 0) {
-		WDS_LOGE("There is no members");
-		__WDS_LOG_FUNC_EXIT__;
-		return NULL;
-	}
-
-	temp = g_list_first(group->members);
-	while (temp) {
-		member = temp->data;
-		if (!memcmp(member->intf_addr, intf_addr, MACADDR_LEN)) {
-			WDS_LOGD("Member found");
-			break;
-		}
-		temp = g_list_next(temp);
-		member = NULL;
-	}
-
-	__WDS_LOG_FUNC_EXIT__;
-	return member;
-}
-
-int wfd_group_add_member(void *data, unsigned char *bssid, unsigned char *peer)
-{
-	__WDS_LOG_FUNC_ENTER__;
-	wfd_group_s *group = NULL;
-	wfd_manager_s *manager = (wfd_manager_s*) data;
-	unsigned char *member = NULL;
-
-	if (!data || !bssid || !peer) {
+	if (!group || !addr) {
 		WDS_LOGE("Invalid parameter");
 		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
-	group = manager->group;
-	if (!group) {
-		WDS_LOGE("Group not found [bssid: " MACSTR "]", MAC2STR(bssid));
-		__WDS_LOG_FUNC_EXIT__;
+	member = wfd_group_find_member_by_addr(group, addr);
+	if (member) {
+		WDS_LOGE("Member already exist");
 		return -1;
 	}
 
-	member = (unsigned char*) calloc(1, MACADDR_LEN);
+	member = wfd_peer_find_by_addr(manager, addr);
+	if (!member) {
+		WDS_LOGE("Peer not found");
+	}
+
 	group->members = g_list_prepend(group->members, member);
 	group->member_count++;
+
+	manager->peers = g_list_remove(manager->peers, member);
+	manager->peer_count--;
 
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
 }
 
-int wfd_group_remove_member(void *data, unsigned char *bssid, unsigned char *peer)
+int wfd_group_remove_member(wfd_group_s *group, unsigned char *addr)
 {
 	__WDS_LOG_FUNC_ENTER__;
-	wfd_group_s *group = NULL;
-	wfd_manager_s *manager = (wfd_manager_s*) data;
-	GList *temp = NULL;
-	unsigned char *member = NULL;
+	wfd_device_s *member = NULL;
 
-	if (!data || !bssid || !peer) {
+	if (!group || !addr) {
 		WDS_LOGE("Invalid parameter");
 		__WDS_LOG_FUNC_EXIT__;
 		return -1;
-	}
-
-	group = manager->group;
-	if (!group) {
-		WDS_LOGE("Group not found [bssid: " MACSTR "]", MAC2STR(bssid));
-		__WDS_LOG_FUNC_EXIT__;
-		return  -1;
 	}
 
 	if (group->member_count == 0) {
@@ -417,19 +353,9 @@ int wfd_group_remove_member(void *data, unsigned char *bssid, unsigned char *pee
 		return -1;
 	}
 
-	temp = g_list_first(group->members);
-	while (temp) {
-		member = temp->data;
-		if (!memcmp(member, peer, MACADDR_LEN)) {
-			WDS_LOGD("Member found [MAC: " MACSTR "]", peer);
-			break;
-		}
-		temp = g_list_next(temp);
-		member = NULL;
-	}
-
+	member = wfd_group_find_member_by_addr(group, addr);
 	if (!member) {
-		WDS_LOGE("Member not found [MAC: " MACSTR "]", peer);
+		WDS_LOGE("Member not found [MAC: " MACSTR "]", addr);
 		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}

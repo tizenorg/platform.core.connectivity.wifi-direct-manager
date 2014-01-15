@@ -809,7 +809,7 @@ wfd_device_s *wfd_manager_find_connected_peer(wfd_manager_s *manager, unsigned c
 		return NULL;
 	}
 
-	peer = wfd_group_find_peer_by_dev_addr(manager->group, peer_addr);
+	peer = wfd_group_find_member_by_addr(manager->group, peer_addr);
 
 	__WDS_LOG_FUNC_EXIT__;
 	return peer;
