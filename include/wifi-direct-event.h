@@ -30,7 +30,6 @@
 
 
 
-int wfd_event_notify_clients(wfd_manager_s *manager, wifi_direct_client_noti_s *noti);
 int wfd_process_event(void *user_data, void *data);
 
 #endif /* __WIFI_DIRECT_EVENT_H__ */

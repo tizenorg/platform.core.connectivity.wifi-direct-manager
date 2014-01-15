@@ -39,7 +39,7 @@
 #include "wifi-direct-oem.h"
 #include "wifi-direct-util.h"
 #include "wifi-direct-session.h"
-#include "wifi-direct-event.h"
+#include "wifi-direct-client.h"
 #include "wifi-direct-state.h"
 
 
@@ -65,7 +65,7 @@ static gboolean _session_timeout_cb(gpointer *user_data)
 	noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
 	noti.error = WIFI_DIRECT_ERROR_CONNECTION_CANCELED;
 	snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
-	wfd_event_notify_clients(manager, &noti);
+	wfd_client_send_event(manager, &noti);
 
 	wfd_session_cancel(session, peer_addr);
 
@@ -652,7 +652,7 @@ int wfd_session_process_event(wfd_manager_s *manager, wfd_oem_event_s *event)
 			noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_REQ;
 			noti.error = WIFI_DIRECT_ERROR_NONE;
 			snprintf(noti.param1, sizeof(noti.param1), MACSTR, MAC2STR(event->dev_addr));
-			wfd_event_notify_clients(manager, &noti);
+			wfd_client_send_event(manager, &noti);
 		} else {
 			if (session->state > SESSION_STATE_STARTED ||
 					session->direction == SESSION_DIRECTION_INCOMING) {
@@ -681,7 +681,7 @@ int wfd_session_process_event(wfd_manager_s *manager, wfd_oem_event_s *event)
 				memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
 				noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_WPS_REQ;
 				snprintf(noti.param1, sizeof(noti.param1), MACSTR, MAC2STR(event->dev_addr));
-				wfd_event_notify_clients(manager, &noti);
+				wfd_client_send_event(manager, &noti);
 				if (session->wps_mode == WFD_WPS_MODE_KEYPAD)
 					break;
 			}

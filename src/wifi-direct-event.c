@@ -135,43 +135,6 @@ static int _wfd_event_send_to_client(int sock, char *data, int data_len)
 		return 0;
 }
 
-int wfd_event_notify_clients(wfd_manager_s *manager, wifi_direct_client_noti_s *noti)
-{
-	__WDS_LOG_FUNC_ENTER__;
-	GList *temp = NULL;
-	wfd_client_s *client = NULL;
-	int noti_cnt = 0;
-	int res = 0;
-
-	if (!manager || !noti) {
-		WDS_LOGE("Invalid parameter");
-		__WDS_LOG_FUNC_EXIT__;
-		return -1;
-	}
-
-	temp = g_list_first(manager->clients);
-	while (temp) {
-		client = temp->data;
-		if (!client) {
-			WDS_LOGE("Invalid client");
-			goto next_client;
-		}
-		res = _wfd_event_send_to_client(client->asock, (char*) noti, sizeof(wifi_direct_client_noti_s));
-		if (res < 0) {
-			WDS_LOGE("Failed to send notification to client[%d]", client->client_id);
-			goto next_client;
-		}
-		noti_cnt++;
-next_client:
-		temp = g_list_next(temp);
-		client = NULL;
-	}
-	WDS_LOGD("Notification[%d:%d] sent to %d clients", noti->event, noti->error, noti_cnt);
-
-	__WDS_LOG_FUNC_EXIT__;
-	return 0;
-}
-
 static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *data)
 {
 	__WDS_LOG_FUNC_ENTER__;
@@ -248,7 +211,7 @@ int wfd_process_event(void *user_data, void *data)
 			memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
 			noti.event = WIFI_DIRECT_CLI_EVENT_DISCOVER_FOUND_PEERS;
 			noti.error = WIFI_DIRECT_ERROR_NONE;
-			wfd_event_notify_clients(manager, &noti);
+			wfd_client_send_event(manager, &noti);
 		}
 	}
 	break;
@@ -284,7 +247,7 @@ int wfd_process_event(void *user_data, void *data)
 		memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
 		noti.event = WIFI_DIRECT_CLI_EVENT_DISCOVER_FOUND_PEERS;
 		noti.error = WIFI_DIRECT_ERROR_NONE;
-		wfd_event_notify_clients(manager, &noti);
+		wfd_client_send_event(manager, &noti);
 	}
 	break;
 	case WFD_OEM_EVENT_DISCOVERY_FINISHED:
@@ -308,7 +271,7 @@ int wfd_process_event(void *user_data, void *data)
 		memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
 		noti.event = WIFI_DIRECT_CLI_EVENT_DISCOVER_END;
 		noti.error = WIFI_DIRECT_ERROR_NONE;
-		wfd_event_notify_clients(manager, &noti);
+		wfd_client_send_event(manager, &noti);
 	}
 	break;
 	case WFD_OEM_EVENT_INVITATION_REQ:
@@ -346,7 +309,7 @@ int wfd_process_event(void *user_data, void *data)
 		noti.event = WIFI_DIRECT_CLI_EVENT_INVITATION_REQ;
 		noti.error = WIFI_DIRECT_ERROR_NONE;
 		snprintf(noti.param1, sizeof(noti.param1), MACSTR, MAC2STR(event->dev_addr));
-		wfd_event_notify_clients(manager, &noti);
+		wfd_client_send_event(manager, &noti);
 	}
 	break;
 	case WFD_OEM_EVENT_GO_NEG_REQ:
@@ -403,7 +366,7 @@ int wfd_process_event(void *user_data, void *data)
 			noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
 			noti.error = WIFI_DIRECT_ERROR_NONE;
 			snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer->dev_addr));
-			wfd_event_notify_clients(manager, &noti);
+			wfd_client_send_event(manager, &noti);
 
 			wfd_util_dhcps_wait_ip_leased(peer);
 			wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
@@ -442,12 +405,12 @@ int wfd_process_event(void *user_data, void *data)
 				noti.event = WIFI_DIRECT_CLI_EVENT_DISCONNECTION_IND;
 			noti.error = WIFI_DIRECT_ERROR_NONE;
 			snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer->dev_addr));
-			wfd_event_notify_clients(manager, &noti);
+			wfd_client_send_event(manager, &noti);
 		} else if (manager->state == WIFI_DIRECT_STATE_DISCONNECTING) {
 			noti.event = WIFI_DIRECT_CLI_EVENT_DISCONNECTION_RSP;
 			noti.error = WIFI_DIRECT_ERROR_NONE;
 			snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer->dev_addr));
-			wfd_event_notify_clients(manager, &noti);
+			wfd_client_send_event(manager, &noti);
 		}
 
 		if (group->role == WFD_DEV_ROLE_GO) {
@@ -513,7 +476,7 @@ int wfd_process_event(void *user_data, void *data)
 		} else {
 			if (group->flags & WFD_GROUP_FLAG_AUTONOMOUS) {
 				noti.event = WIFI_DIRECT_CLI_EVENT_GROUP_CREATE_RSP;
-				wfd_event_notify_clients(manager, &noti);
+				wfd_client_send_event(manager, &noti);
 			} else if (!manager->session) {
 				WDS_LOGE("Unexpected Event. Group should be removed(Owner)");
 				wfd_oem_destroy_group(manager->oem_ops, group->ifname);
@@ -541,13 +504,13 @@ int wfd_process_event(void *user_data, void *data)
 			memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
 			noti.event = WIFI_DIRECT_CLI_EVENT_DISCONNECTION_RSP;
 			noti.error = WIFI_DIRECT_ERROR_NONE;
-			wfd_event_notify_clients(manager, &noti);
+			wfd_client_send_event(manager, &noti);
 		} else {
 			wifi_direct_client_noti_s noti;
 			memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
 			noti.event = WIFI_DIRECT_CLI_EVENT_GROUP_DESTROY_RSP;
 			noti.error = WIFI_DIRECT_ERROR_NONE;
-			wfd_event_notify_clients(manager, &noti);
+			wfd_client_send_event(manager, &noti);
 		}
 
 		res = wfd_destroy_group(manager, event->ifname);

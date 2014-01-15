@@ -44,7 +44,7 @@
 
 #include "wifi-direct-manager.h"
 #include "wifi-direct-state.h"
-#include "wifi-direct-event.h"
+#include "wifi-direct-client.h"
 #include "wifi-direct-util.h"
 
 static int _txt_to_mac(char *txt, unsigned char *mac)
@@ -120,7 +120,7 @@ int wfd_util_get_phone_name(char *phone_name)
 void _wfd_util_dev_name_changed_cb(keynode_t *key, void* data)
 {
 	__WDS_LOG_FUNC_ENTER__;
-	char dev_name[DEV_NAME_LEN] = {0, };
+	char dev_name[DEV_NAME_LEN+1] = {0, };
 	int res = 0;
 
 	res = wfd_util_get_phone_name(dev_name);
@@ -395,7 +395,7 @@ static void _dhcps_ip_leased_cb(keynode_t *key, void* data)
 			noti.event = WIFI_DIRECT_CLI_EVENT_IP_LEASED_IND;
 			snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer->dev_addr));
 			snprintf(noti.param2, IPSTR_LEN, IPSTR, IP2STR(peer->ip_addr));
-			wfd_event_notify_clients(manager, &noti);
+			wfd_client_send_event(manager, &noti);
 			break;
 		} else {
 			WDS_LOGE("Different interface address peer[" MACSTR "] vs dhcp[" MACSTR "]", MAC2STR(peer->intf_addr), MAC2STR(intf_addr));
@@ -454,7 +454,7 @@ static gboolean _polling_ip(gpointer user_data)
 	noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
 	noti.error = WIFI_DIRECT_ERROR_NONE;
 	snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer->dev_addr));
-	wfd_event_notify_clients(manager, &noti);
+	wfd_client_send_event(manager, &noti);
 
 	__WDS_LOG_FUNC_EXIT__;
 	return FALSE;
