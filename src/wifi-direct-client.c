@@ -82,6 +82,10 @@ char *wfd_server_print_cmd(wifi_direct_cmd_e cmd)
 		return "WIFI_DIRECT_CMD_GET_LINK_STATUS";
 	case WIFI_DIRECT_CMD_CONNECT:
 		return "WIFI_DIRECT_CMD_CONNECT";
+	case WIFI_DIRECT_CMD_CANCEL_CONNECTION:
+		return "WIFI_DIRECT_CMD_CANCEL_CONNECTION";
+	case WIFI_DIRECT_CMD_REJECT_CONNECTION:
+		return "WIFI_DIRECT_CMD_REJECT_CONNECTION";
 
 	case WIFI_DIRECT_CMD_DISCONNECT_ALL:
 		return "WIFI_DIRECT_CMD_DISCONNECT_ALL";
@@ -967,18 +971,15 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 				return FALSE;
 			}
 
-			res = _wfd_send_to_client(sock, (char*) &rsp, sizeof(rsp));
-			if (res < 0) {
-				WDS_LOGE("Failed to send response to client");
-				_wfd_deregister_client(manager, req.client_id);
-				__WDS_LOG_FUNC_EXIT__;
-				return FALSE;
-			}
+			res = wfd_manager_cancel_connection(manager, req.data.mac_addr);
+			if (res < 0)
+				WDS_LOGE("Failed to cancel connection");
 
-			res = wfd_oem_cancel_connection(manager->oem_ops, NULL);
-			wfd_peer_clear_all(manager);
-			wfd_destroy_session(manager);
-			goto done;
+			noti = (wifi_direct_client_noti_s*) calloc(1, sizeof(wifi_direct_client_noti_s));
+			noti->event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
+			noti->error = WIFI_DIRECT_ERROR_CONNECTION_CANCELED;
+			snprintf(noti->param1, MACSTR_LEN, MACSTR, MAC2STR(req.data.mac_addr));
+			goto send_notification;
 		}
 		break;
 	case WIFI_DIRECT_CMD_REJECT_CONNECTION:
@@ -1005,44 +1006,25 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 				return FALSE;
 			}
 
-			res = wfd_session_stop(session);
+			res = wfd_manager_reject_connection(manager, req.data.mac_addr);
 			if (res < 0) {
-				WDS_LOGE("Failed to stop session");
-				// TODO: Which event should be sent?
+				WDS_LOGE("Failed to reject connection");
+				// TODO: check whether set state and break
 			}
 
-			if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
-				wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
-				wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
-			} else {
-				wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
-				wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
-			}
-
-			/* After connection rejected by user, remove cache of all peer and scan again */
-			wfd_peer_clear_all(manager);
-			goto done;
+			noti = (wifi_direct_client_noti_s*) calloc(1, sizeof(wifi_direct_client_noti_s));
+			noti->event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
+			noti->error = WIFI_DIRECT_ERROR_CONNECTION_CANCELED;
+			snprintf(noti->param1, MACSTR_LEN, MACSTR, MAC2STR(req.data.mac_addr));
+			goto send_notification;
 		}
 		break;
 	case WIFI_DIRECT_CMD_DISCONNECT:	// group, session
 		{
-			wfd_group_s *group = (wfd_group_s*) manager->group;
-			wfd_device_s *peer = NULL;
-
-			if (manager->state < WIFI_DIRECT_STATE_CONNECTING || !group) {
+			if (!manager->group || manager->state < WIFI_DIRECT_STATE_CONNECTED) {
 				WDS_LOGE("It's not permitted with this state [%d]", manager->state);
 				rsp.result = WIFI_DIRECT_ERROR_NOT_PERMITTED;
 				break;
-			}
-
-			peer = wfd_manager_find_connected_peer(manager, req.data.mac_addr);
-			if (!peer) {
-				WDS_LOGE("Connected peer not found");
-				peer = wfd_manager_get_current_peer(manager);
-				if (!peer) {
-					WDS_LOGE("Connecting peer not found");
-					rsp.result = WIFI_DIRECT_ERROR_INVALID_PARAMETER;
-				}
 			}
 
 			res = _wfd_send_to_client(sock, (char*) &rsp, sizeof(rsp));
@@ -1053,38 +1035,16 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 				return FALSE;
 			}
 
-			if (rsp.result != WIFI_DIRECT_ERROR_NONE)
-				goto done;
-
-			wfd_state_set(manager, WIFI_DIRECT_STATE_DISCONNECTING);
-
-			wfd_destroy_session(manager);
-			if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
-				res = wfd_oem_disconnect(manager->oem_ops, peer->intf_addr);
-			} else {
-				res = wfd_oem_destroy_group(manager->oem_ops, group->ifname);
-			}
-			if (res < 0) {
-				WDS_LOGE("Failed to disconnect peer");
-				noti = (wifi_direct_client_noti_s*) calloc(1, sizeof(wifi_direct_client_noti_s));
-				noti->event = WIFI_DIRECT_CLI_EVENT_DISCONNECTION_RSP;
-				noti->error = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-
-				if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
-					wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
-					wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
-				} else {
-					wfd_state_set(manager, WIFI_DIRECT_STATE_CONNECTED);
-					wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_CONNECTED);
-				}
-				goto send_notification;
-			}
-			goto done;
+			noti = (wifi_direct_client_noti_s*) calloc(1, sizeof(wifi_direct_client_noti_s));
+			noti->event = WIFI_DIRECT_CLI_EVENT_DISCONNECTION_RSP;
+			noti->error = wfd_manager_disconnect(manager, req.data.mac_addr);
+			snprintf(noti->param1, MACSTR_LEN, MACSTR, MAC2STR(req.data.mac_addr));
+			goto send_notification;
 		}
 		break;
 	case WIFI_DIRECT_CMD_DISCONNECT_ALL:
 		{
-			if (manager->state < WIFI_DIRECT_STATE_CONNECTING) {
+			if (!manager->group || manager->state < WIFI_DIRECT_STATE_CONNECTED) {
 				WDS_LOGD("It's not connected state [%d]", manager->state);
 				rsp.result = WIFI_DIRECT_ERROR_NOT_PERMITTED;
 				break;
@@ -1098,26 +1058,10 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 				return FALSE;
 			}
 
-			wfd_state_set(manager, WIFI_DIRECT_STATE_DISCONNECTING);
-
-			wfd_destroy_session(manager);
-			res = wfd_oem_destroy_group(manager->oem_ops, "p2p-wlan0-0");
-			if (res < 0) {
-				WDS_LOGE("Failed to destroy group");
-				noti = (wifi_direct_client_noti_s*) calloc(1, sizeof(wifi_direct_client_noti_s));
-				noti->event = WIFI_DIRECT_CLI_EVENT_DISCONNECTION_RSP;
-				noti->error = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-
-				if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
-					wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
-					wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
-				} else {
-					wfd_state_set(manager, WIFI_DIRECT_STATE_CONNECTED);
-					wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_CONNECTED);
-				}
-				goto send_notification;
-			}
-			goto done;
+			noti = (wifi_direct_client_noti_s*) calloc(1, sizeof(wifi_direct_client_noti_s));
+			noti->event = WIFI_DIRECT_CLI_EVENT_DISCONNECTION_RSP;
+			noti->error = wfd_manager_disconnect_all(manager);
+			goto send_notification;
 		}
 		break;
 	case WIFI_DIRECT_CMD_GET_CONNECTED_PEERS_INFO:

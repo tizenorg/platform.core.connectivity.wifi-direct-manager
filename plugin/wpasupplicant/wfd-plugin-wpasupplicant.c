@@ -1656,7 +1656,6 @@ static gboolean ws_event_handler(GIOChannel *source,
 			wfd_oem_invite_data_s* edata = NULL;
 			edata = (wfd_oem_invite_data_s*) event->edata;
 			event_id = WFD_OEM_EVENT_INVITATION_REQ;
-			ws_restart_scan(edata->listen);
 		}
 		break;
 	case WS_EVENT_INVITATION_RESULT:

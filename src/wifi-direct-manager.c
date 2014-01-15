@@ -655,6 +655,211 @@ int wfd_manager_accept_connection(wfd_manager_s *manager, unsigned char *peer_ad
 }
 
 
+int wfd_manager_cancel_connection(wfd_manager_s *manager, unsigned char *peer_addr)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_session_s *session = NULL;
+	wfd_group_s *group = NULL;
+	int res = 0;
+
+	if (!manager || !peer_addr) {
+		WDS_LOGE("Invalid parameter");
+		return WIFI_DIRECT_ERROR_INVALID_PARAMETER;
+	}
+
+	res = wfd_session_cancel(manager->session, peer_addr);
+	if (res < 0) {
+		WDS_LOGE("Failed to cancel session");
+		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
+	}
+
+	if (manager->local->dev_role != WFD_DEV_ROLE_GO)
+		wfd_oem_destroy_group(manager->oem_ops, GROUP_IFNAME);
+
+	group = (wfd_group_s*) manager->group;
+	if (group) {
+		wfd_group_remove_member(group, peer_addr);
+		if (!group->member_count) {
+			wfd_oem_destroy_group(manager->oem_ops, group->ifname);
+			wfd_destroy_group(manager, group->ifname);
+		} else {
+			wfd_oem_disconnect(manager->oem_ops, peer_addr);
+		}
+	}
+
+	if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
+		wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
+		wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
+	} else {
+		wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
+		wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
+	}
+
+	__WDS_LOG_FUNC_EXIT__;
+	return WIFI_DIRECT_ERROR_NONE;
+}
+
+
+int wfd_manager_reject_connection(wfd_manager_s *manager, unsigned char *peer_addr)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_session_s *session = NULL;
+	int res = 0;
+
+	if (!manager || !peer_addr) {
+		WDS_LOGE("Invalid parameter");
+		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
+	}
+
+	session = (wfd_session_s*) manager->session;
+	if (!session) {
+		WDS_LOGE("Session not found");
+		return WIFI_DIRECT_ERROR_NOT_PERMITTED;
+	}
+
+	if (manager->local->dev_role == WFD_DEV_ROLE_NONE) {
+		res = wfd_oem_reject_connection(manager->oem_ops, peer_addr);
+		if (res < 0) {
+			WDS_LOGE("Failed to reject connection");
+			// TODO: check whether set state and break
+		}
+	}
+	wfd_destroy_session(manager);
+
+	if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
+		wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
+		wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
+	} else {
+		wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
+		wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
+	}
+
+	__WDS_LOG_FUNC_EXIT__;
+	return WIFI_DIRECT_ERROR_NONE;
+}
+
+
+int wfd_manager_disconnect(wfd_manager_s *manager, unsigned char *peer_addr)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_group_s *group = NULL;
+	wfd_device_s *peer = NULL;
+	int res = 0;
+
+	if (!manager) {
+		WDS_LOGE("Invalid parameter");
+		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
+	}
+
+	if (!peer_addr) {
+		WDS_LOGE("Invalid parameter");
+		return WIFI_DIRECT_ERROR_INVALID_PARAMETER;
+	}
+
+	group = (wfd_group_s*) manager->group;
+	if (!group) {
+		WDS_LOGE("Group not found");
+		return WIFI_DIRECT_ERROR_NOT_PERMITTED;
+	}
+
+	peer = wfd_group_find_member_by_addr(group, peer_addr);
+	if (!peer) {
+		WDS_LOGE("Connected peer not found");
+		return WIFI_DIRECT_ERROR_INVALID_PARAMETER;
+	}
+
+	wfd_state_set(manager, WIFI_DIRECT_STATE_DISCONNECTING);
+
+	if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
+		res = wfd_oem_disconnect(manager->oem_ops, peer->intf_addr);
+	} else {
+		res = wfd_oem_destroy_group(manager->oem_ops, group->ifname);
+	}
+	if (res < 0) {
+		WDS_LOGE("Failed to disconnect peer");
+		res = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+		goto failed;
+	}
+	WDS_LOGE("Succeeded to disconnect peer");
+
+	wfd_group_remove_member(group, peer_addr);
+	if (!group->member_count) {
+		wfd_oem_destroy_group(manager->oem_ops, group->ifname);
+		wfd_destroy_group(manager, group->ifname);
+	}
+
+	if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
+		wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
+		wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
+	} else {
+		wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
+		wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
+	}
+
+	__WDS_LOG_FUNC_EXIT__;
+	return WIFI_DIRECT_ERROR_NONE;
+
+failed:
+	if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
+		wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
+		wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
+	} else {
+		wfd_state_set(manager, WIFI_DIRECT_STATE_CONNECTED);
+		wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_CONNECTED);
+	}
+
+	__WDS_LOG_FUNC_EXIT__;
+	return res;
+}
+
+int wfd_manager_disconnect_all(wfd_manager_s *manager)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_group_s *group = NULL;
+	int res = 0;
+
+	if (!manager) {
+		WDS_LOGE("Invalid parameter");
+		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
+	}
+
+	group = (wfd_group_s*) manager->group;
+	if (!group) {
+		WDS_LOGE("Group not found");
+		return WIFI_DIRECT_ERROR_NOT_PERMITTED;
+	}
+
+	wfd_state_set(manager, WIFI_DIRECT_STATE_DISCONNECTING);
+
+	res = wfd_oem_destroy_group(manager->oem_ops, group->ifname);
+	if (res < 0) {
+		WDS_LOGE("Failed to destroy group");
+		res = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+		goto failed;
+	}
+	WDS_LOGE("Succeeded to disconnect all peer");
+
+	wfd_destroy_group(manager, group->ifname);
+
+	wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
+	wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
+
+	__WDS_LOG_FUNC_EXIT__;
+	return WIFI_DIRECT_ERROR_NONE;
+
+failed:
+	if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
+		wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
+		wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
+	} else {
+		wfd_state_set(manager, WIFI_DIRECT_STATE_CONNECTED);
+		wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_CONNECTED);
+	}
+
+	__WDS_LOG_FUNC_EXIT__;
+	return res;
+}
+
 int wfd_manager_get_peers(wfd_manager_s *manager, wfd_discovery_entry_s **peers_data)
 {
 	__WDS_LOG_FUNC_ENTER__;

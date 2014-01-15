@@ -1,3 +1,9 @@
+Tue, 15 Jan 2014 Jiung Yu <jiung.yu@samaung.com> (1.0.6)
+  * Add cancel connection fuction to manager
+  * Add reject connection fuction to manager
+  * Add disconnect fuction to manager
+  * Add disconnect allfuction to manager
+
 Tue, 15 Jan 2014 Jiung Yu <jiung.yu@samaung.com> (1.0.5)
   * Change group function operation and parameter
 
