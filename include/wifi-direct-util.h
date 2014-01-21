@@ -28,7 +28,10 @@
 #ifndef __WIFI_DIRECT_UTIL_H__
 #define __WIFI_DIRECT_UTIL_H__
 
-#define DEFAULT_MAC_FILE_PATH "/opt/etc/.mac.info"
+/* For multi-user support */
+#include <tzplatform_config.h>
+
+#define DEFAULT_MAC_FILE_PATH tzplatform_mkpath(TZ_SYS_ETC, ".mac.info")
 #define MAC2STR(a) (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
 #define MACSTR "%02x:%02x:%02x:%02x:%02x:%02x"
 #define IP2STR(a) (a)[0], (a)[1], (a)[2], (a)[3]

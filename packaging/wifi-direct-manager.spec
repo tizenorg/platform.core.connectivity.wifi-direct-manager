@@ -1,7 +1,7 @@
 Name:       wifi-direct-manager
 Summary:    Wi-Fi Direct manger
 Version:    1.0.0
-Release:    1
+Release:    0
 Group:      Network & Connectivity/Wireless
 License:    Apache-2.0
 Source0:    %{name}-%{version}.tar.gz
@@ -11,6 +11,7 @@ BuildRequires:  pkgconfig(dbus-glib-1)
 BuildRequires:  pkgconfig(dlog)
 BuildRequires:  pkgconfig(vconf)
 BuildRequires:  pkgconfig(capi-appfw-application)
+BuildRequires:  pkgconfig(libtzplatform-config)
 BuildRequires:  cmake
 
 
@@ -65,7 +66,8 @@ chmod 755 /usr/bin/wifi-direct-server.sh
 chmod 755 /usr/bin/wifi-direct-dhcp.sh
 chmod 755 /usr/sbin/p2p_supp.sh
 
-vconftool set -t int memory/wifi_direct/state 0 -u 5000 -i -f
+TZ_SYS_USER_GROUP_ID=$(getent group %{TZ_SYS_USER_GROUP} | cut -d: -f3)
+vconftool set -t int memory/wifi_direct/state 0 -g $TZ_SYS_USER_GROUP_ID -i -f
 vconftool set -t int memory/private/wifi_direct_manager/dhcp_ip_lease 0 -i -f
 vconftool set -t string memory/private/wifi_direct_manager/dhcpc_server_ip 0.0.0.0 -i -f
 

@@ -8,7 +8,7 @@ SET(LIBDIR "\${prefix}/lib")
 SET(INCLUDEDIR "\${prefix}/include")
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(pkgs REQUIRED wifi-direct glib-2.0 gobject-2.0 dlog capi-appfw-application vconf)
+pkg_check_modules(pkgs REQUIRED wifi-direct glib-2.0 gobject-2.0 dlog capi-appfw-application vconf libtzplatform-config)
 FOREACH(flag ${pkgs_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
 ENDFOREACH(flag)
