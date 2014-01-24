@@ -41,6 +41,7 @@
 #define IPSTR_LEN 16
 #define PINSTR_LEN 8
 #define PASSPHRASE_LEN 8
+#define QUERY_HANDLE_LIMIT 256
 
 #if 0
 typedef enum {
@@ -72,6 +73,22 @@ typedef enum {
 	WFD_SCAN_MODE_PASSIVE,
 } wfd_scan_mode_e;
 
+typedef struct {
+	wifi_direct_service_type_e service_type;
+	int ref_counter;
+	char *service_string;
+	int service_str_length;
+} wfd_service_s;
+
+
+typedef struct {
+	int handle;
+	int ref_counter;
+	unsigned char mac_addr[6];
+	wfd_service_s *service;
+	int identifier;
+}wfd_query_handle_s;
+
 typedef enum {
 	WFD_PEER_STATE_DISCOVERED,
 	WFD_PEER_STATE_CONNECTING,
@@ -94,6 +111,8 @@ typedef struct {
 	int dev_flags;
 	int group_flags;
 	int wps_mode;
+
+	GList *services;
 
 	int wfd_dev_info;
 	int wfd_ctrl_port;
@@ -127,6 +146,9 @@ typedef struct {
 
 	void *group;
 
+	GList *query_handles;
+	int query_handle_cnt;
+
 	void *oem_ops;
 	void *plugin_handle;
 } wfd_manager_s;
@@ -151,6 +173,11 @@ int wfd_manager_get_autoconnection(int *autoconnection);
 int wfd_manager_set_autoconnection(int autoconnection);
 int wfd_manager_get_req_wps_mode(int *req_wps_mode);
 int wfd_manager_set_req_wps_mode(int req_wps_mode);
+
+int wfd_manager_service_add(wfd_manager_s *manager, wifi_direct_service_type_e type, char *data);
+int wfd_manager_service_del(wfd_manager_s *manager, wifi_direct_service_type_e  type, char *data);
+int wfd_manager_serv_disc_req(wfd_manager_s *manager, unsigned char* mad_addr, wifi_direct_service_type_e  type, char *data);
+int wfd_manager_serv_disc_cancel(wfd_manager_s *manager, int handle);
 
 int wfd_manager_local_config_set(wfd_manager_s *manager);
 int wfd_manager_activate(wfd_manager_s *manager);
