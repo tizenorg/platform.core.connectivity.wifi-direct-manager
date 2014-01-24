@@ -175,7 +175,14 @@ char *wfd_server_print_cmd(wifi_direct_cmd_e cmd)
 		return "WIFI_DIRECT_CMD_SET_DEVICE_NAME";
 	case WIFI_DIRECT_CMD_SET_OEM_LOGLEVEL:
 		return "WIFI_DIRECT_CMD_SET_OEM_LOGLEVEL";
-
+	case WIFI_DIRECT_CMD_SERVICE_ADD:
+		return "WIFI_DIRECT_CMD_SERVICE_ADD";
+	case WIFI_DIRECT_CMD_SERVICE_DEL:
+		return "WIFI_DIRECT_CMD_SERVICE_DEL";
+	case WIFI_DIRECT_CMD_SERV_DISC_REQ:
+		return "WIFI_DIRECT_CMD_SERV_DISC_REQ";
+	case WIFI_DIRECT_CMD_SERV_DISC_CANCEL:
+		return "WIFI_DIRECT_CMD_SERV_DISC_CANCEL";
 	default:
 		return "WIFI_DIRECT_CMD_INVALID";
 
@@ -787,6 +794,8 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 
 		wfd_destroy_group(manager, GROUP_IFNAME);
 		wfd_destroy_session(manager);
+		wfd_manager_init_service(manager->local);
+		wfd_manager_init_query(manager);
 		wfd_peer_clear_all(manager);
 		WDS_LOGD("peer count[%d], peers[%d]", manager->peer_count, manager->peers);
 		wfd_local_reset_data(manager);
@@ -1460,6 +1469,86 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 		break;
 	case WIFI_DIRECT_CMD_GENERATE_WPS_PIN:	// manager
 		// TODO: implement in plugin
+		break;
+	case WIFI_DIRECT_CMD_SERVICE_ADD:
+		{
+			char *buff = NULL;
+
+			buff = (char *)calloc(sizeof(char), req.cmd_data_len);
+			res = _wfd_read_from_client(sock, buff, req.cmd_data_len);
+			if (res < 0) {
+				WDS_LOGE("Failed to get service data");
+				rsp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+				free(buff);
+				break;
+			}
+
+			res = wfd_manager_service_add(manager, req.data.int1, buff);
+			if (res < 0) {
+				WDS_LOGE("Failed to add service");
+				rsp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+			}
+
+			free(buff);
+		}
+		break;
+	case WIFI_DIRECT_CMD_SERVICE_DEL:
+		{
+			char *buff = NULL;
+
+			buff = (char *)calloc(sizeof(char),req.cmd_data_len);
+			res = _wfd_read_from_client(sock, buff, req.cmd_data_len);
+			if (res < 0) {
+				WDS_LOGE("Failed to get service data");
+				rsp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+				free(buff);
+				break;
+			}
+
+			res = wfd_manager_service_del(manager, req.data.int1, buff);
+			if (res < 0) {
+				WDS_LOGE("Failed to delete service");
+				rsp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+			}
+
+			free(buff);
+		}
+		break;
+	case WIFI_DIRECT_CMD_SERV_DISC_REQ:
+		{
+			char *buff = NULL;
+
+			if(req.cmd_data_len != 0)
+			{
+				buff = (char*)calloc(sizeof(char),req.cmd_data_len);
+				res = _wfd_read_from_client(sock, buff, req.cmd_data_len);
+				if (res < 0) {
+					WDS_LOGE("Failed to get service data");
+					rsp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+					free(buff);
+					break;
+				}
+			}
+
+			res = wfd_manager_serv_disc_req(manager,req.data.mac_addr, req.data.int1, buff);
+			if (res < 0) {
+				WDS_LOGE("Failed to requset service discovery");
+				rsp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+			}
+			rsp.param1 = res;
+
+			if(buff != NULL)
+				free(buff);
+		}
+		break;
+	case WIFI_DIRECT_CMD_SERV_DISC_CANCEL:
+		{
+			res = wfd_manager_serv_disc_cancel(manager, req.data.int1);
+			if (res < 0) {
+				WDS_LOGE("Failed to delete service cancel");
+				rsp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+			}
+		}
 		break;
 	default:
 		WDS_LOGE("Unknown command[%d]", req.cmd);

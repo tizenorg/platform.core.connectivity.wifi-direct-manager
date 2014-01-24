@@ -197,7 +197,10 @@ int wfd_destroy_group(void *data, char *ifname)
 		member = temp->data;
 		WDS_LOGD("%dth member[%s] freed", count, member->dev_name);
 		if (member)	// Temporary. Sometimes manager crashed
+		{
+			wfd_manager_init_service(member);
 			free(member);
+		}
 		temp = g_list_next(temp);
 		count++;
 	}
