@@ -92,6 +92,7 @@ int wfd_remove_peer(void *data, unsigned char *dev_addr)
 	manager->peers = g_list_remove(manager->peers, peer);
 	manager->peer_count--;
 
+	wfd_manager_init_service(peer);
 	free(peer);
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
@@ -179,6 +180,7 @@ int wfd_peer_clear_all(void *data)
 	temp = g_list_first(manager->peers);
 	while(temp) {
 		peer = (wfd_device_s*) temp->data;
+		wfd_manager_init_service(peer);
 		free(peer);
 		temp = g_list_next(temp);
 		manager->peer_count--;

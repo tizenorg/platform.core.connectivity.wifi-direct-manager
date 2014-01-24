@@ -860,6 +860,34 @@ failed:
 	return res;
 }
 
+static int _wfd_manager_service_copy(char* dst, GList* services, int dst_length)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_service_s *service = NULL;
+	GList *temp = NULL;
+	char* ptr = dst;
+	int length = dst_length;
+	int res = 0;
+
+	temp = g_list_first(services);
+	service = temp->data;
+	while (temp && length > service->service_str_length+3) {
+
+		memcpy(ptr, service->service_string,service->service_str_length);
+		ptr+=service->service_str_length;
+		strncpy(ptr," ,\n",3);
+		ptr+=3;
+		length =length -service->service_str_length -3;
+
+		temp = g_list_next(temp);
+		if(temp != NULL)
+			service = temp->data;
+	}
+	*ptr='/0';
+	__WDS_LOG_FUNC_EXIT__;
+	return res;
+}
+
 int wfd_manager_get_peers(wfd_manager_s *manager, wfd_discovery_entry_s **peers_data)
 {
 	__WDS_LOG_FUNC_ENTER__;
@@ -905,8 +933,10 @@ int wfd_manager_get_peers(wfd_manager_s *manager, wfd_discovery_entry_s **peers_
 			if (res < 0) {
 				WDS_LOGE("This device is disappeared [%s]", peer->dev_name);
 				temp = g_list_next(temp);
+				wfd_manager_init_service(peer);
 				manager->peers = g_list_remove(manager->peers, peer);
 				manager->peer_count--;
+				wfd_manager_init_service(peer);
 				free(peer);
 				peer = NULL;
 				continue;
@@ -918,7 +948,6 @@ int wfd_manager_get_peers(wfd_manager_s *manager, wfd_discovery_entry_s **peers_
 		memcpy(peers[count].mac_address, peer->dev_addr, MACADDR_LEN);
 		memcpy(peers[count].intf_address, peer->intf_addr, MACADDR_LEN);
 		peers[count].channel = peer->channel;
-		peers[count].services = 0;
 		peers[count].is_group_owner = peer->dev_role == WFD_DEV_ROLE_GO;
 		peers[count].is_persistent_go = peer->group_flags & WFD_OEM_GROUP_FLAG_PERSISTENT_GROUP;
 		peers[count].is_connected = peer->dev_role == WFD_DEV_ROLE_GC;
@@ -926,6 +955,7 @@ int wfd_manager_get_peers(wfd_manager_s *manager, wfd_discovery_entry_s **peers_
 		peers[count].wps_cfg_methods = peer->config_methods;
 		peers[count].category = peer->pri_dev_type;
 		peers[count].subcategory = peer->sec_dev_type;
+		_wfd_manager_service_copy(peers[count].services, peer->services, 1024);
 
 		count++;
 		WDS_LOGD("%dth peer [%s]", count, peer->dev_name);
@@ -989,7 +1019,7 @@ int wfd_manager_get_connected_peers(wfd_manager_s *manager, wfd_connected_peer_i
 			peers[count].subcategory = peer->sec_dev_type;
 			peers[count].channel = peer->channel;
 			peers[count].is_p2p = 1;
-			peers[count].services = 0;
+			_wfd_manager_service_copy(peers[count].services, peer->services, 1024);
 			WDS_LOGD("%dth member converted[%s]", count, peers[count].device_name);
 			count++;
 		}
@@ -1061,6 +1091,266 @@ int wfd_manager_get_goup_ifname(char **ifname)
 
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
+}
+
+static wfd_service_s *_wfd_service_find(wfd_device_s *device, wifi_direct_service_type_e type, char *data)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_service_s *result = NULL;
+	GList *temp = NULL;
+
+	temp = g_list_first(device->services);
+	while (temp) {
+		result = temp->data;
+
+		if(type == result->service_type && !strcmp(data, result->service_string))
+		{
+			WDS_LOGD("Service found");
+			break;
+		}
+		temp = g_list_next(temp);
+		result = NULL;
+	}
+	__WDS_LOG_FUNC_EXIT__;
+	return result;
+}
+
+static wfd_query_s *_wfd_query_find(wfd_manager_s *manager, unsigned char* mac_addr, wifi_direct_service_type_e  type, char *data)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_query_s *query = NULL;
+	GList *temp = NULL;
+	int data_len = 0;
+
+	if(data != NULL)
+		data_len = strlen(data);
+
+	temp = g_list_first(manager->query_handles);
+	while (temp) {
+		query = temp->data;
+
+		if(!memcmp(query->mac_addr, mac_addr, MACADDR_LEN) &&
+				type == query->service_type)
+		{
+			if(data_len)
+			{
+				if(!strcmp(data, query->query_string))
+				{
+					WDS_LOGD("Query found");
+					break;
+				}
+			}else{
+				WDS_LOGD("Query found");
+				break;
+			}
+		}
+		temp = g_list_next(temp);
+		query = NULL;
+	}
+	__WDS_LOG_FUNC_EXIT__;
+	return query;
+}
+
+int wfd_manager_service_add(wfd_manager_s *manager, wifi_direct_service_type_e  type, char *data)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_device_s * device = manager->local;
+	wfd_service_s * service;
+	int res = 0;
+
+	if (!device || !data) {
+		WDS_LOGE("Invalid parameter");
+		return -1;
+	}
+
+	service = _wfd_service_find(device, type, data);
+	if (service) {
+		WDS_LOGE("service already exist");
+		service->ref_counter++;
+		__WDS_LOG_FUNC_EXIT__;
+		return 0;
+	}
+
+	res = wfd_oem_service_add(manager->oem_ops, type, data);
+	if (res < 0) {
+		WDS_LOGE("Failed to add service");
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	service = (wfd_service_s*) calloc(1, sizeof(wfd_service_s));
+	service->service_string = strndup(data, strlen(data));
+	service->service_str_length = strlen(data);
+	service->service_type = type;
+	service->ref_counter=1;
+	device->services = g_list_prepend(device->services, service);
+	return res;
+}
+
+int wfd_manager_service_del(wfd_manager_s *manager, wifi_direct_service_type_e  type, char *data)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_device_s * device = manager->local;
+	wfd_service_s* service;
+	int res = 0;
+
+	if (!device || !data) {
+		WDS_LOGE("Invalid parameter");
+		return -1;
+	}
+	service = _wfd_service_find(device, type, data);
+	if (!service) {
+		WDS_LOGE("Failed to find service");
+		res = -1;
+
+	}else if(service->ref_counter ==1)
+	{
+		res = wfd_oem_service_del(manager->oem_ops, type, data);
+		if (res < 0) {
+			WDS_LOGE("Failed to delete service");
+			__WDS_LOG_FUNC_EXIT__;
+			return -1;
+		}
+		device->services = g_list_remove(device->services, service);
+		free(service->service_string);
+		free(service);
+
+	}else{
+		service->ref_counter--;
+	}
+	__WDS_LOG_FUNC_EXIT__;
+	return res;
+}
+
+int wfd_manager_serv_disc_req(wfd_manager_s *manager, unsigned char* mad_addr, wifi_direct_service_type_e  type, char *data)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_query_s* query;
+	int res = 0;
+
+	if (!manager) {
+		WDS_LOGE("Invalid parameter");
+		return -1;
+	}
+	query = _wfd_query_find(manager, mad_addr, type, data);
+	if (query) {
+		WDS_LOGE("Query already exist");
+		query->ref_counter++;
+		__WDS_LOG_FUNC_EXIT__;
+		return 0;
+	}
+
+	res = wfd_oem_serv_disc_req(manager->oem_ops, mad_addr, type, data);
+	if (res < 0) {
+		WDS_LOGE("Failed to request service discovery");
+		return res;
+	}
+	query = (wfd_query_s*) calloc(1, sizeof(wfd_query_s));
+	query->handle = res;
+	query->ref_counter=1;
+	memcpy(query->mac_addr, mad_addr, MACADDR_LEN);
+
+	if(strlen(data))
+		query->query_string = strndup(data, strlen(data));
+	query->service_type = type;
+	manager->query_handles = g_list_prepend(manager->query_handles, query);
+	return res;
+}
+int wfd_manager_serv_disc_cancel(wfd_manager_s *manager,  int handle)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_query_s *query = NULL;
+	GList *temp = NULL;
+	int res = 0;
+
+	temp = g_list_first(manager->query_handles);
+	while (temp) {
+		query = temp->data;
+
+		//TODO : compare the services
+		if(query->handle == handle)
+		{
+			WDS_LOGD("Query handle found");
+			break;
+		}
+		temp = g_list_next(temp);
+		query = NULL;
+	}
+
+	if(query == NULL) {
+		WDS_LOGE("handle does not exist");
+		return -1;
+	}else if(query->ref_counter ==1) {
+
+		res = wfd_oem_serv_disc_cancel(manager->oem_ops, query->handle);
+		if (res < 0) {
+			WDS_LOGE("Failed to cancel service discovery or already canceled");
+		}
+		manager->query_handles = g_list_remove(manager->query_handles, query);
+		if(query->query_string)
+			free(query->query_string);
+		free(query);
+	}else
+		query->ref_counter--;
+
+	__WDS_LOG_FUNC_EXIT__;
+	return res;
+}
+
+int wfd_manager_init_service(wfd_device_s *device)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_service_s* service = NULL;
+	GList *temp = NULL;
+	int res = 0;
+
+	if (!device) {
+		WDS_LOGE("Invalid parameter");
+		return -1;
+	}
+
+	if(device->services)
+	{
+		temp = g_list_first(device->services);
+		while (temp) {
+			service = temp->data;
+			free(service->service_string);
+			free(service);
+			temp = g_list_next(temp);
+		}
+		g_list_free(device->services);
+	}
+	__WDS_LOG_FUNC_EXIT__;
+	return res;
+}
+
+int wfd_manager_init_query(wfd_manager_s *manager)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_query_s *query = NULL;
+	GList *temp = NULL;
+	int res = 0;
+
+	if (!manager) {
+		WDS_LOGE("Invalid parameter");
+		return -1;
+	}
+
+	if(manager->query_handles)
+	{
+		temp = g_list_first(manager->query_handles);
+		while (temp) {
+			query = temp->data;
+
+			free(query->query_string);
+			free(query);
+			temp = g_list_next(temp);
+		}
+		g_list_free(query->query_string);
+	}
+
+	__WDS_LOG_FUNC_EXIT__;
+	return res;
 }
 
 static wfd_manager_s *wfd_manager_init()
