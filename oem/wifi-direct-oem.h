@@ -72,6 +72,8 @@ typedef enum {
 	WFD_OEM_EVENT_CONNECTED,	// 25
 	WFD_OEM_EVENT_DISCONNECTED,
 
+	WFD_OEM_EVENT_SERV_DISC_RESP,
+
 	WFD_OEM_EVENT_TERMINATING,
 
 	WFD_OEM_EVENT_MAX,
@@ -149,6 +151,7 @@ typedef enum {
 	WFD_OEM_EDATA_TYPE_CONN,
 	WFD_OEM_EDATA_TYPE_INVITE,
 	WFD_OEM_EDATA_TYPE_GROUP,
+	WFD_OEM_EDATA_TYPE_SERVICE,
 } ws_event_type_e;
 
 typedef enum {
@@ -255,6 +258,12 @@ typedef struct _wfd_oem_ops_s {
 	int (*get_persistent_groups) (wfd_oem_persistent_group_s **groups, int *group_count);
 	int (*remove_persistent_group) (char *ssid, unsigned char *bssid);
 	int (*set_persistent_reconnect) (unsigned char *bssid, int reconnect);
+
+	int (*service_add) (int service_type,char *data);
+	int (*service_del) (int service_type,char *data);
+	int (*serv_disc_req) (unsigned char* MAC, int service_type,char *data);
+	int (*serv_disc_cancel) (int identifier);
+
 } wfd_oem_ops_s;
 
 int wfd_oem_init(wfd_oem_ops_s *ops, wfd_oem_event_cb event_callback, void *user_data);
@@ -295,5 +304,10 @@ int wfd_oem_set_go_intent(wfd_oem_ops_s *ops, int go_intent);
 int wfd_oem_get_persistent_groups(wfd_oem_ops_s *ops, wfd_oem_persistent_group_s **groups, int *group_count);
 int wfd_oem_remove_persistent_group(wfd_oem_ops_s *ops, char *ssid, unsigned char *bssid);
 int wfd_oem_set_persistent_reconnect(wfd_oem_ops_s *ops, unsigned char *bssid, int reconnect);
+
+int wfd_oem_service_add(wfd_oem_ops_s *ops, int service_type, char *data);
+int wfd_oem_service_del(wfd_oem_ops_s *ops, int service_type, char *data);
+int wfd_oem_serv_disc_req(wfd_oem_ops_s *ops, unsigned char* MAC, int service_type, char *data);
+int wfd_oem_serv_disc_cancel(wfd_oem_ops_s *ops, int identifier);
 
 #endif /* __WIFI_DIRECT_OEM_H__ */
