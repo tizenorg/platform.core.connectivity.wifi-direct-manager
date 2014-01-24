@@ -177,6 +177,203 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	return 0;
 }
 
+static int hex2num(const char c)
+{
+	if (c >= '0' && c <= '9')
+		return c - '0';
+	if (c >= 'a' && c <= 'f')
+		return c - 'a' + 10;
+	if (c >= 'A' && c <= 'F')
+		return c - 'A' + 10;
+	return -1;
+}
+
+static int hex2byte(const char *hex)
+{
+	int a, b;
+	a = hex2num(*hex++);
+	if (a < 0)
+		return -1;
+	b = hex2num(*hex++);
+	if (b < 0)
+		return -1;
+	return (a << 4) | b;
+}
+
+int hexstr2bin(const char *hex, int len, char *buf)
+{
+	int i;
+	int a;
+	const char *ipos = hex;
+	char *opos = buf;
+
+	for (i = 0; i < len; i++) {
+		a = hex2byte(ipos);
+		if (a < 0)
+			return -1;
+		*opos++ = a;
+		ipos += 2;
+	}
+	return 0;
+}
+
+static int _wfd_get_stlv_len(const char* value)
+{
+	int a, b;
+	a = hex2byte(value +2);
+	b = hex2byte(value);
+
+	if( a >= 0 && b >= 0)
+		return ( a << 8) | b;
+	else
+		return -1;
+}
+
+static int _wfd_service_add(wfd_device_s *device, wifi_direct_service_type_e type, char *data)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_service_s *service = NULL;
+	GList *temp = NULL;
+	int res = 0;
+
+	temp = g_list_first(device->services);
+	while (temp) {
+		service = temp->data;
+
+		if(type == service->service_type &&
+				!strcmp(data, service->service_string))
+		{
+			WDS_LOGD("Service found");
+			break;
+		}
+		temp = g_list_next(temp);
+		service = NULL;
+	}
+
+	if (service) {
+		WDS_LOGE("service already exist");
+		free(data);
+		__WDS_LOG_FUNC_EXIT__;
+		return res;
+	}
+	service = (wfd_service_s*) calloc(1, sizeof(wfd_service_s));
+	service->service_string = data;
+	service->service_str_length = strlen(data);
+	service->service_type = type;
+	device->services = g_list_prepend(device->services, service);
+
+	__WDS_LOG_FUNC_EXIT__;
+	return res;
+}
+
+static int _wfd_update_service(wfd_device_s *peer, char * data, wifi_direct_service_type_e  type, int length)
+{
+	wfd_service_s * service;
+	int res = 0;
+	char *temp = NULL;
+	char *ptr = NULL;
+
+	if (!peer || !data) {
+		WDS_LOGE("Invalid parameter");
+		return -1;
+	}
+	switch (type)
+	{
+		case WIFI_DIRECT_SERVICE_BONJOUR:
+		{
+			temp = strndup(data, length*2);
+			res = _wfd_service_add(peer, type, temp);
+			break;
+		}
+		case WIFI_DIRECT_SERVICE_UPNP:
+		{
+			temp = calloc(1, length);
+			hexstr2bin(data +2, length - 1, temp);
+			temp[length - 1] = '\0';
+
+			ptr = strtok(temp, ",");
+
+			while(ptr != NULL)
+			{
+				res = _wfd_service_add(peer, type, strndup(ptr, strlen(ptr)));
+				ptr = strtok(NULL, ",");
+			}
+
+			if(temp)
+				free(temp);
+			break;
+		}
+		case WIFI_DIRECT_SERVICE_VENDORSPEC:
+		{
+			temp = calloc(1, length + 1);
+			hexstr2bin(data, length, temp);
+			temp[length] = '\0';
+
+			res = _wfd_service_add(peer, type, temp);
+			break;
+		}
+		default:
+		{
+			WDS_LOGD(MACSTR ": Unknown Service Discovery Response TLVs");
+			free(temp);
+			res = -1;
+			break;
+		}
+	}
+	return res;
+}
+
+static int _wfd_event_update_service(wfd_manager_s *manager, wfd_device_s *peer, char *data)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	int res = 0;
+	int s_len = 0;
+	char *pos = data;
+	char *end = NULL;
+	wifi_direct_service_type_e  service_tlv_type;
+	int status = 0;
+
+	if (!peer || !data) {
+		WDS_LOGE("Invalid parameter");
+		return -1;
+	}
+	end = data + strlen(data);
+
+	while(pos <= end -10){// This is raw data that is not passed any exception handling ex> length, value, ...
+
+		s_len = _wfd_get_stlv_len(pos);
+		pos += 4;
+		if (pos + s_len*2 > end || s_len < 3) {
+			WDS_LOGD("Unexpected Response Data or length: %d", s_len);
+			break;
+		}
+
+		service_tlv_type = hex2byte(pos);
+		if (service_tlv_type < 0) {
+			WDS_LOGD("Unexpected Response service type: %d", service_tlv_type);
+			pos+=(s_len)*2;
+			continue;
+		}else if (service_tlv_type == 255)
+			service_tlv_type = WIFI_DIRECT_SERVICE_VENDORSPEC;
+
+		pos += 4;
+		status = hex2byte(pos);
+		pos += 2;
+
+		if (status == 0)
+		{
+			res = _wfd_update_service(peer, pos, service_tlv_type, s_len -3);
+			if (res != 0) {
+				WDS_LOGE("Invalid type");
+			}
+		} else
+			WDS_LOGD("Service Reaponse TLV status is not vaild status: %d", status);
+		pos+=(s_len-3)*2;
+	}
+	__WDS_LOG_FUNC_EXIT__;
+	return 0;
+}
+
 int wfd_process_event(void *user_data, void *data)
 {
 	__WDS_LOG_FUNC_ENTER__;
@@ -561,6 +758,25 @@ int wfd_process_event(void *user_data, void *data)
 		param.scan_type = WFD_OEM_SCAN_TYPE_SOCIAL;
 		wfd_oem_start_scan(manager->oem_ops, &param);
 		manager->scan_mode = WFD_SCAN_MODE_ACTIVE;
+	}
+	break;
+	case WFD_OEM_EVENT_SERV_DISC_RESP:
+	{
+		wfd_device_s *peer = NULL;
+		if(event->edata_type != WFD_OEM_EDATA_TYPE_SERVICE)
+		{
+			WDS_LOGD("There is no service to register");
+			break;
+		}
+		peer = wfd_peer_find_by_dev_addr(manager, event->dev_addr);
+		if (!peer) {
+			WDS_LOGD("serv_disc_resp from unknown peer. Discard it");
+			break;
+		}
+		res = _wfd_event_update_service(manager, peer, (char*) event->edata);
+		if (res < 0) {
+			WDS_LOGE("Failed to update peer service data");
+		}
 	}
 	break;
 	default:
