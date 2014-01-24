@@ -386,3 +386,42 @@ int wfd_oem_set_persistent_reconnect(wfd_oem_ops_s *ops, unsigned char *bssid, i
 	return ops->set_persistent_reconnect(bssid, reconnect);
 }
 
+int wfd_oem_service_add(wfd_oem_ops_s *ops, wfd_oem_service_e type, char *data)
+{
+	if (!ops || !ops->service_add) {
+		WDS_LOGE("Invalid parameter");
+		return -1;
+	}
+
+	return ops->service_add(type, data);
+}
+
+int wfd_oem_service_del(wfd_oem_ops_s *ops, wfd_oem_service_e type, char *data)
+{
+	if (!ops || !ops->service_del) {
+		WDS_LOGE("Invalid parameter");
+		return -1;
+	}
+
+	return ops->service_del(type, data);
+}
+
+int wfd_oem_serv_disc_req(wfd_oem_ops_s *ops, unsigned char* MAC, wfd_oem_service_e type, char *data)
+{
+	if (!ops || !ops->serv_disc_req) {
+		WDS_LOGE("Invalid parameter");
+		return -1;
+	}
+
+	return ops->serv_disc_req(MAC, type, data);
+}
+
+int wfd_oem_serv_disc_cancel(wfd_oem_ops_s *ops, int identifier)
+{
+	if (!ops || !ops->serv_disc_cancel) {
+		WDS_LOGE("Invalid parameter");
+		return -1;
+	}
+
+	return ops->serv_disc_cancel(identifier);
+}
