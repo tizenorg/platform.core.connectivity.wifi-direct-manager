@@ -81,6 +81,9 @@ ws_string_s ws_event_strs[] = {
 	{"P2P-GROUP-STARTED", WS_EVENT_GROUP_STARTED},
 	{"P2P-GROUP-REMOVED", WS_EVENT_GROUP_REMOVED},
 
+	//service
+	{"P2P-SERV-DISC-RESP", WS_EVENT_SERV_DISC_RESP},
+
 	{"CTRL-EVENT-TERMINATING", WS_EVENT_TERMINATING},
 	};
 
@@ -194,6 +197,11 @@ static wfd_oem_ops_s supplicant_ops = {
 	.get_persistent_groups = ws_get_persistent_groups,
 	.remove_persistent_group = ws_remove_persistent_group,
 	.set_persistent_reconnect = ws_set_persistent_reconnect,
+
+	.service_add = ws_service_add,
+	.service_del = ws_service_del,
+	.serv_disc_req = ws_serv_disc_req,
+	.serv_disc_cancel = ws_serv_disc_cancel,
 	};
 
 static ws_plugin_data_s *g_pd;
@@ -1571,6 +1579,22 @@ static int _parsing_event_info(char *ifname, char *msg, wfd_oem_event_s *data)
 
 		}
 		break;
+	case WS_EVENT_SERV_DISC_RESP:
+		{
+			_ws_txt_to_mac(info_str, data->dev_addr);
+			info_str += OEM_MACSTR_LEN;
+
+			WDP_LOGD("service tlv is %s", info_str);
+
+			if (!strlen(info_str)) {
+				WDP_LOGD("Nothing to parse anymore");
+				data->edata_type = WFD_OEM_EDATA_TYPE_NONE;
+				break;
+			}
+			data->edata = (void*)strndup(info_str, strlen(info_str));
+			data->edata_type = WFD_OEM_EDATA_TYPE_SERVICE;
+		}
+		break;
 	default:
 		WDP_LOGE("Unknown event");
 		break;
@@ -1586,7 +1610,7 @@ static gboolean ws_event_handler(GIOChannel *source,
 {
 	__WDP_LOG_FUNC_ENTER__;
 	ws_sock_data_s * sd = (ws_sock_data_s*) data;
-	char msg[1024] = {0, };
+	char msg[2048] = {0, };
 	char *param;
 	int event_id = -1;
 	wfd_oem_event_s *event = NULL;
@@ -1698,8 +1722,6 @@ static gboolean ws_event_handler(GIOChannel *source,
 		break;
 	case WS_EVENT_INVITATION_RECEIVED:
 		{
-			wfd_oem_invite_data_s* edata = NULL;
-			edata = (wfd_oem_invite_data_s*) event->edata;
 			event_id = WFD_OEM_EVENT_INVITATION_REQ;
 		}
 		break;
@@ -1711,6 +1733,9 @@ static gboolean ws_event_handler(GIOChannel *source,
 		break;
 	case WS_EVENT_STA_DISCONNECTED:
 		event_id = WFD_OEM_EVENT_STA_DISCONNECTED;
+		break;
+	case WS_EVENT_SERV_DISC_RESP:
+		event_id = WFD_OEM_EVENT_SERV_DISC_RESP;
 		break;
 	case WS_EVENT_TERMINATING:
 		event_id = WFD_OEM_EVENT_TERMINATING;
@@ -2826,6 +2851,229 @@ int _parsing_networks(char* buf, ws_network_info_s networks[], int *network_cnt)
 
 	__WDP_LOG_FUNC_EXIT__;
 	return 0;
+}
+
+int ws_service_add(wfd_oem_service_e service_type, char *data)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	ws_sock_data_s *sock = g_pd->common;
+	char cmd[256] = {0, };
+	char reply[1024]={0,};
+	int res;
+
+	if (!sock) {
+		WDP_LOGE("Socket is NULL");
+		return -1;
+	}
+	if (!data || !strlen(data)) {
+		WDP_LOGE( "Invalid parameter");
+	 	__WDP_LOG_FUNC_EXIT__;
+	 	return -1;
+	}
+
+	if (service_type == WFD_OEM_SERVICE_BONJOUR)
+		snprintf(cmd, sizeof(cmd), WS_CMD_P2P_SERVICE_ADD "bonjour %s", data);
+	else if (service_type == WFD_OEM_SERVICE_UPNP)
+		snprintf(cmd, sizeof(cmd), WS_CMD_P2P_SERVICE_ADD "upnp %s", data);
+	else if (service_type ==WFD_OEM_SERVICE_VENDORSPEC)
+		snprintf(cmd, sizeof(cmd), WS_CMD_P2P_SERVICE_ADD "vendor %s", data);
+	else{
+		WDP_LOGE( "Invalid parameter");
+	 	__WDP_LOG_FUNC_EXIT__;
+	 	return -1;
+	}
+
+	res = _ws_send_cmd(sock->ctrl_sock, cmd, (char*) reply, sizeof(reply));
+	if (res < 0) {
+		WDP_LOGE("Failed to send command to wpa_supplicant");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	if (strstr(reply, "FAIL")) {
+		WDP_LOGE("Failed to add service");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+	WDP_LOGD("Succeeded to add service");
+
+	__WDP_LOG_FUNC_EXIT__;
+	return 0;
+}
+
+int ws_service_del(wfd_oem_service_e service_type, char *data)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	ws_sock_data_s *sock = g_pd->common;
+	char cmd[256] = {0, };
+	char reply[1024]={0,};
+	int res;
+
+	if (!sock) {
+		WDP_LOGE("Socket is NULL");
+		return -1;
+	}
+	if (!data || !strlen(data)) {
+		WDP_LOGE( "Invalid parameter");
+	 	__WDP_LOG_FUNC_EXIT__;
+	 	return 1;
+	}
+
+	if ( service_type == WFD_OEM_SERVICE_BONJOUR)
+		snprintf(cmd, sizeof(cmd), WS_CMD_P2P_SERVICE_DEL "bonjour %s", data);
+	else if (service_type == WFD_OEM_SERVICE_UPNP)
+		snprintf(cmd, sizeof(cmd), WS_CMD_P2P_SERVICE_DEL "upnp %s", data);
+	else if (service_type ==WFD_OEM_SERVICE_VENDORSPEC)
+		snprintf(cmd, sizeof(cmd), WS_CMD_P2P_SERVICE_DEL "vendor %s", data);
+	else{
+		WDP_LOGE( "Invalid parameter");
+	 	__WDP_LOG_FUNC_EXIT__;
+	 	return -1;
+	}
+
+	res = _ws_send_cmd(sock->ctrl_sock, cmd, (char*) reply, sizeof(reply));
+	if (res < 0) {
+		WDP_LOGE("Failed to send command to wpa_supplicant");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	if (strstr(reply, "FAIL")) {
+		WDP_LOGE("Failed to delete service");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+	WDP_LOGD("Succeeded to delete service");
+
+	__WDP_LOG_FUNC_EXIT__;
+	return 0;
+}
+
+static int _ws_query_generation(unsigned char* MAC, wfd_oem_service_e type, char *data, char *buff)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	int res=0;
+	int tlv_len=0;
+	char *query=NULL;
+
+	switch(type){
+	case WFD_OEM_SERVICE_ALL:
+		query=strndup(SERVICE_TYPE_ALL,8);
+	break;
+	case WFD_OEM_SERVICE_BONJOUR:
+		query=strndup(SERVICE_TYPE_BONJOUR,8);
+	break;
+	case WFD_OEM_SERVICE_UPNP:
+		query=strndup(SERVICE_TYPE_UPNP,8);
+	break;
+	case WFD_OEM_SERVICE_VENDORSPEC:
+		query=strndup(SERVICE_TYPE_VENDOR_SPECIFIC,8);
+	break;
+	default:
+		WDP_LOGE( "Invalid parameter");
+	 	__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	break;
+	}
+
+	if(data && (tlv_len = strlen(data)))
+	{
+		if(type == WFD_OEM_SERVICE_UPNP)
+		{
+			snprintf(buff, 256, WS_CMD_P2P_SERV_DISC_REQ MACSTR " upnp %s", MAC2STR(MAC), data);
+		}else{
+
+			if(type == WFD_OEM_SERVICE_BONJOUR)
+				tlv_len = tlv_len/2 + 2;
+
+			query[0] = '0' + (char)(tlv_len/16);
+			if(tlv_len%16 < 10)
+				query[1] = '0' + (char)(tlv_len%16);
+			else
+				query[1] = 'a' + (char)(tlv_len%16) - 10;
+			snprintf(buff, 256, WS_CMD_P2P_SERV_DISC_REQ MACSTR " %s%s", MAC2STR(MAC), query, data);
+		}
+	}else{
+		snprintf(buff, 256, WS_CMD_P2P_SERV_DISC_REQ MACSTR " %s", MAC2STR(MAC), query);
+	}
+	if(query != NULL)
+		free(query);
+	__WDP_LOG_FUNC_EXIT__;
+	return res;
+}
+
+int ws_serv_disc_req(unsigned char* MAC, wfd_oem_service_e type, char *data)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	ws_sock_data_s *sock = g_pd->common;
+	char cmd[256] = {0, };
+	char reply[1024]={0,};
+	int res;
+
+	if (!sock) {
+		WDP_LOGE("Socket is NULL");
+		return -1;
+	}
+
+	res = _ws_query_generation(MAC, type, data, cmd);
+	if (res < 0) {
+		WDP_LOGE("Failed to generate query");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	res = _ws_send_cmd(sock->ctrl_sock, cmd, (char*) reply, sizeof(reply));
+	if (res < 0) {
+		WDP_LOGE("Failed to send command to wpa_supplicant");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	if (strstr(reply, "FAIL")) {
+		WDP_LOGE("Failed to request service discovery");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	res = strtol(reply, NULL, 16);
+	WDP_LOGD("Succeeded to request service discovery(%d)", res);
+	__WDP_LOG_FUNC_EXIT__;
+	return res;
+
+}
+
+int ws_serv_disc_cancel(int identifier)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	ws_sock_data_s *sock = g_pd->common;
+	char cmd[80] = {0, };
+	char reply[1024]={0,};
+	int res;
+
+	if (!sock) {
+		WDP_LOGE("Socket is NULL");
+		return -1;
+	}
+
+	snprintf(cmd, sizeof(cmd), WS_CMD_P2P_SERV_DISC_CANCEL " %x", identifier);
+
+	res = _ws_send_cmd(sock->ctrl_sock, cmd, (char*) reply, sizeof(reply));
+	if (res < 0) {
+		WDP_LOGE("Failed to send command to wpa_supplicant");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	if (strstr(reply, "FAIL")) {
+		WDP_LOGE("Failed to cancel service discovery");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+	WDP_LOGD("Succeeded to cancel service discovery");
+
+	__WDP_LOG_FUNC_EXIT__;
+	return 0;
+
 }
 
 int ws_get_persistent_groups(wfd_oem_persistent_group_s **groups, int *group_count)

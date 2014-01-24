@@ -80,6 +80,12 @@
 #define WS_NETFLAG_LEN 32
 #define WS_MAX_PERSISTENT_COUNT 20
 
+#define SERVICE_TYPE_ALL "02000001"
+#define SERVICE_TYPE_BONJOUR "02000102"
+#define SERVICE_TYPE_UPNP "02000203"
+#define SERVICE_TYPE_VENDOR_SPECIFIC "0200ff04"
+#define CMD_LENGTH 80
+
 /* Config Method bitmap */
 #define WS_CONFIG_METHOD_DISPLAY 0x0008
 #define WS_CONFIG_METHOD_PUSHBUTTON 0x0080
@@ -126,6 +132,11 @@
 #define WS_STR_AUTH " auth"
 #define WS_STR_PERSISTENT " persistent"
 #define WS_STR_FREQ_2G " freq=2"
+
+#define WS_CMD_P2P_SERVICE_ADD "P2P_SERVICE_ADD "
+#define WS_CMD_P2P_SERVICE_DEL "P2P_SERVICE_DEL "
+#define WS_CMD_P2P_SERV_DISC_REQ "P2P_SERV_DISC_REQ "
+#define WS_CMD_P2P_SERV_DISC_CANCEL "P2P_SERV_DISC_CANCEL_REQ "
 
 typedef enum {
 	WS_IFTYPE_NONE,
@@ -182,6 +193,8 @@ typedef enum {
 
 	WS_EVENT_GROUP_STARTED,
 	WS_EVENT_GROUP_REMOVED,
+
+	WS_EVENT_SERV_DISC_RESP,
 
 	WS_EVENT_TERMINATING,
 
@@ -483,6 +496,11 @@ int ws_set_go_intent(int go_intent);
 int ws_get_persistent_groups(wfd_oem_persistent_group_s **groups, int *group_count);
 int ws_remove_persistent_group(char *ssid, unsigned char *bssid);
 int ws_set_persistent_reconnect(unsigned char *bssid, int reconnect);
+
+int ws_service_add(wfd_oem_service_e type,char *data);
+int ws_service_del(wfd_oem_service_e type,char *data);
+int ws_serv_disc_req(unsigned char* MAC, wfd_oem_service_e type,char *data);
+int ws_serv_disc_cancel(int identifier);
 
 
 
