@@ -860,6 +860,35 @@ failed:
 	return res;
 }
 
+static int _wfd_manager_service_copy(char* dst, GList* services, int dst_length)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_service_s *service = NULL;
+	GList *temp = NULL;
+	char* ptr = dst;
+	int length = dst_length;
+	int res = 0;
+
+	temp = g_list_first(services);
+	service = temp->data;
+	while (temp && dst_length > service->service_str_length+1 ) {
+
+		//TODO : copy the services -
+		memcpy(ptr, service->service_string,service->service_str_length);
+		ptr+=service->service_str_length;
+		*ptr = '\n';
+		ptr++;
+		length =length - service->service_str_length -1;
+
+		temp = g_list_next(temp);
+
+		if(temp != NULL)
+			service = temp->data;
+	}
+	__WDS_LOG_FUNC_EXIT__;
+	return res;
+}
+
 int wfd_manager_get_peers(wfd_manager_s *manager, wfd_discovery_entry_s **peers_data)
 {
 	__WDS_LOG_FUNC_ENTER__;
@@ -926,6 +955,7 @@ int wfd_manager_get_peers(wfd_manager_s *manager, wfd_discovery_entry_s **peers_
 		peers[count].wps_cfg_methods = peer->config_methods;
 		peers[count].category = peer->pri_dev_type;
 		peers[count].subcategory = peer->sec_dev_type;
+		_wfd_manager_service_copy(peers[count].wfds_services, peer->services, 1024);
 
 		count++;
 		WDS_LOGD("%dth peer [%s]", count, peer->dev_name);
@@ -989,7 +1019,7 @@ int wfd_manager_get_connected_peers(wfd_manager_s *manager, wfd_connected_peer_i
 			peers[count].subcategory = peer->sec_dev_type;
 			peers[count].channel = peer->channel;
 			peers[count].is_p2p = 1;
-			peers[count].services = 0;
+			_wfd_manager_service_copy(peers[count].wfds_services, peer->services, 1024);
 			WDS_LOGD("%dth member converted[%s]", count, peers[count].device_name);
 			count++;
 		}
@@ -1061,6 +1091,226 @@ int wfd_manager_get_goup_ifname(char **ifname)
 
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
+}
+
+static wfd_service_s *_wfd_service_find(wfd_device_s *device, wifi_direct_service_type_e type, char *data)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_service_s *result = NULL;
+	GList *temp = NULL;
+
+	temp = g_list_first(device->services);
+	while (temp) {
+		result = temp->data;
+
+		if(type == result->service_type && !strcmp(data, result->service_string))
+		{
+			WDS_LOGD("Service found");
+			break;
+		}
+		temp = g_list_next(temp);
+		result = NULL;
+	}
+	__WDS_LOG_FUNC_EXIT__;
+	return result;
+}
+
+static wfd_query_handle_s *_wfd_query_find(wfd_manager_s *manager, unsigned char* mac_addr, wifi_direct_service_type_e  type, char *data)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_query_handle_s *result = NULL;
+	GList *temp = NULL;
+	int data_len = 0;
+
+	if(data != NULL)
+		data_len = strlen(data);
+
+	temp = g_list_first(manager->query_handles);
+	while (temp) {
+		result = temp->data;
+
+		if(!memcmp(result->mac_addr, mac_addr, sizeof(unsigned char)*6) &&
+				type == result->service->service_type)
+		{
+			if(data_len)
+			{
+				if(!strcmp(data, result->service->service_string))
+				{
+					WDS_LOGD("Query found");
+					break;
+				}
+			}else{
+				WDS_LOGD("Query found");
+				break;
+			}
+		}
+		temp = g_list_next(temp);
+		result = NULL;
+	}
+	__WDS_LOG_FUNC_EXIT__;
+	return result;
+}
+
+int wfd_manager_service_add(wfd_manager_s *manager, wifi_direct_service_type_e  type, char *data)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_device_s * device = manager->local;
+	wfd_service_s * service;
+	int res = 0;
+
+	if (!device || !data) {
+		WDS_LOGE("Invalid parameter");
+		return -1;
+	}
+
+	service = _wfd_service_find(device, type, data);
+	if (service) {
+		WDS_LOGE("service already exist");
+		service->ref_counter++;
+		__WDS_LOG_FUNC_EXIT__;
+		return 0;
+	}
+
+	res = wfd_oem_service_add(manager->oem_ops, type, data);
+	if (res < 0) {
+		WDS_LOGE("Failed to add service");
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	service = (wfd_service_s*) calloc(1, sizeof(wfd_service_s));
+	service->service_string = strndup(data, strlen(data));
+	service->service_type = type;
+	service->ref_counter=1;
+	device->services = g_list_prepend(device->services, service);
+	return res;
+}
+
+int wfd_manager_service_del(wfd_manager_s *manager, wifi_direct_service_type_e  type, char *data)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_device_s * device = manager->local;
+	wfd_service_s* service;
+	int res = 0;
+
+	if (!device || !data) {
+		WDS_LOGE("Invalid parameter");
+		return -1;
+	}
+	service = _wfd_service_find(device, type, data);
+	if (!service) {
+		WDS_LOGE("Failed to find service");
+		res = -1;
+
+	}else if(service->ref_counter ==1)
+	{
+		res = wfd_oem_service_del(manager->oem_ops, type, data);
+		if (res < 0) {
+			WDS_LOGE("Failed to delete service");
+			__WDS_LOG_FUNC_EXIT__;
+			return -1;
+		}
+		device->services = g_list_remove(device->services, service);
+		free(service->service_string);
+		free(service);
+
+	}else{
+		service->ref_counter--;
+	}
+	__WDS_LOG_FUNC_EXIT__;
+	return res;
+}
+
+int wfd_manager_serv_disc_req(wfd_manager_s *manager, unsigned char* mad_addr, wifi_direct_service_type_e  type, char *data)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_query_handle_s* query_handle;
+	wfd_service_s * service;
+	int identifier;
+	int res = 0;
+
+	if (!manager) {
+		WDS_LOGE("Invalid parameter");
+		return -1;
+	}
+	query_handle = _wfd_query_find(manager, mad_addr, type, data);
+	if (query_handle) {
+		WDS_LOGE("Query already exist");
+		query_handle->ref_counter++;
+		__WDS_LOG_FUNC_EXIT__;
+		return 0;
+	}
+
+	res = wfd_oem_serv_disc_req(manager->oem_ops, mad_addr, type, data);
+	if (res < 0) {
+		WDS_LOGE("Failed to request service discovery");
+		return res;
+	}
+	query_handle = (wfd_query_handle_s*) calloc(1, sizeof(wfd_query_handle_s));
+	query_handle->handle = manager->query_handle_cnt;
+	query_handle->identifier = res;
+	query_handle->ref_counter=1;
+	memcpy(query_handle->mac_addr, mad_addr, sizeof(unsigned char)*6);
+	// TODO: how to get service discovery Identifier?
+
+	service = (wfd_service_s*) calloc(1, sizeof(wfd_service_s));
+	if(strlen(data))
+		service->service_string = strndup(data, service->service_str_length);
+	service->service_type = type;
+
+	query_handle->service = service;
+
+	manager->query_handles = g_list_prepend(manager->query_handles, query_handle);
+	manager->query_handle_cnt++;
+
+
+	return res;
+}
+int wfd_manager_serv_disc_cancel(wfd_manager_s *manager,  int handle)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_query_handle_s *result = NULL;
+	GList *temp = NULL;
+	int res = 0;
+
+	if (manager->query_handle_cnt < 1) {
+		WDS_LOGE("Invalid parameter");
+		return -1;
+	}
+
+	temp = g_list_first(manager->query_handles);
+	while (temp) {
+		result = temp->data;
+
+		//TODO : compare the services
+		if(result->handle == handle)
+		{
+			WDS_LOGD("Query handle found");
+			break;
+		}
+		temp = g_list_next(temp);
+		result = NULL;
+	}
+	if(result == NULL) {
+		WDS_LOGE("handle does not exist");
+		return -1;
+	}
+
+	res = wfd_oem_serv_disc_cancel(manager->oem_ops, result->identifier);
+	if (res < 0) {
+		WDS_LOGE("Failed to cancel service discovery or already canceled");
+	}
+	manager->query_handles = g_list_remove(manager->query_handles, result);
+
+	manager->query_handle_cnt--;
+
+	if(!result->service->service_string)
+		free(result->service->service_string);
+	free(result->service);
+	free(result);
+
+	__WDS_LOG_FUNC_EXIT__;
+	return res;
 }
 
 static wfd_manager_s *wfd_manager_init()
