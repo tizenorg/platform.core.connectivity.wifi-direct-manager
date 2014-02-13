@@ -183,6 +183,14 @@ char *wfd_server_print_cmd(wifi_direct_cmd_e cmd)
 		return "WIFI_DIRECT_CMD_SERV_DISC_REQ";
 	case WIFI_DIRECT_CMD_SERV_DISC_CANCEL:
 		return "WIFI_DIRECT_CMD_SERV_DISC_CANCEL";
+	case WIFI_DIRECT_CMD_INIT_WIFI_DISPLAY:
+		return "WIFI_DIRECT_CMD_INIT_WIFI_DISPLAY";
+	case WIFI_DIRECT_CMD_DEINIT_WIFI_DISPLAY:
+		return "WIFI_DIRECT_CMD_DEINIT_WIFI_DISPLAY";
+	case WIFI_DIRECT_CMD_GET_DISPLAY_PORT:
+		return "WIFI_DIRECT_CMD_GET_DISPLAY_PORT";
+	case WIFI_DIRECT_CMD_GET_DISPLAY_TYPE:
+		return "WIFI_DIRECT_CMD_GET_DISPLAY_TYPE";
 	default:
 		return "WIFI_DIRECT_CMD_INVALID";
 
@@ -796,6 +804,11 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 		wfd_destroy_session(manager);
 		wfd_manager_init_service(manager->local);
 		wfd_manager_init_query(manager);
+		if(manager->local->wifi_display)
+		{
+			free(manager->local->wifi_display);
+			manager->local->wifi_display = NULL;
+		}
 		wfd_peer_clear_all(manager);
 		WDS_LOGD("peer count[%d], peers[%d]", manager->peer_count, manager->peers);
 		wfd_local_reset_data(manager);
@@ -1546,6 +1559,56 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 			res = wfd_manager_serv_disc_cancel(manager, req.data.int1);
 			if (res < 0) {
 				WDS_LOGE("Failed to delete service cancel");
+				rsp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+			}
+		}
+		break;
+	case WIFI_DIRECT_CMD_INIT_WIFI_DISPLAY:
+		{
+			char *buff = NULL;
+			int hdcp;
+
+			buff = (char *)calloc(sizeof(char), req.cmd_data_len);
+			res = _wfd_read_from_client(sock, buff, req.cmd_data_len);
+			if (res < 0) {
+				WDS_LOGE("Failed to get hdcp data");
+				rsp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+				free(buff);
+				break;
+			}
+
+			memcpy(&hdcp, buff, sizeof(int));
+			res = wfd_manager_init_wifi_display(req.data.int1, req.data.int2, hdcp);
+			if (res < 0) {
+				WDS_LOGE("Failed to initialize wifi display");
+				rsp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+			}
+			free(buff);
+		}
+		break;
+	case WIFI_DIRECT_CMD_DEINIT_WIFI_DISPLAY:
+		{
+			res = wfd_manager_deinit_wifi_display();
+			if (res < 0) {
+				WDS_LOGE("Failed to deinitialize wifi display");
+				rsp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+			}
+		}
+		break;
+	case WIFI_DIRECT_CMD_GET_DISPLAY_PORT:
+		{
+			res = wfd_local_get_display_port(&rsp.param1);
+			if (res < 0) {
+				WDS_LOGE("Failed to get local wifi display port");
+				rsp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+			}
+		}
+		break;
+	case WIFI_DIRECT_CMD_GET_DISPLAY_TYPE:
+		{
+			res = wfd_local_get_display_type(&rsp.param1);
+			if (res < 0) {
+				WDS_LOGE("Failed to get local wifi display type");
 				rsp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 			}
 		}

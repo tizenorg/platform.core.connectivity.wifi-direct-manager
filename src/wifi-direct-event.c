@@ -167,6 +167,10 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	peer->group_flags = data->group_flags;
 	peer->dev_role = data->dev_role;
 
+	if(!peer->wifi_display)
+		peer->wifi_display = calloc(1, sizeof(wfd_display_info_s));
+	memcpy(peer->wifi_display, &data->wifi_display, sizeof(wfd_display_info_s));
+
 	struct timeval tval;
 	gettimeofday(&tval, NULL);
 	peer->time = tval.tv_sec;

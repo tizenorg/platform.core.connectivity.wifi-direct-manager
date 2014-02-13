@@ -95,6 +95,7 @@ ws_string_s ws_dev_info_strs[] = {
 	{"dev_capab", WS_DEV_INFO_DEV_CAP},
 	{"group_capab", WS_DEV_INFO_GROUP_CAP},
 	{"p2p_go_addr", WS_DEV_INFO_P2P_GO_ADDR},
+	{"wfd_subelems", WS_DEV_INFO_WFD_SUBELEMS},
 	{"", WS_DEV_INFO_LIMIT},
 	};
 
@@ -153,6 +154,7 @@ ws_string_s ws_peer_info_strs[] = {
 	{"status", WS_PEER_INFO_STATUS},
 	{"wait_count", WS_PEER_INFO_WAIT_COUNT},
 	{"invitation_reqs", WS_PEER_INFO_INVITATION_REQS},
+	{"wfd_subelems", WS_PEER_INFO_WFD_SUBELEMS},
 	};
 
 static wfd_oem_ops_s supplicant_ops = {
@@ -202,6 +204,9 @@ static wfd_oem_ops_s supplicant_ops = {
 	.service_del = ws_service_del,
 	.serv_disc_req = ws_serv_disc_req,
 	.serv_disc_cancel = ws_serv_disc_cancel,
+
+	.init_wifi_display = ws_init_wifi_display,
+	.deinit_wifi_display= ws_deinit_wifi_display,
 	};
 
 static ws_plugin_data_s *g_pd;
@@ -783,6 +788,41 @@ static int _disconnect_from_supplicant(char *ifname, ws_sock_data_s *sock_data)
 	return 0;
 }
 
+static int hex2num(const char c)
+{
+	if (c >= '0' && c <= '9')
+		return c - '0';
+	if (c >= 'a' && c <= 'f')
+		return c - 'a' + 10;
+	if (c >= 'A' && c <= 'F')
+		return c - 'A' + 10;
+	return -1;
+}
+
+static int hex2byte(const char *hex)
+{
+	int a, b;
+	a = hex2num(*hex++);
+	if (a < 0)
+		return -1;
+	b = hex2num(*hex++);
+	if (b < 0)
+		return -1;
+	return (a << 4) | b;
+}
+
+static int _get_subelem_len(const char* value)
+{
+	int a, b;
+	a = hex2byte(value);
+	b = hex2byte(value + 2);
+
+	if( a >= 0 && b >= 0)
+		return ( a << 8) | b;
+	else
+		return -1;
+}
+
 static int _extract_word(const char *data, char **value)
 {
 	int i = 0;
@@ -878,6 +918,57 @@ static int _extract_peer_value_str(const char *data, const char *key, char **val
 		return i;
 	}
 
+	return 0;
+}
+
+static int _ws_parse_subelement(int id, char *data, int len,
+					wfd_oem_display_info_s *display_info)
+{
+	switch (id){
+	case WFD_SUBELEM_ID_DEVICE_INFO:
+		WDP_LOGD("WFD_SUBELEM_ID_DEVICE_INFO subelement ID");
+		if(len != 6){
+			WDP_LOGE("Wrong Length");
+		}else {
+			display_info->dev_info[1] = hex2byte(data);
+			display_info->dev_info[0] = hex2byte(data + 2);
+			display_info->ctrl_port = _get_subelem_len(data + 4);
+			display_info->max_tput = _get_subelem_len(data + 8);
+			display_info->type = display_info->dev_info[0] & WFD_DEVICE_TYPE;
+			display_info->availability = display_info->dev_info[0] &
+					WFD_DEVICE_SESSION_AVAILABILITY;
+			display_info->hdcp_support = display_info->dev_info[1] &
+					(WFD_DEVICE_CONTENT_PROTECTION_SUPPORT >> 8);
+		}
+		break;
+	default:
+		WDP_LOGD("MISC or UNKNOWN WFD subelement ID");
+		break;
+	}
+	return 0;
+}
+
+static int _parsing_wfd_subelems(char *buf, wfd_oem_display_info_s *display_info)
+{
+	char *pos = buf;
+	char *end = buf + strlen(buf);
+
+	while (pos < end) {
+		int subelem_len;
+		if (pos + 2 >= end) {
+			WDP_LOGE("Invalid WFD subelement");
+			return -1;
+		}
+		subelem_len = _get_subelem_len(pos + 2);
+
+		if (pos + 6 + subelem_len*2 > end) {
+			WDP_LOGE("subelement underflow ");
+			return -1;
+		}
+		if (_ws_parse_subelement(hex2byte(pos), pos + 6, subelem_len, display_info))
+			return -1;
+		pos += (6 + subelem_len*2);
+	}
 	return 0;
 }
 
@@ -1005,6 +1096,9 @@ static int _parsing_peer_info(char *msg, wfd_oem_device_s *peer)
 			break;
 		case WS_PEER_INFO_INVITATION_REQS:
 			break;
+		case WS_PEER_INFO_WFD_SUBELEMS:
+			res = _parsing_wfd_subelems(infos[i].string, &(peer->wifi_display));
+			break;
 		default:
 			break;
 		}
@@ -1102,6 +1196,9 @@ static wfd_oem_dev_data_s *_convert_msg_to_dev_info(char *msg)
 			res = _ws_txt_to_mac(infos[i].string, edata->p2p_go_addr);
 			if (res < 0)
 				memset(edata->p2p_go_addr, 0x00, OEM_MACADDR_LEN);
+			break;
+		case WS_DEV_INFO_WFD_SUBELEMS:
+			res = _parsing_wfd_subelems(infos[i].string, &(edata->wifi_display));
 			break;
 		default:
 			WDP_LOGE("Unknown parameter [%d:%s]", infos[i].index, infos[i].string);
@@ -3074,6 +3171,125 @@ int ws_serv_disc_cancel(int identifier)
 	__WDP_LOG_FUNC_EXIT__;
 	return 0;
 
+}
+
+static int _ws_wifi_display_enable(int enable)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	ws_sock_data_s *sock = g_pd->common;
+	char cmd[80] = {0, };
+	char reply[1024]={0,};
+	int res;
+
+	if (!sock) {
+		WDP_LOGE("Socket is NULL");
+		return -1;
+	}
+
+	snprintf(cmd, sizeof(cmd), WS_CMD_SET WS_STR_WIFI_DISPLAY " %d", enable);
+
+	res = _ws_send_cmd(sock->ctrl_sock, cmd, (char*) reply, sizeof(reply));
+	if (res < 0) {
+		WDP_LOGE("Failed to send command to wpa_supplicant");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	if (strstr(reply, "FAIL")) {
+		WDP_LOGE("Failed to enable or disable wifi display");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+	WDP_LOGD("Succeeded to enable or disable wifi display");
+
+	__WDP_LOG_FUNC_EXIT__;
+	return 0;
+}
+
+static int _ws_build_element(int value, int field_length, char* buff)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	int i = 0;
+	char tmp =0;
+
+	if(!field_length)
+		return -1;
+
+	for(i = 1; i <= field_length; i++)
+	{
+		tmp = value >> (field_length - i)*4;
+		tmp = tmp%16;
+
+		if(tmp < 10)
+			buff[i - 1] = '0' + tmp;
+		else
+			buff[i - 1] = 'a' + tmp -10;
+	}
+	__WDP_LOG_FUNC_EXIT__;
+	return 0;
+}
+
+int ws_init_wifi_display(wfd_oem_display_e type, int port, int hdcp)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	ws_sock_data_s *sock = g_pd->common;
+	char cmd[80] = {0, };
+	char reply[1024]={0,};
+	int res;
+	char subelem[17] = {0,};
+	unsigned int device_info = 0;
+
+	if (!sock) {
+		WDP_LOGE("Socket is NULL");
+		return -1;
+	}
+
+	if (_ws_wifi_display_enable(1) != 0) {
+		return -1;
+	}
+
+	device_info = type;
+	device_info+= hdcp<<8;
+	device_info+=1<<4;						//for availability bit
+
+	_ws_build_element(6, 4, &subelem[0]);
+	_ws_build_element(device_info, 4, &subelem[4]);
+	_ws_build_element(port, 4, &subelem[8]);
+	_ws_build_element(40, 4, &subelem[12]);	//for maximum throughput
+
+	snprintf(cmd, sizeof(cmd), WS_CMD_WFD_SUBELEM_SET "%d %s",
+			  WFD_SUBELEM_ID_DEVICE_INFO, subelem);
+
+	res = _ws_send_cmd(sock->ctrl_sock, cmd, (char*) reply, sizeof(reply));
+	if (res < 0) {
+		WDP_LOGE("Failed to send command to wpa_supplicant");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	if (strstr(reply, "FAIL")) {
+		WDP_LOGE("Failed to set wifi display");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+	WDP_LOGD("Succeeded to initialize wifi display");
+
+	__WDP_LOG_FUNC_EXIT__;
+	return 0;
+}
+
+int ws_deinit_wifi_display(int enable)
+{
+	__WDP_LOG_FUNC_ENTER__;
+
+	if (_ws_wifi_display_enable(0) != 0) {
+		return -1;
+	}
+
+	WDP_LOGD("Succeeded to deinitialize wifi display");
+
+	__WDP_LOG_FUNC_EXIT__;
+	return 0;
 }
 
 int ws_get_persistent_groups(wfd_oem_persistent_group_s **groups, int *group_count)

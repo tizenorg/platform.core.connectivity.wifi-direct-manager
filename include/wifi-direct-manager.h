@@ -74,6 +74,15 @@ typedef enum {
 } wfd_scan_mode_e;
 
 typedef struct {
+	wifi_direct_display_type_e type;
+	char dev_info[2];
+	int ctrl_port;
+	int max_tput;
+	int availability;
+	int hdcp_support;
+}wfd_display_info_s;
+
+typedef struct {
 	wifi_direct_service_type_e service_type;
 	int ref_counter;
 	char *service_string;
@@ -112,10 +121,7 @@ typedef struct {
 	int wps_mode;
 
 	GList *services;
-
-	int wfd_dev_info;
-	int wfd_ctrl_port;
-	int wfd_max_tput;
+	wfd_display_info_s *wifi_display;
 
 	unsigned char ip_addr[IPADDR_LEN];
 } wfd_device_s;
@@ -163,6 +169,9 @@ int wfd_local_set_req_wps_mode(int req_wps_mode);
 int wfd_local_get_wps_mode(int *wps_mode);
 int wfd_local_get_req_wps_mode(int *req_wps_mode);
 
+int wfd_local_get_display_port(int *port);
+int wfd_local_get_display_type(wifi_direct_display_type_e *type);
+
 int wfd_manager_get_go_intent(int *go_intent);
 int wfd_manager_set_go_intent(int go_intent);
 int wfd_manager_get_max_station(int *max_station);
@@ -178,6 +187,9 @@ int wfd_manager_serv_disc_req(wfd_manager_s *manager, unsigned char* mad_addr, w
 int wfd_manager_serv_disc_cancel(wfd_manager_s *manager, int handle);
 int wfd_manager_init_service(wfd_device_s *device);
 int wfd_manager_init_query(wfd_manager_s *manager);
+
+int wfd_manager_init_wifi_display(wifi_direct_display_type_e type, int port, int hdcp);
+int wfd_manager_deinit_wifi_display();
 
 int wfd_manager_local_config_set(wfd_manager_s *manager);
 int wfd_manager_activate(wfd_manager_s *manager);
