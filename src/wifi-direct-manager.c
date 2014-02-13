@@ -480,6 +480,54 @@ int wfd_manager_local_config_set(wfd_manager_s *manager)
 	return WIFI_DIRECT_ERROR_NONE;
 }
 
+int wfd_local_get_display_port(int *port)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_device_s *local = g_manager->local;
+
+	if (!port) {
+		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	if (!local->wifi_display) {
+		WDS_LOGE("wifi display is not registered");
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	*port = local->wifi_display->ctrl_port;
+	WDS_LOGD("Local display port [%d]", *port);
+
+	__WDS_LOG_FUNC_EXIT__;
+	return 0;
+}
+
+int wfd_local_get_display_type(wifi_direct_display_type_e *type)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_device_s *local = g_manager->local;
+
+	if (!type) {
+		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	if (!local->wifi_display) {
+		WDS_LOGE("wifi display is not registered");
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	*type = local->wifi_display->type;
+	WDS_LOGD("Local display type [%d]", *type);
+
+	__WDS_LOG_FUNC_EXIT__;
+	return 0;
+}
+
 int wfd_manager_activate(wfd_manager_s *manager)
 {
 	__WDS_LOG_FUNC_ENTER__;
@@ -940,6 +988,8 @@ int wfd_manager_get_peers(wfd_manager_s *manager, wfd_discovery_entry_s **peers_
 				manager->peers = g_list_remove(manager->peers, peer);
 				manager->peer_count--;
 				wfd_manager_init_service(peer);
+				if(peer->wifi_display)
+					free(peer->wifi_display);
 				free(peer);
 				peer = NULL;
 				continue;
@@ -959,6 +1009,8 @@ int wfd_manager_get_peers(wfd_manager_s *manager, wfd_discovery_entry_s **peers_
 		peers[count].category = peer->pri_dev_type;
 		peers[count].subcategory = peer->sec_dev_type;
 		_wfd_manager_service_copy(peers[count].services, peer->services, 1024);
+		if(peer->wifi_display)
+			peers[count].is_wfd_device = peer->wifi_display->availability;
 
 		count++;
 		WDS_LOGD("%dth peer [%s]", count, peer->dev_name);
@@ -1361,6 +1413,64 @@ int wfd_manager_init_query(wfd_manager_s *manager)
 		g_list_free(manager->query_handles);
 	}
 
+	__WDS_LOG_FUNC_EXIT__;
+	return res;
+}
+
+int wfd_manager_init_wifi_display(wifi_direct_display_type_e type, int port, int hdcp)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_device_s * device = g_manager->local;
+	wfd_display_info_s * display;
+	int res = 0;
+
+	if (type < 0 || port < 0 || hdcp < 0) {
+		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	res = wfd_oem_enable_wifi_display(g_manager->oem_ops, 1);
+	if (res < 0) {
+		WDS_LOGE("Failed to enable wifi display");
+		return -1;
+	}
+
+	res = wfd_oem_set_display(g_manager->oem_ops, type, port, hdcp);
+	if (res < 0) {
+		WDS_LOGE("Failed to set wifi display");
+		return -1;
+	}
+
+	if(!device->wifi_display)
+		device->wifi_display = calloc(1, sizeof(wfd_display_info_s));
+
+	device->wifi_display->type = type;
+	device->wifi_display->hdcp_support = hdcp;
+	device->wifi_display->ctrl_port = port;
+
+	__WDS_LOG_FUNC_EXIT__;
+	return res;
+}
+
+int wfd_manager_deinit_wifi_display()
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_device_s * device = g_manager->local;
+	wfd_display_info_s * display;
+	int res = 0;
+
+	res = wfd_oem_enable_wifi_display(g_manager->oem_ops, 0);
+	if (res < 0) {
+		WDS_LOGE("Failed to disable wifi display");
+		return -1;
+	}
+
+	if(device->wifi_display)
+	{
+		free(device->wifi_display);
+		device->wifi_display = NULL;
+	}
 	__WDS_LOG_FUNC_EXIT__;
 	return res;
 }
