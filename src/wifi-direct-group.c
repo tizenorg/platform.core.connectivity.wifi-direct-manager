@@ -199,6 +199,8 @@ int wfd_destroy_group(void *data, char *ifname)
 		if (member)	// Temporary. Sometimes manager crashed
 		{
 			wfd_manager_init_service(member);
+			if(member->wifi_display)
+				free(member->wifi_display);
 			free(member);
 		}
 		temp = g_list_next(temp);

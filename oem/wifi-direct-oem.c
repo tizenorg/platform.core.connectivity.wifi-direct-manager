@@ -425,3 +425,22 @@ int wfd_oem_serv_disc_cancel(wfd_oem_ops_s *ops, int identifier)
 
 	return ops->serv_disc_cancel(identifier);
 }
+
+int wfd_oem_init_wifi_display(wfd_oem_ops_s *ops, wfd_oem_display_e type, int port, int hdcp)
+{
+	if (!ops || !ops->init_wifi_display) {
+		WDS_LOGE("Invalid parameter");
+		return -1;
+	}
+
+	return ops->init_wifi_display(type, port, hdcp);
+}
+
+int wfd_oem_deinit_wifi_display(wfd_oem_ops_s *ops)
+{
+	if (!ops || !ops->deinit_wifi_display) {
+		WDS_LOGE("Invalid parameter");
+		return -1;
+	}
+	return ops->deinit_wifi_display();
+}

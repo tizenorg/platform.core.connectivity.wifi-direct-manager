@@ -93,6 +93,8 @@ int wfd_remove_peer(void *data, unsigned char *dev_addr)
 	manager->peer_count--;
 
 	wfd_manager_init_service(peer);
+	if(peer->wifi_display)
+		free(peer->wifi_display);
 	free(peer);
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
@@ -157,6 +159,10 @@ int wfd_update_peer(void *data, wfd_device_s *peer)
 	peer->group_flags = oem_dev->group_flags;
 	peer->wps_mode =  oem_dev->wps_mode;
 
+	if(!peer->wifi_display)
+		peer->wifi_display = calloc(1, sizeof(wfd_display_info_s));
+	memcpy(peer->wifi_display, &oem_dev->wifi_display, sizeof(wfd_display_info_s));
+
 	struct timeval tval;
 	gettimeofday(&tval, NULL);
 	peer->time = tval.tv_sec;
@@ -181,6 +187,8 @@ int wfd_peer_clear_all(void *data)
 	while(temp) {
 		peer = (wfd_device_s*) temp->data;
 		wfd_manager_init_service(peer);
+		if(peer->wifi_display)
+			free(peer->wifi_display);
 		free(peer);
 		temp = g_list_next(temp);
 		manager->peer_count--;

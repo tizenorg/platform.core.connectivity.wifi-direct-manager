@@ -79,6 +79,23 @@ typedef enum {
 	WFD_OEM_EVENT_MAX,
 } wfd_oem_event_e;
 
+typedef enum
+{
+	WFD_OEM_DISPLAY_SOURCE,
+	WFD_OEM_DISPLAY_PRIMARY_SINK,
+	WFD_OEM_DISPLAY_SECONDARY_SINK,
+	WFD_OEM_DISPLAY_DUAL_ROLE,
+}wfd_oem_display_e;
+
+typedef struct {
+	wfd_oem_display_e type;
+	char dev_info[2];
+	int ctrl_port;
+	int max_tput;
+	int availability;
+	int hdcp_support;
+}wfd_oem_display_info_s;
+
 typedef struct {
 	int age;
 	char dev_name[OEM_DEV_NAME_LEN+1];
@@ -94,9 +111,8 @@ typedef struct {
 	int group_flags;
 	int wps_mode;
 
-	int wfd_dev_info;
-	int wfd_ctrl_port;
-	int wfd_max_tput;
+	wfd_oem_display_info_s wifi_display;
+
 } wfd_oem_device_s;
 
 typedef struct {
@@ -110,6 +126,9 @@ typedef struct {
 	int group_flags;
 	int dev_role;
 	unsigned char p2p_go_addr[OEM_MACADDR_LEN];
+
+	wfd_oem_display_info_s wifi_display;
+
 } wfd_oem_dev_data_s;
 
 typedef struct {
@@ -274,6 +293,8 @@ typedef struct _wfd_oem_ops_s {
 	int (*serv_disc_req) (unsigned char* MAC, wfd_oem_service_e type,char *data);
 	int (*serv_disc_cancel) (int identifier);
 
+	int (*init_wifi_display) (wfd_oem_display_e type, int port, int hdcp);
+	int (*deinit_wifi_display) (void);
 } wfd_oem_ops_s;
 
 int wfd_oem_init(wfd_oem_ops_s *ops, wfd_oem_event_cb event_callback, void *user_data);
@@ -319,5 +340,8 @@ int wfd_oem_service_add(wfd_oem_ops_s *ops, wfd_oem_service_e type, char *data);
 int wfd_oem_service_del(wfd_oem_ops_s *ops, wfd_oem_service_e type, char *data);
 int wfd_oem_serv_disc_req(wfd_oem_ops_s *ops, unsigned char* MAC, wfd_oem_service_e type, char *data);
 int wfd_oem_serv_disc_cancel(wfd_oem_ops_s *ops, int identifier);
+
+int wfd_oem_init_wifi_display(wfd_oem_ops_s *ops, wfd_oem_display_e type, int port, int hdcp);
+int wfd_oem_deinit_wifi_display(wfd_oem_ops_s *ops);
 
 #endif /* __WIFI_DIRECT_OEM_H__ */
