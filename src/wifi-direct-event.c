@@ -419,6 +419,12 @@ int wfd_process_event(void *user_data, void *data)
 	case WFD_OEM_EVENT_PROV_DISC_DISPLAY:
 	case WFD_OEM_EVENT_PROV_DISC_KEYPAD:
 	{
+		wfd_group_s *group = (wfd_group_s*) manager->group;
+		if ((group && group->member_count >= manager->max_station) ||
+				wfd_manager_access_control(manager, event->dev_addr)) {
+			break;
+		}
+
 		wfd_device_s *peer = wfd_peer_find_by_dev_addr(manager, event->dev_addr);
 		if (!peer) {
 			WDS_LOGD("Porv_disc from unknown peer. Add new peer");
@@ -475,6 +481,9 @@ int wfd_process_event(void *user_data, void *data)
 	break;
 	case WFD_OEM_EVENT_INVITATION_REQ:
 	{
+		if (wfd_manager_access_control(manager, event->dev_addr)) {
+			break;
+		}
 		wfd_device_s *peer = NULL;
 		wfd_session_s *session = NULL;
 		wfd_oem_invite_data_s *edata = (wfd_oem_invite_data_s*) event->edata;
@@ -512,6 +521,13 @@ int wfd_process_event(void *user_data, void *data)
 	}
 	break;
 	case WFD_OEM_EVENT_GO_NEG_REQ:
+	{
+		wfd_group_s *group = (wfd_group_s*) manager->group;
+		if ((group && group->member_count >= manager->max_station) ||
+				wfd_manager_access_control(manager, event->dev_addr)) {
+			break;
+		}
+	}
 	case WFD_OEM_EVENT_GO_NEG_DONE:
 	case WFD_OEM_EVENT_WPS_DONE:
 		wfd_session_process_event(manager, event);
@@ -521,6 +537,11 @@ int wfd_process_event(void *user_data, void *data)
 	{
 		// FIXME: Move this code to plugin
 		if (!memcmp(event->intf_addr, manager->local->intf_addr, MACADDR_LEN)) {
+			WDS_LOGD("Ignore this event");
+			break;
+		}
+
+		if(wfd_manager_find_connected_peer(manager, event->intf_addr)) {
 			WDS_LOGD("Ignore this event");
 			break;
 		}
