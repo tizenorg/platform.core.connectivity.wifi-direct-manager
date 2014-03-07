@@ -112,7 +112,6 @@ static int _wfd_local_init_device(wfd_manager_s *manager)
 	if (res < 0) {
 		WDS_LOGE("Failed to get local device MAC address");
 	}
-
 	memcpy(local->intf_addr, local->dev_addr, MACADDR_LEN);
 	local->intf_addr[4] ^= 0x80;
 	WDS_LOGD("Local Interface MAC address [" MACSTR "]", MAC2STR(local->intf_addr));
@@ -120,6 +119,10 @@ static int _wfd_local_init_device(wfd_manager_s *manager)
 	local->config_methods = WFD_WPS_MODE_PBC | WFD_WPS_MODE_DISPLAY | WFD_WPS_MODE_KEYPAD;
 	local->wps_mode = WFD_WPS_MODE_PBC;
 	// TODO: initialize other local device datas
+	res = wfd_util_get_access_list(&(manager->access_list));
+	if (res < 0) {
+		WDS_LOGE("Failed to get access list");
+	}
 	manager->local = local;
 
 	__WDS_LOG_FUNC_EXIT__;
@@ -134,6 +137,10 @@ static int _wfd_local_deinit_device(wfd_manager_s *manager)
 		WDS_LOGE("Invalid parameter");
 		return -1;
 	}
+
+	g_list_foreach (manager->access_list, (GFunc)g_free, NULL);
+	g_list_free (manager->access_list);
+	manager->access_list = NULL;
 
 	wfd_util_unset_dev_name_notification();
 
@@ -940,6 +947,60 @@ static int _wfd_manager_service_copy(char* dst, GList* services, int dst_length)
 	return res;
 }
 
+int wfd_manager_get_access_list(wfd_manager_s *manager, wfd_access_list_info_s **access_list_data)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	GList *temp = NULL;
+	device_s *device = NULL;
+	wfd_access_list_info_s *devices = NULL;
+	int device_count = 0;
+	int count = 0;
+	int res = 0;
+
+	if (!manager || !access_list_data) {
+		WDS_LOGE("Invalid parameter");
+		return -1;
+	}
+
+	device_count = g_list_length(manager->access_list);
+	if (device_count < 0)
+		return -1;
+	else if (device_count == 0)
+		return 0;
+
+	errno = 0;
+	devices = (wfd_access_list_info_s*) calloc(device_count, sizeof(wfd_access_list_info_s));
+	if (!devices) {
+		WDS_LOGF("Failed to allocate memory for access list. [%s]", strerror(errno));
+		return -1;
+	}
+
+	temp = g_list_first(manager->access_list);
+	while (temp && count < device_count) {
+		device = temp->data;
+		if (!device)
+			goto next;
+
+		strncpy(devices[count].device_name, device->dev_name, DEV_NAME_LEN);
+		devices[count].device_name[DEV_NAME_LEN] = '\0';
+		memcpy(devices[count].mac_address, device->mac_addr, MACADDR_LEN);
+		devices[count].allowed = device->allowed;
+
+		count++;
+		WDS_LOGD("%dth device in list [%s]", count, device->dev_name);
+next:
+		temp = g_list_next(temp);
+		device = NULL;
+	}
+	WDS_LOGD("%d devices converted", count);
+	WDS_LOGD("Final device count is %d", device_count);
+
+	*access_list_data = devices;
+
+	__WDS_LOG_FUNC_EXIT__;
+	return count;
+}
+
 int wfd_manager_get_peers(wfd_manager_s *manager, wfd_discovery_entry_s **peers_data)
 {
 	__WDS_LOG_FUNC_ENTER__;
@@ -1146,6 +1207,135 @@ int wfd_manager_get_goup_ifname(char **ifname)
 
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
+}
+
+static device_s *_wfd_manager_get_device_from_access_list(void *data, unsigned char *dev_addr)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_manager_s *manager = (wfd_manager_s*) data;
+	device_s *device = NULL;
+	GList *temp = NULL;
+
+	if (!data || !dev_addr) {
+		WDS_LOGE("Invalid parameter");
+		return NULL;
+	}
+
+	temp = g_list_first(manager->access_list);
+	while (temp) {
+		device = temp->data;
+		if (!memcmp(device->mac_addr, dev_addr, MACADDR_LEN)) {
+			WDS_LOGD("device found[" MACSTR "]", MAC2STR(dev_addr));
+			break;
+		}
+		temp = g_list_next(temp);
+		device = NULL;
+	}
+
+	__WDS_LOG_FUNC_EXIT__;
+	return device;
+}
+
+int wfd_manager_access_control(wfd_manager_s *manager, unsigned char *dev_addr)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	device_s *result = NULL;
+	int res = 0;
+
+	result = _wfd_manager_get_device_from_access_list(manager, dev_addr);
+
+	if(result)
+		res = result->allowed;
+	else
+		res = 1;
+
+	__WDS_LOG_FUNC_EXIT__;
+	return res;
+}
+
+int wfd_manager_add_to_access_list(wfd_manager_s *manager, wfd_device_s *peer, int allowed)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	device_s *result = NULL;
+	GList *temp = NULL;
+	int res = 0;
+
+	result = _wfd_manager_get_device_from_access_list(manager, peer->dev_addr);
+	if(result)
+	{
+		if(result->allowed == allowed &&
+				!strcmp(result->dev_name, peer->dev_name))
+		{
+			WDS_LOGD("already exist");
+			__WDS_LOG_FUNC_EXIT__;
+			return res;
+		}else {
+
+			result->allowed = allowed;
+			strncpy(result->dev_name, peer->dev_name, DEV_NAME_LEN);
+			result->dev_name[DEV_NAME_LEN] = '\0';
+			res = wfd_util_rewrite_device_list_to_file(manager->access_list);
+			if(res < 0)
+			{
+				WDS_LOGE("fail to modify the peer in access list file");
+			}
+
+		}
+	}else {
+
+		res = wfd_util_add_device_to_list(peer, allowed);
+		if(res > 0)
+		{
+			result = calloc(1, sizeof(device_s));
+			strncpy(result->mac_addr, peer->dev_addr, MACADDR_LEN);
+			strncpy(result->dev_name, peer->dev_name, DEV_NAME_LEN);
+			result->dev_name[DEV_NAME_LEN] = '\0';
+			result->allowed = allowed;
+			manager->access_list = g_list_append(manager->access_list, result);
+		}else {
+			WDS_LOGE("fail to append peer to access list file");
+			res = -1;
+		}
+	}
+	__WDS_LOG_FUNC_EXIT__;
+	return res;
+}
+
+int wfd_manager_del_from_access_list(wfd_manager_s *manager, unsigned char *mac)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	device_s *device = NULL;
+	GList *temp = NULL;
+	int res = 0;
+
+	device = _wfd_manager_get_device_from_access_list(manager, mac);
+	if(device)
+	{
+		manager->access_list = g_list_remove(manager->access_list , device);
+		free(device);
+
+		res = wfd_util_rewrite_device_list_to_file(manager->access_list);
+		if (res < 0)
+			WDS_LOGE("fail to remove device from list file!");
+
+
+	}else if(!memcmp(mac,"\0x00\0x00\0x00\0x00\0x00\0x00",MACADDR_LEN)){
+
+		res = wfd_util_reset_access_list_file();
+		if(res == 0)
+		{
+			g_list_foreach (manager->access_list, (GFunc)g_free, NULL);
+			g_list_free (manager->access_list);
+			manager->access_list = NULL;
+		}else {
+			WDS_LOGE("fail to reset access list file");
+		}
+
+	}else {
+		WDS_LOGD("device dose not exist");
+	}
+	__WDS_LOG_FUNC_EXIT__;
+	return res;
 }
 
 static wfd_service_s *_wfd_service_find(wfd_device_s *device, wifi_direct_service_type_e type, char *data)

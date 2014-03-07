@@ -1,6 +1,6 @@
 Name:       wifi-direct-manager
 Summary:    Wi-Fi Direct manger
-Version:    1.0.9
+Version:    1.0.10
 Release:    1
 Group:      Network & Connectivity/Wireless
 License:    Apache-2.0
@@ -78,6 +78,7 @@ vconftool set -t string memory/private/wifi_direct_manager/dhcpc_server_ip 0.0.0
 /usr/etc/wifi-direct/dhcpd.p2p.conf
 /usr/etc/wifi-direct/udhcp_script.non-autoip
 /usr/etc/wifi-direct/p2p_supp.conf
+/usr/etc/wifi-direct/access_list
 %{_bindir}/dhcpd-notify.sh
 %{_bindir}/wifi-direct-server.sh
 %{_bindir}/wifi-direct-dhcp.sh
