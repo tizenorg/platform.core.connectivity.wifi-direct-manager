@@ -206,6 +206,33 @@ int wfd_peer_clear_all(void *data)
 	return 0;
 }
 
+device_s *wfd_peer_find_from_access_list(void *data, unsigned char *dev_addr)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_manager_s *manager = (wfd_manager_s*) data;
+	device_s *device;
+	GList *temp = NULL;
+
+	if (!data || !dev_addr) {
+		WDS_LOGE("Invalid parameter");
+		return NULL;
+	}
+
+	temp = g_list_first(manager->access_list);
+	while (temp) {
+		device = temp->data;
+		if (!memcmp(device->mac_addr, dev_addr, MACADDR_LEN)) {
+			WDS_LOGD("device found[" MACSTR "]", MAC2STR(dev_addr));
+			break;
+		}
+		temp = g_list_next(temp);
+		device = NULL;
+	}
+
+	__WDS_LOG_FUNC_EXIT__;
+	return device;
+}
+
 wfd_device_s *wfd_peer_find_by_dev_addr(void *data, unsigned char *dev_addr)
 {
 	__WDS_LOG_FUNC_ENTER__;

@@ -74,6 +74,12 @@ typedef enum {
 } wfd_scan_mode_e;
 
 typedef struct {
+	int allowed;
+	char dev_name[DEV_NAME_LEN+1];
+	unsigned char mac_addr[6];
+}device_s;
+
+typedef struct {
 	wifi_direct_display_type_e type;
 	char dev_info[2];
 	int ctrl_port;
@@ -152,6 +158,7 @@ typedef struct {
 	void *group;
 
 	GList *query_handles;
+	GList *access_list;
 
 	void *oem_ops;
 	void *plugin_handle;
@@ -180,6 +187,10 @@ int wfd_manager_get_autoconnection(int *autoconnection);
 int wfd_manager_set_autoconnection(int autoconnection);
 int wfd_manager_get_req_wps_mode(int *req_wps_mode);
 int wfd_manager_set_req_wps_mode(int req_wps_mode);
+
+int wfd_manager_access_control(wfd_manager_s *manager, unsigned char *dev_addr);
+int wfd_manager_add_to_access_list(wfd_manager_s *manager, wfd_device_s *peer, int allowed);
+int wfd_manager_del_from_access_list(wfd_manager_s *manager, unsigned char *mac);
 
 int wfd_manager_service_add(wfd_manager_s *manager, wifi_direct_service_type_e type, char *data);
 int wfd_manager_service_del(wfd_manager_s *manager, wifi_direct_service_type_e  type, char *data);

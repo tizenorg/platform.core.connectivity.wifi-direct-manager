@@ -29,6 +29,7 @@
 #define __WIFI_DIRECT_UTIL_H__
 
 #define DEFAULT_MAC_FILE_PATH "/opt/etc/.mac.info"
+#define DEFAULT_DEVICE_LIST_FILE_PATH "/usr/etc/wifi_direct/access_list"
 #define MAC2STR(a) (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
 #define MACSTR "%02x:%02x:%02x:%02x:%02x:%02x"
 #define IP2STR(a) (a)[0], (a)[1], (a)[2], (a)[3]
@@ -82,6 +83,11 @@ int wfd_util_wifi_direct_activatable();
 int wfd_util_get_wifi_direct_state();
 int wfd_util_set_wifi_direct_state(int state);
 int wfd_util_get_local_dev_mac(unsigned char *dev_mac);
+
+int wfd_util_get_access_list(GList **access_list);
+int wfd_util_rewrite_device_list_to_file(GList *access_list);
+int wfd_util_add_device_to_list(wfd_device_s *peer, int allowed);
+int wfd_util_reset_access_list();
 int wfd_util_start_wifi_direct_popup();
 int wfd_util_dhcps_start();
 int wfd_util_dhcps_wait_ip_leased(wfd_device_s *peer);

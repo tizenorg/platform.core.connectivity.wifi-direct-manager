@@ -112,6 +112,10 @@ static int _wfd_local_init_device(wfd_manager_s *manager)
 	if (res < 0) {
 		WDS_LOGE("Failed to get local device MAC address");
 	}
+	res = wfd_util_get_access_list(&(manager->access_list));
+	if (res < 0) {
+		WDS_LOGE("Failed to get access list");
+	}
 
 	memcpy(local->intf_addr, local->dev_addr, MACADDR_LEN);
 	local->intf_addr[4] ^= 0x80;
@@ -154,6 +158,9 @@ int wfd_local_reset_data(wfd_manager_s *manager)
 	local->wps_mode = WFD_WPS_MODE_PBC;
 	memset(local->go_dev_addr, 0x0, MACADDR_LEN);
 	memset(local->ip_addr, 0x0, IPADDR_LEN);
+
+	g_list_foreach (manager->access_list, (GFunc)g_free, NULL);
+	g_list_free (manager->access_list);
 
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
@@ -1146,6 +1153,113 @@ int wfd_manager_get_goup_ifname(char **ifname)
 
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
+}
+
+int wfd_manager_access_control(wfd_manager_s *manager, unsigned char *dev_addr)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	device_s *result = NULL;
+	int res = 0;
+
+	result = wfd_peer_find_from_access_list(manager, dev_addr);
+
+	if(result)
+		res = result->allowed;
+	else
+		res = 1;
+
+	__WDS_LOG_FUNC_EXIT__;
+	return res;
+}
+
+int wfd_manager_add_to_access_list(wfd_manager_s *manager, wfd_device_s *peer, int allowed)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	device_s *result = NULL;
+	GList *temp = NULL;
+	int res = 0;
+
+	result = wfd_peer_find_from_access_list(manager, peer->dev_addr);
+	if(result)
+	{
+		if(result->allowed == allowed &&
+				!strcmp(result->dev_name, peer->dev_name))
+		{
+			WDS_LOGD("already exist");
+			__WDS_LOG_FUNC_EXIT__;
+			return res;
+		}else {
+
+			result->allowed = allowed;
+			strncpy(result->dev_name, peer->dev_name, DEV_NAME_LEN);
+			result->dev_name[DEV_NAME_LEN] = '\0';
+			res = wfd_util_rewrite_device_list_to_file(manager->access_list);
+			if(res < 0)
+			{
+				WDS_LOGE("fail to modify the peer in access list file");
+			}
+
+		}
+	}else {
+
+		res = wfd_util_add_device_to_list(peer, allowed);
+		if(res > 0)
+		{
+			result = calloc(1, sizeof(device_s));
+			strncpy(result->mac_addr, peer->dev_addr, MACADDR_LEN);
+			strncpy(result->dev_name, peer->dev_name, DEV_NAME_LEN);
+			result->dev_name[DEV_NAME_LEN] = '\0';
+			result->allowed = allowed;
+			manager->access_list = g_list_append(manager->access_list, result);
+		}else {
+			WDS_LOGE("fail to append peer to access list file");
+			res = -1;
+		}
+	}
+	__WDS_LOG_FUNC_EXIT__;
+	return res;
+}
+
+int wfd_manager_del_from_access_list(wfd_manager_s *manager, unsigned char *mac)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	device_s *result = NULL;
+	GList *temp = NULL;
+	int res = 0;
+
+	result = wfd_peer_find_from_access_list(manager, mac);
+	if(result)
+	{
+		res = wfd_util_rewrite_device_list_to_file(manager->access_list);
+		if(!res)
+		{
+			manager->access_list = g_list_remove(manager->access_list , result);
+			free(result);
+		}else {
+			WDS_LOGE("fail to remove device from list file");
+		}
+
+	}else if(!strcmp(mac,"ff:ff:ff:ff:ff:ff")){
+
+		g_list_foreach (manager->access_list, (GFunc)g_free, NULL);
+		g_list_free (manager->access_list);
+		manager->access_list = NULL;
+
+		res =wfd_util_reset_access_list();
+		if(!res)
+		{
+			g_list_foreach (manager->access_list, (GFunc)g_free, NULL);
+			g_list_free (manager->access_list);
+			manager->access_list = NULL;
+		}else {
+			WDS_LOGE("fail to reset access list file");
+		}
+
+	}else {
+		WDS_LOGD("device dose not exist");
+	}
+	__WDS_LOG_FUNC_EXIT__;
+	return res;
 }
 
 static wfd_service_s *_wfd_service_find(wfd_device_s *device, wifi_direct_service_type_e type, char *data)

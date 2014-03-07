@@ -47,5 +47,6 @@ INSTALL(FILES ${CMAKE_SOURCE_DIR}/files/wifi-direct-server.sh DESTINATION bin)
 INSTALL(FILES ${CMAKE_SOURCE_DIR}/files/wifi-direct-dhcp.sh DESTINATION bin)
 INSTALL(FILES ${CMAKE_SOURCE_DIR}/files/p2p_supp.sh DESTINATION sbin)
 INSTALL(FILES ${CMAKE_SOURCE_DIR}/files/p2p_supp.conf DESTINATION etc/wifi-direct)
+INSTALL(FILES ${CMAKE_SOURCE_DIR}/files/access_list DESTINATION etc/wifi-direct)
 
 ADD_SUBDIRECTORY(plugin/wpasupplicant)
