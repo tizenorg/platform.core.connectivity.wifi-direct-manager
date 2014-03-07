@@ -191,6 +191,12 @@ char *wfd_server_print_cmd(wifi_direct_cmd_e cmd)
 		return "WIFI_DIRECT_CMD_GET_DISPLAY_PORT";
 	case WIFI_DIRECT_CMD_GET_DISPLAY_TYPE:
 		return "WIFI_DIRECT_CMD_GET_DISPLAY_TYPE";
+	case WIFI_DIRECT_CMD_GET_ACCESS_LIST:
+		return"WIFI_DIRECT_CMD_GET_ACCESS_LIST";
+	case WIFI_DIRECT_CMD_ADD_TO_ACCESS_LIST:
+		return "WIFI_DIRECT_CMD_ADD_TO_ACCESS_LIST";
+	case WIFI_DIRECT_CMD_DEL_FROM_ACCESS_LIST:
+		return "WIFI_DIRECT_CMD_DEL_FROM_ACCESS_LIST";
 	default:
 		return "WIFI_DIRECT_CMD_INVALID";
 
@@ -766,6 +772,10 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 
 		if (noti->error == WIFI_DIRECT_ERROR_NONE) {
 			wfd_manager_local_config_set(manager);
+			res = wfd_util_get_access_list(&(manager->access_list));
+			if (res < 0) {
+				WDS_LOGE("Failed to get access list");
+			}
 			wfd_util_start_wifi_direct_popup();
 		}
 		free(noti);
@@ -1600,9 +1610,52 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 		break;
 	case WIFI_DIRECT_CMD_GET_DISPLAY_TYPE:
 		{
-			res = wfd_local_get_display_type(&rsp.param1);
+			res = wfd_local_get_display_type((wifi_direct_display_type_e *)&rsp.param1);
 			if (res < 0) {
 				WDS_LOGE("Failed to get local wifi display type");
+				rsp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+			}
+		}
+		break;
+	case WIFI_DIRECT_CMD_GET_ACCESS_LIST:
+	{
+		wfd_access_list_info_s *devices = NULL;
+		int device_cnt = 0;
+		device_cnt = wfd_manager_get_access_list(manager, &devices);
+		WDS_LOGD("device in access list count [%d], access list [%x]", device_cnt, devices);
+		if (device_cnt < 0) {
+			WDS_LOGE("Failed to get access list");
+			rsp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+			break;
+		}
+		rsp.param1 = device_cnt;
+		rsp.result = WIFI_DIRECT_ERROR_NONE;
+
+		rsp.data_length = device_cnt * sizeof(wfd_access_list_info_s);
+		extra_rsp = (char*) devices;
+		WDS_LOGD("extra_rsp length [%d], extra_rsp [%x]", rsp.data_length, extra_rsp);
+	}
+	break;
+	case WIFI_DIRECT_CMD_ADD_TO_ACCESS_LIST:
+		{
+			wfd_device_s *peer = NULL;
+			peer = wfd_peer_find_by_addr(manager, req.data.mac_addr);
+			if(peer)
+				res = wfd_manager_add_to_access_list(manager, peer, req.data.int1);
+			else
+				res = -1;
+
+			if (res < 0) {
+				WDS_LOGE("Failed to add device to list");
+				rsp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+			}
+		}
+		break;
+	case WIFI_DIRECT_CMD_DEL_FROM_ACCESS_LIST:
+		{
+			res = wfd_manager_del_from_access_list(manager, req.data.mac_addr);
+			if (res < 0) {
+				WDS_LOGE("Failed to delete device from list");
 				rsp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 			}
 		}

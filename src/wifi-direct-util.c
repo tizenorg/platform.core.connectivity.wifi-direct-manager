@@ -381,6 +381,160 @@ int wfd_util_get_local_dev_mac(unsigned char *dev_mac)
 	return 0;
 }
 
+int wfd_util_get_access_list(GList **access_list)
+{
+	__WDS_LOG_FUNC_ENTER__;
+
+	device_s * device = NULL;
+	char device_info[MACSTR_LEN + DEV_NAME_LEN + 1] = {0, };
+	char dev_mac[MACADDR_LEN] = {0, };
+	int info_str_len = 0;
+
+	FILE *fd = NULL;
+	int res = 0;
+
+
+	fd = fopen(DEFAULT_DEVICE_LIST_FILE_PATH, "r");
+	if (!fd) {
+		WDS_LOGE("Failed to open access list file (%s)", strerror(errno));
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	while ((res = fgets(device_info, MACSTR_LEN + DEV_NAME_LEN + 1, fd)) != NULL)
+	{
+		if (device_info[0] == '\0') {
+			printf("end of list\n");
+			fclose(fd);
+			return 0;
+		}
+
+		info_str_len = strlen(device_info);
+		if(info_str_len > MACSTR_LEN)
+			device_info[info_str_len -1] = '\0';
+
+		res = _txt_to_mac(device_info, dev_mac);
+		if (res < 0) {
+			WDS_LOGE("Failed to convert text to MAC address");
+			continue;
+		}
+
+		device = calloc(1, sizeof(device_s));
+		memcpy(device->mac_addr, dev_mac, MACADDR_LEN);
+		strncpy(device->dev_name, &device_info[MACSTR_LEN], strlen(&device_info[MACSTR_LEN]));
+		device->allowed = (device_info[MACSTR_LEN - 1] == 'O');
+
+		*access_list = g_list_append(*access_list, device);
+	}
+	fclose(fd);
+	__WDS_LOG_FUNC_EXIT__;
+	return 0;
+}
+
+int wfd_util_rewrite_device_list_to_file(GList *access_list)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	FILE *fd = NULL;
+	GList *temp = NULL;
+	device_s * device = NULL;
+
+	int list_cnt =0;
+	char * buf = NULL;
+	char * ptr = NULL;
+
+	int res = 0;
+	int i;
+
+	list_cnt =  g_list_length(access_list);
+
+	fd = fopen(DEFAULT_DEVICE_LIST_FILE_PATH, "w");
+	if (!fd) {
+		WDS_LOGE("Failed to open access list file (%s)", strerror(errno));
+		free(buf);
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
+	if(list_cnt > 0)
+	{
+		buf = calloc(1,(MACSTR_LEN + DEV_NAME_LEN +1)*list_cnt +1);
+		ptr = buf;
+		temp = g_list_first(access_list);
+
+		for(i =0; i < list_cnt; i++)
+		{
+			device = (device_s *)temp->data;
+			snprintf(ptr, MACSTR_LEN + DEV_NAME_LEN +1, MACSTR "%c%s\n",
+					  MAC2STR(device->mac_addr), device->allowed?'O':'X', device->dev_name);
+			ptr+=strlen(ptr);
+			temp = g_list_next(temp);
+		}
+		res = fprintf(fd, "%s",buf);
+	}
+
+	fclose(fd);
+	if(buf != NULL)
+		free(buf);
+	__WDS_LOG_FUNC_EXIT__;
+	return res;
+}
+
+int wfd_util_add_device_to_list(wfd_device_s *peer, int allowed)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	FILE *fd = NULL;
+
+	device_s * device = NULL;
+	char * buf = NULL;
+	int res = 0;
+
+	if(peer == NULL)
+	{
+		WDS_LOGD("There is nothing to add to list");
+		return -1;
+	}
+
+	buf = calloc(1,MACSTR_LEN + DEV_NAME_LEN + 2);
+	snprintf(buf, MACSTR_LEN + DEV_NAME_LEN + 2, MACSTR "%c%s\n",
+			MAC2STR(peer->dev_addr), allowed?'O':'X', peer->dev_name);
+
+	fd = fopen(DEFAULT_DEVICE_LIST_FILE_PATH, "a");
+	if (!fd) {
+		WDS_LOGE("Failed to open access list file (%s)", strerror(errno));
+		free(buf);
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
+	res = fprintf(fd,"%s", buf);
+
+	if(res < 0)
+		WDS_LOGE("Failed to write to access list file (%s)", strerror(errno));
+
+	fclose(fd);
+	if(buf != NULL)
+		free(buf);
+	__WDS_LOG_FUNC_EXIT__;
+	return res;
+}
+
+int wfd_util_reset_access_list()
+{
+	__WDS_LOG_FUNC_ENTER__;
+	int res = 0;
+
+	FILE *fd = NULL;
+	fd = fopen(DEFAULT_DEVICE_LIST_FILE_PATH, "w");
+
+	if (!fd) {
+		WDS_LOGE("Failed to open reset access list file (%s)", strerror(errno));
+		res = -1;
+	}
+	fclose(fd);
+
+	__WDS_LOG_FUNC_EXIT__;
+	return 0;
+
+}
+
 int wfd_util_start_wifi_direct_popup()
 {
 	__WDS_LOG_FUNC_ENTER__;
