@@ -26,7 +26,7 @@ static wfd_oem_ops_s supplicant_ops = {
 
 	.prov_disc_req = ws_prov_disc_req,
 
-	.connect = ws_connect;
+	.connect = ws_connect,
 	.disconnect = ws_disconnect,
 	.reject_connection = ws_reject_connection,
 	.cancel_connection = ws_cancel_connection,
