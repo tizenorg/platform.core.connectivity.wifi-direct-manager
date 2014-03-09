@@ -11,7 +11,7 @@
 #include "wfd-plugin-wpasupplicant.h"
 
 
-static struct wfd_oem_ops supplicant_ops = {
+static wfd_oem_ops_s supplicant_ops = {
 	.init = ws_init,
 	.deinit = ws_deinit,
 	.activate = ws_activate,
@@ -54,7 +54,7 @@ static struct wfd_oem_ops supplicant_ops = {
 
 static ws_plugin_data_s *g_pd;
 
-int wfd_plugin_load( struct wfd_oem_ops_s **ops)
+int wfd_plugin_load( wfd_oem_ops_s **ops)
 {
 
 	return -1;
