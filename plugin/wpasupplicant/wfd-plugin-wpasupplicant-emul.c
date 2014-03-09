@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <poll.h>
 #include <errno.h>
+#include <glib.h>
 
 #include "wifi-direct-oem.h"
 #include "wfd-plugin-wpasupplicant.h"
