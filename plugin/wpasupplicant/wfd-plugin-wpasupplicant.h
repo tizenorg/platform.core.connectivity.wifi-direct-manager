@@ -491,6 +491,9 @@ typedef struct {
 	ws_sock_data_s *common;
 	ws_sock_data_s *group;
 	int group_cnt;
+
+	unsigned char pd_addr[OEM_MACADDR_LEN];
+
 	wfd_oem_event_cb callback;
 	void *user_data;
 } ws_plugin_data_s;

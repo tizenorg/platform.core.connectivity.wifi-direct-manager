@@ -1239,7 +1239,7 @@ int wfd_manager_access_control(wfd_manager_s *manager, unsigned char *dev_addr)
 	if(result)
 		res = result->allowed;
 	else
-		res = 1;
+		res = WFD_DEV_UNKNOWN;
 
 	__WDS_LOG_FUNC_EXIT__;
 	return res;

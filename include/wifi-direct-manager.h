@@ -73,6 +73,12 @@ typedef enum {
 	WFD_SCAN_MODE_PASSIVE,
 } wfd_scan_mode_e;
 
+typedef enum {
+	WFD_DEV_DENIED,
+	WFD_DEV_ALLOWED,
+	WFD_DEV_UNKNOWN,
+}wfd_dev_connection_flag_e;
+
 typedef struct {
 	wifi_direct_display_type_e type;
 	char dev_info[2];

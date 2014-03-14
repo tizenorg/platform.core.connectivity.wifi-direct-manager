@@ -31,6 +31,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include <fcntl.h>
 #define _GNU_SOURCE
@@ -210,6 +211,7 @@ static wfd_oem_ops_s supplicant_ops = {
 	};
 
 static ws_plugin_data_s *g_pd;
+static unsigned char null_mac[OEM_MACADDR_LEN];
 
 static gboolean ws_event_handler(GIOChannel *source,
 							   GIOCondition condition,
@@ -1022,7 +1024,6 @@ static int _parsing_peer_info(char *msg, wfd_oem_device_s *peer)
 				if (res < 0)
 					memset(peer->go_dev_addr, 0x00, OEM_MACADDR_LEN);
 
-				unsigned char null_mac[OEM_MACADDR_LEN] = {0, 0, 0, 0, 0, 0};
 				if (memcmp(peer->go_dev_addr, null_mac, OEM_MACADDR_LEN))
 					peer->dev_role = WFD_OEM_DEV_ROLE_GC;
 			}
@@ -1761,10 +1762,14 @@ static gboolean ws_event_handler(GIOChannel *source,
 		event_id = WFD_OEM_EVENT_PROV_DISC_RESP;
 		break;
 	case WS_EVENT_PROV_DISC_SHOW_PIN:
-		event_id = WFD_OEM_EVENT_PROV_DISC_DISPLAY;
-		break;
 	case WS_EVENT_PROV_DISC_ENTER_PIN:
-		event_id = WFD_OEM_EVENT_PROV_DISC_KEYPAD;
+		if (!memcmp(g_pd->pd_addr, event->dev_addr, OEM_MACADDR_LEN))
+			event_id = WFD_OEM_EVENT_PROV_DISC_RESP;
+		else if (!memcmp(g_pd->pd_addr, null_mac, OEM_MACADDR_LEN))
+			event_id = WFD_OEM_EVENT_PROV_DISC_REQ;
+		else
+			goto done;
+		memset(g_pd->pd_addr, 0x0, OEM_MACADDR_LEN);
 		break;
 	case WS_EVENT_GO_NEG_REQUEST:
 		event_id = WFD_OEM_EVENT_GO_NEG_REQ;
@@ -1789,7 +1794,6 @@ static gboolean ws_event_handler(GIOChannel *source,
 		break;
 	case WS_EVENT_CONNECTED:
 		{
-			unsigned char null_mac[OEM_MACADDR_LEN] = {0, 0, 0, 0, 0, 0};
 			if (!memcmp(event->intf_addr, null_mac, OEM_MACADDR_LEN))
 				goto done;
 			event_id = WFD_OEM_EVENT_CONNECTED;
@@ -1818,9 +1822,7 @@ static gboolean ws_event_handler(GIOChannel *source,
 		}
 		break;
 	case WS_EVENT_INVITATION_RECEIVED:
-		{
-			event_id = WFD_OEM_EVENT_INVITATION_REQ;
-		}
+		event_id = WFD_OEM_EVENT_INVITATION_REQ;
 		break;
 	case WS_EVENT_INVITATION_RESULT:
 		event_id = WFD_OEM_EVENT_INVITATION_RES;
@@ -2299,7 +2301,6 @@ int ws_prov_disc_req(unsigned char *peer_addr, wfd_oem_wps_mode_e wps_mode, int 
 		return -1;
 	}
 
-
 	snprintf(cmd, sizeof(cmd), WS_CMD_P2P_PROV_DISC MACSTR "%s",
 							MAC2STR(peer_addr), _ws_wps_to_txt(wps_mode));
 
@@ -2319,6 +2320,7 @@ int ws_prov_disc_req(unsigned char *peer_addr, wfd_oem_wps_mode_e wps_mode, int 
 		return -1;
 	}
 	WDP_LOGD("Succeeded to send provision discovery to peer[" MACSTR "]", MAC2STR(peer_addr));
+	memcpy(g_pd->pd_addr, peer_addr, OEM_MACADDR_LEN);
 
 	__WDP_LOG_FUNC_EXIT__;
 	return 0;

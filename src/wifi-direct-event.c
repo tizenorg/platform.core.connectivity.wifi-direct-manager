@@ -416,12 +416,10 @@ int wfd_process_event(void *user_data, void *data)
 	break;
 	case WFD_OEM_EVENT_PROV_DISC_REQ:
 	case WFD_OEM_EVENT_PROV_DISC_RESP:
-	case WFD_OEM_EVENT_PROV_DISC_DISPLAY:
-	case WFD_OEM_EVENT_PROV_DISC_KEYPAD:
 	{
 		wfd_group_s *group = (wfd_group_s*) manager->group;
 		if ((group && group->member_count >= manager->max_station) ||
-				!wfd_manager_access_control(manager, event->dev_addr)) {
+				(wfd_manager_access_control(manager, event->dev_addr) == WFD_DEV_DENIED)) {
 			WDS_LOGD("Provision discovery is not granted");
 			break;
 		}
@@ -482,7 +480,9 @@ int wfd_process_event(void *user_data, void *data)
 	break;
 	case WFD_OEM_EVENT_INVITATION_REQ:
 	{
-		if (!wfd_manager_access_control(manager, event->dev_addr)) {
+		wfd_dev_connection_flag_e flag = 0;
+		flag = wfd_manager_access_control(manager, event->dev_addr);
+		if (flag == WFD_DEV_DENIED) {
 			WDS_LOGD("Invitation request is not granted");
 			break;
 		}
@@ -513,18 +513,24 @@ int wfd_process_event(void *user_data, void *data)
 		wfd_session_timer(session, 1);
 
 		wfd_state_set(manager, WIFI_DIRECT_STATE_CONNECTING);
-
-		wifi_direct_client_noti_s noti;
-		memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
-		noti.event = WIFI_DIRECT_CLI_EVENT_INVITATION_REQ;
-		noti.error = WIFI_DIRECT_ERROR_NONE;
-		snprintf(noti.param1, sizeof(noti.param1), MACSTR, MAC2STR(event->dev_addr));
-		wfd_client_send_event(manager, &noti);
+		if(flag == WFD_DEV_UNKNOWN)
+		{
+			WDS_LOGD("device is not in access/deny list");
+			wifi_direct_client_noti_s noti;
+			memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
+			noti.event = WIFI_DIRECT_CLI_EVENT_INVITATION_REQ;
+			noti.error = WIFI_DIRECT_ERROR_NONE;
+			snprintf(noti.param1, sizeof(noti.param1), MACSTR, MAC2STR(event->dev_addr));
+			wfd_client_send_event(manager, &noti);
+		}else {
+			WDS_LOGD("device is allowed");
+			wfd_session_start(session);
+		}
 	}
 	break;
 	case WFD_OEM_EVENT_GO_NEG_REQ:
 	{
-		if (!wfd_manager_access_control(manager, event->dev_addr)) {
+		if (wfd_manager_access_control(manager, event->dev_addr) == WFD_DEV_DENIED) {
 			WDS_LOGD("GO negotiation is not granted");
 			break;
 		}

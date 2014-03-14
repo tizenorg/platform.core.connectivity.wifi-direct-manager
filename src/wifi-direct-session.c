@@ -608,100 +608,65 @@ int wfd_session_process_event(wfd_manager_s *manager, wfd_oem_event_s *event)
 		return -1;
 	}
 
+	wfd_dev_connection_flag_e flag = 0;
+	flag = wfd_manager_access_control(manager, event->dev_addr);
+
 	WDS_LOGD("event ID [%d]", event->event_id);
 	session = manager->session;
 
 	switch (event->event_id) {
 	case WFD_OEM_EVENT_PROV_DISC_REQ:
-	case WFD_OEM_EVENT_PROV_DISC_DISPLAY:
-	case WFD_OEM_EVENT_PROV_DISC_KEYPAD:
 	{
+		if (session) {
+			WDS_LOGE("Unexpected event. Session already exist. This request should be ignored");
+			break;
+		}
+
+		/* Create new session */
+		session = wfd_create_session(manager, event->dev_addr,
+						event->wps_mode, SESSION_DIRECTION_INCOMING);
 		if (!session) {
-			int req_wps_mode = WFD_WPS_MODE_NONE;
-			int wps_mode = event->wps_mode;
+			WDS_LOGE("Failed to create session with peer [" MACSTR "]",
+						MAC2STR(event->dev_addr));
+			break;
+		}
 
-			if (wps_mode == WFD_WPS_MODE_DISPLAY) {
-				req_wps_mode = WFD_WPS_MODE_KEYPAD;
-			} else if (wps_mode == WFD_WPS_MODE_KEYPAD) {
-				req_wps_mode = WFD_WPS_MODE_DISPLAY;
-			} else {
-				req_wps_mode = WFD_WPS_MODE_PBC;
-			}
+		/* Update session */
+		if (event->wps_mode == WFD_OEM_WPS_MODE_DISPLAY) {
+			strncpy(session->wps_pin, event->wps_pin, PINSTR_LEN);
+			session->wps_pin[PINSTR_LEN] = '\0';
+		}
+		session->state = SESSION_STATE_STARTED;
+		wfd_session_timer(session, 1);
 
-			session = wfd_create_session(manager, event->dev_addr,
-										req_wps_mode, SESSION_DIRECTION_INCOMING);
-			if (!session) {
-				WDS_LOGE("Failed to create session with peer [" MACSTR "]", MAC2STR(event->dev_addr));
-				break;
-			}
+		/* Update manager */
+		manager->local->wps_mode = event->wps_mode;
+		wfd_state_set(manager, WIFI_DIRECT_STATE_CONNECTING);
 
-			/* Update session */
-			if (wps_mode == WFD_WPS_MODE_DISPLAY) {
-				strncpy(session->wps_pin, event->wps_pin, PINSTR_LEN);
-				session->wps_pin[PINSTR_LEN] = '\0';
-			}
-			session->state = SESSION_STATE_STARTED;
-			wfd_session_timer(session, 1);
+		if(flag == WFD_DEV_ALLOWED)
+		{
+			WDS_LOGD("device is allowed");
+			if (manager->local->dev_role == WFD_DEV_ROLE_GO)
+				wfd_session_wps(session);
+			else
+				wfd_session_connect(session);
 
-			manager->local->wps_mode = event->wps_mode;
-
-			wfd_state_set(manager, WIFI_DIRECT_STATE_CONNECTING);
-
+		}else {
+			/* Send event to application */
+			WDS_LOGD("device is not in access/deny list");
 			wifi_direct_client_noti_s noti;
 			memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
 			noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_REQ;
 			noti.error = WIFI_DIRECT_ERROR_NONE;
 			snprintf(noti.param1, sizeof(noti.param1), MACSTR, MAC2STR(event->dev_addr));
 			wfd_client_send_event(manager, &noti);
-		} else {
-			if (session->state > SESSION_STATE_STARTED ||
-					session->direction == SESSION_DIRECTION_INCOMING) {
-				WDS_LOGE("Unexpected event. Session is already started");
-				break;
-			}
-
-			session->wps_mode = event->wps_mode;
-			if (event->wps_mode == WFD_WPS_MODE_DISPLAY) {
-				session->req_wps_mode = WFD_WPS_MODE_KEYPAD;
-				strncpy(session->wps_pin, event->wps_pin, PINSTR_LEN);
-				session->wps_pin[PINSTR_LEN] = '\0';
-			} else if (event->wps_mode == WFD_WPS_MODE_KEYPAD) {
-				session->req_wps_mode = WFD_WPS_MODE_DISPLAY;
-			} else {
-				session->req_wps_mode = WFD_WPS_MODE_PBC;
-			}
-			session->state = SESSION_STATE_STARTED;
-			wfd_session_timer(session, 1);
-
-			manager->local->wps_mode = event->wps_mode;
-			WDS_LOGD("Local WPS mode is %d", session->wps_mode);
-
-			if (session->wps_mode != WFD_WPS_MODE_PBC) {
-				wifi_direct_client_noti_s noti;
-				memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
-				noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_WPS_REQ;
-				snprintf(noti.param1, sizeof(noti.param1), MACSTR, MAC2STR(event->dev_addr));
-				wfd_client_send_event(manager, &noti);
-				if (session->wps_mode == WFD_WPS_MODE_KEYPAD)
-					break;
-			}
-
-			if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
-				WDS_LOGD("Start WPS corresponding to OEM event [%d]", event->event_id);
-				wfd_session_wps(session);
-			} else if (session->peer->dev_role == WFD_DEV_ROLE_GO) {
-				WDS_LOGD("Start WPS(join) corresponding to OEM event [%d]", event->event_id);
-				wfd_session_join(session);
-			} else {
-				WDS_LOGD("Start connection corresponding to OEM event [%d]", event->event_id);
-				wfd_session_connect(session);
-			}
 		}
 	}
 	break;
 	case WFD_OEM_EVENT_PROV_DISC_RESP:
+	{
 		if (!session) {
-			WDS_LOGE("Unexpected event. Session is NULL [peer: " MACSTR "]", MAC2STR(event->dev_addr));
+			WDS_LOGE("Unexpected event. Session not exist. This response should be ignored");
 			break;
 		}
 
@@ -709,8 +674,36 @@ int wfd_session_process_event(wfd_manager_s *manager, wfd_oem_event_s *event)
 			WDS_LOGE("Unexpected event. Session is already started");
 			break;
 		}
-		session->state = SESSION_STATE_STARTED;
 
+		/* Update session */
+		if (event->wps_mode == WFD_OEM_WPS_MODE_DISPLAY) {
+			session->req_wps_mode = WFD_WPS_MODE_KEYPAD;
+			strncpy(session->wps_pin, event->wps_pin, PINSTR_LEN);
+			session->wps_pin[PINSTR_LEN] = '\0';
+		} else if (event->wps_mode == WFD_OEM_WPS_MODE_KEYPAD) {
+			session->req_wps_mode = WFD_WPS_MODE_DISPLAY;
+		} else {
+			session->req_wps_mode = WFD_WPS_MODE_PBC;
+		}
+		session->wps_mode = event->wps_mode;
+		wfd_session_timer(session, 1);
+
+		/* Update manager */
+		manager->local->wps_mode = event->wps_mode;
+		WDS_LOGD("Local WPS mode is %d", session->wps_mode);
+
+		if (event->wps_mode != WFD_OEM_WPS_MODE_PBC) {
+			/* Notify WPS_MODE to application so it can display PIN or KEYPAD */
+			wifi_direct_client_noti_s noti;
+			memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
+			noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_WPS_REQ;
+			snprintf(noti.param1, sizeof(noti.param1), MACSTR, MAC2STR(event->dev_addr));
+			wfd_client_send_event(manager, &noti);
+			if (session->wps_mode == WFD_WPS_MODE_KEYPAD)
+				break;
+		}
+
+		/* Go to next step of connection immediately */
 		if (session->peer->dev_role == WFD_DEV_ROLE_GO) {
 			WDS_LOGD("Start joining corresponding to OEM event [%d]", event->event_id);
 			wfd_session_join(session);
@@ -721,7 +714,8 @@ int wfd_session_process_event(wfd_manager_s *manager, wfd_oem_event_s *event)
 			WDS_LOGD("Start connection corresponding to OEM event [%d]", event->event_id);
 			wfd_session_connect(session);
 		}
-		break;
+	}
+	break;
 	case WFD_OEM_EVENT_GO_NEG_REQ:
 		if (!session) {		// TODO: check whether connection is started by negotiation not by prov_disc
 			WDS_LOGE("Unexpected event. Session is NULL [peer: " MACSTR "]", MAC2STR(event->dev_addr));
