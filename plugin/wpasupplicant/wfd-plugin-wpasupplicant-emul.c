@@ -6,11 +6,12 @@
 #include <poll.h>
 #include <errno.h>
 
+#include <glib.h>
+
 #include "wifi-direct-oem.h"
 #include "wfd-plugin-wpasupplicant.h"
 
-
-static struct wfd_oem_ops supplicant_ops = {
+static wfd_oem_ops_s supplicant_ops = {
 	.init = ws_init,
 	.deinit = ws_deinit,
 	.activate = ws_activate,
@@ -25,7 +26,7 @@ static struct wfd_oem_ops supplicant_ops = {
 
 	.prov_disc_req = ws_prov_disc_req,
 
-	.connect = ws_connect;
+	.connect = ws_connect,
 	.disconnect = ws_disconnect,
 	.reject_connection = ws_reject_connection,
 	.cancel_connection = ws_cancel_connection,
@@ -131,7 +132,7 @@ int ws_get_scan_result(GList **peers, int *peer_count)
 	return -1;
 }
 
-int ws_get_peer_info(const char *peer_addr, wfd_oem_device_s **peer)
+int ws_get_peer_info(unsigned char *peer_addr, wfd_oem_device_s **peer)
 {
 	__WDP_LOG_FUNC_ENTER__;
 
@@ -147,7 +148,7 @@ int ws_prov_disc_req(unsigned char *peer_addr, wfd_oem_wps_mode_e wps_mode, int 
 	return -1;
 }
 
-int ws_connect(const char *peer_addr, wfd_oem_conn_param_s *param)
+int ws_connect(unsigned char *peer_addr, wfd_oem_conn_param_s *param)
 {
 	__WDP_LOG_FUNC_ENTER__;
 
@@ -155,7 +156,7 @@ int ws_connect(const char *peer_addr, wfd_oem_conn_param_s *param)
 	return -1;
 }
 
-int ws_disconnect(const char *peer_addr)
+int ws_disconnect(unsigned char *peer_addr)
 {
 	__WDP_LOG_FUNC_ENTER__;
 
@@ -227,7 +228,7 @@ int ws_destroy_group(const char *ifname)
 	return -1;
 }
 
-int ws_invite(const char *peer_addr, wfd_oem_invite_param_s *param)
+int ws_invite(unsigned char *peer_addr, wfd_oem_invite_param_s *param)
 {
 	__WDP_LOG_FUNC_ENTER__;
 
@@ -236,7 +237,7 @@ int ws_invite(const char *peer_addr, wfd_oem_invite_param_s *param)
 }
 
 // Only group owner can use this command
-int ws_wps_start(const char *peer_addr, int wps_mode, const char *pin)
+int ws_wps_start(unsigned char *peer_addr, int wps_mode, const char *pin)
 {
 	__WDP_LOG_FUNC_ENTER__;
 
@@ -308,7 +309,7 @@ int ws_get_persistent_groups(wfd_oem_persistent_group_s **groups, int *group_cou
 	return -1;
 }
 
-int ws_remove_persistent_group(const char *bssid)
+int ws_remove_persistent_group(char *ssid, unsigned char *bssid)
 {
 	__WDP_LOG_FUNC_ENTER__;
 
@@ -316,7 +317,7 @@ int ws_remove_persistent_group(const char *bssid)
 	return -1;
 }
 
-int ws_set_persistent_reconnect(const char *bssid, int reconnect)
+int ws_set_persistent_reconnect(unsigned char *bssid, int reconnect)
 {
 	__WDP_LOG_FUNC_ENTER__;
 
