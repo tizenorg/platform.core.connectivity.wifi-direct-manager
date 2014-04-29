@@ -43,7 +43,7 @@ export ARCH=i586
 
 %endif
 
-cmake . -DCMAKE_INSTALL_PREFIX=%{_prefix} -DARCHITECTURE=$ARCH
+%cmake . -DCMAKE_INSTALL_PREFIX=%{_prefix} -DARCHITECTURE=$ARCH
 #make %{?jobs:-j%jobs}
 make %{?_smp_mflags}
 
