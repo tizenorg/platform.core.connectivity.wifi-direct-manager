@@ -164,7 +164,7 @@ int wfd_group_complete(void *data, char *ifname, int role, unsigned char *go_dev
 	return 0;
 }
 
-int wfd_destroy_group(void *data, char *ifname)
+int wfd_destroy_group(void *data, const char *ifname)
 {
 	__WDS_LOG_FUNC_ENTER__;
 	wfd_group_s *group = NULL;
@@ -206,9 +206,14 @@ int wfd_destroy_group(void *data, char *ifname)
 		temp = g_list_next(temp);
 		count++;
 	}
-	g_list_free(group->members);
 
-	free(group);
+	if (group->members) {
+		g_list_free(group->members);
+		group->members = NULL;
+	}
+
+	if (group)
+		free(group);
 
 	manager->local->dev_role = WFD_DEV_ROLE_NONE;
 	__WDS_LOG_FUNC_EXIT__;
@@ -240,7 +245,7 @@ int wfd_group_is_autonomous(wfd_group_s *group)
 	}
 
 	__WDS_LOG_FUNC_EXIT__;
-	return group->flags & WFD_GROUP_FLAG_AUTONOMOUS;;
+	return group->flags & WFD_GROUP_FLAG_AUTONOMOUS;
 }
 
 int wfd_group_get_members()
@@ -366,7 +371,8 @@ int wfd_group_remove_member(wfd_group_s *group, unsigned char *addr)
 	}
 
 	group->members = g_list_remove(group->members, member);
-	free(member);
+	if (member)
+		free(member);
 	group->member_count--;
 
 	__WDS_LOG_FUNC_EXIT__;

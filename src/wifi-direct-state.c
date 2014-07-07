@@ -37,7 +37,7 @@
 #include "wifi-direct-util.h"
 
 
-static char *_wfd_state_string(int state)
+static const char *_wfd_state_string(int state)
 {
 	switch (state) {
 		case WIFI_DIRECT_STATE_DEACTIVATED:
@@ -61,7 +61,7 @@ static char *_wfd_state_string(int state)
 		default:
 			return "Unknown State";
 	}
-	
+
 }
 int wfd_state_set(wfd_manager_s *manager, int state)
 {

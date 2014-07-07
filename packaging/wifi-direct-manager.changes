@@ -1,3 +1,7 @@
+Wed, 16 Jun 2014 Jiung Yu <jiung.yu@samaung.com> (1.0.12)
+  * Add support for getting Wi-Fi Display control port
+  * Add support for starring connection by persistent invitation
+
 Fri, 14 Mar 2014 Jiung Yu <jiung.yu@samaung.com> (1.0.11)
   * Modifiy Provision Discovery Request/Response Event
   * Add automatic connection using device access list

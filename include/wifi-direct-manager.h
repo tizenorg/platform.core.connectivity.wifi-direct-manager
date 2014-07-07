@@ -172,9 +172,8 @@ int wfd_local_get_dev_mac(unsigned char *dev_mac);
 int wfd_local_get_intf_mac(unsigned char *intf_mac);
 int wfd_local_get_ip_addr(char *ip_str);
 int wfd_local_get_supported_wps_mode(int *wps_mode);
-int wfd_local_set_req_wps_mode(int req_wps_mode);
 int wfd_local_get_wps_mode(int *wps_mode);
-int wfd_local_get_req_wps_mode(int *req_wps_mode);
+int wfd_local_set_wps_mode(int wps_mode);
 
 int wfd_local_get_display_port(int *port);
 int wfd_local_get_display_type(wifi_direct_display_type_e *type);

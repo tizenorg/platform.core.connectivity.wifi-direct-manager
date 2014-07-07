@@ -201,6 +201,7 @@ typedef enum {
 	WS_EVENT_SERV_DISC_RESP,
 
 	WS_EVENT_TERMINATING,
+	WS_EVENT_PERSISTENT_INVITE_ACCEPTED,
 
 	WS_EVENT_LIMIT,
 } ws_event_id_e;
@@ -250,7 +251,7 @@ typedef enum {
 	WS_GROUP_INFO_PASS,	// passphrase=
 	WS_GROUP_INFO_GO_DEV_ADDR,	// go_dev_addr=
 	WS_GROUP_INFO_STATUS,		// status=
-
+	WS_GROUP_INFO_PERSISTENT,
 	WS_GROUP_INFO_LIMIT,
 } ws_group_info_id_e;
 

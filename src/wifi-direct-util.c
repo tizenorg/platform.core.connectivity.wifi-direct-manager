@@ -387,12 +387,12 @@ int wfd_util_get_access_list(GList **access_list)
 
 	wfd_access_list_info_s * device = NULL;
 	char device_info[MACSTR_LEN + DEV_NAME_LEN + 1] = {0, };
-	char dev_mac[MACADDR_LEN] = {0, };
+	unsigned char dev_mac[MACADDR_LEN] = {0, };
 	int info_str_len = 0;
 
 	FILE *fd = NULL;
-	int res = 0;
-
+	char *res = NULL;
+	int status = 0;
 
 	fd = fopen(DEFAULT_DEVICE_LIST_FILE_PATH, "r");
 	if (!fd) {
@@ -413,8 +413,8 @@ int wfd_util_get_access_list(GList **access_list)
 		if(info_str_len > MACSTR_LEN)
 			device_info[info_str_len -1] = '\0';
 
-		res = _txt_to_mac(device_info, dev_mac);
-		if (res < 0) {
+		status = _txt_to_mac(device_info, dev_mac);
+		if (status < 0) {
 			WDS_LOGE("Failed to convert text to MAC address");
 			continue;
 		}
@@ -759,7 +759,7 @@ int wfd_util_dhcpc_stop()
 	return 0;
 }
 
-int wfd_util_dhcpc_get_ip(char *ifname, unsigned char *ip_addr, int is_IPv6)
+int wfd_util_dhcpc_get_ip(const char *ifname, unsigned char *ip_addr, int is_IPv6)
 {
 	__WDS_LOG_FUNC_ENTER__;
 	struct ifreq ifr;
