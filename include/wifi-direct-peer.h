@@ -29,7 +29,7 @@
 #define __WIFI_DIRECT_PEER_H__
 
 
-wfd_device_s *wfd_add_peer(void *data, unsigned char *dev_addr, char *dev_name);
+wfd_device_s *wfd_add_peer(void *data, unsigned char *dev_addr, const char *dev_name);
 int wfd_remove_peer(void *data, unsigned char *dev_addr);
 int wfd_update_peer(void *data, wfd_device_s *peer);
 int wfd_update_peer_time(void*data, unsigned char *peer_addr);

@@ -39,7 +39,7 @@
 #include "wifi-direct-session.h"
 
 
-wfd_device_s *wfd_add_peer(void *data, unsigned char *dev_addr, char *dev_name)
+wfd_device_s *wfd_add_peer(void *data, unsigned char *dev_addr, const char *dev_name)
 {
 	__WDS_LOG_FUNC_ENTER__;
 	wfd_manager_s *manager = (wfd_manager_s*) data;
@@ -95,7 +95,8 @@ int wfd_remove_peer(void *data, unsigned char *dev_addr)
 	wfd_manager_init_service(peer);
 	if(peer->wifi_display)
 		free(peer->wifi_display);
-	free(peer);
+	if (peer)
+		free(peer);
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
 }
@@ -143,7 +144,7 @@ int wfd_update_peer(void *data, wfd_device_s *peer)
 		return -1;
 	}
 
-	if (oem_dev->age > 4 && peer->state == WFD_PEER_STATE_DISCOVERED) {
+	if (oem_dev->age > 30 && peer->state == WFD_PEER_STATE_DISCOVERED) {
 		WDS_LOGE("Too old age to update peer");
 		return -1;
 	}
@@ -189,19 +190,23 @@ int wfd_peer_clear_all(void *data)
 		wfd_manager_init_service(peer);
 		if(peer->wifi_display)
 			free(peer->wifi_display);
-		free(peer);
+		if (peer)
+			free(peer);
 		temp = g_list_next(temp);
 		manager->peer_count--;
 	}
-	g_list_free(manager->peers);
-	manager->peers = NULL;
+
+	if(manager->peers) {
+		g_list_free(manager->peers);
+		manager->peers = NULL;
+	}
 
 	if (manager->peer_count){
 		WDS_LOGE("Peer count is not synced. left count=%d", manager->peer_count);
 		manager->peer_count = 0;
 		return 1;
 	}
-	
+
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
 }
@@ -306,23 +311,25 @@ wfd_device_s *wfd_peer_find_by_addr(void *data, unsigned char *addr)
 wfd_device_s *wfd_peer_find_current_peer(void *data)
 {
 	__WDS_LOG_FUNC_ENTER__;
-	wfd_device_s *peer = NULL;
 	wfd_manager_s *manager = (wfd_manager_s*) data;
 	if (!manager) {
 		WDS_LOGE("Invalid parameter");
 		return NULL;
 	}
-	
+
 	wfd_session_s *session = manager->session;
 	if (!session) {
 		WDS_LOGE("Session not found");
 		return NULL;
 	}
 
-	peer = session->peer;
+	if (!session->peer) {
+		WDS_LOGE("Peer not found");
+		return NULL;
+	}
 
 	__WDS_LOG_FUNC_EXIT__;
-	return peer;
+	return session->peer;
 }
 
 int wfd_peer_set_data(unsigned char *dev_addr, int type, int data)

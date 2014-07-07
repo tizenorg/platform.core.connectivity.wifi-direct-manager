@@ -610,6 +610,11 @@ int wfd_process_event(void *user_data, void *data)
 		wifi_direct_client_noti_s noti;
 		memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
 
+		if (!group) {
+			WDS_LOGE("Group not found");
+			break;
+		}
+
 		peer = wfd_group_find_member_by_addr(group, event->intf_addr);
 		if (!peer) {
 			WDS_LOGE("Failed to find connected peer");
@@ -700,6 +705,11 @@ int wfd_process_event(void *user_data, void *data)
 		strncpy(group->pass,edata->pass, PASSPHRASE_LEN);
 		group->pass[PASSPHRASE_LEN] = '\0';
 		group->freq = edata->freq;
+		if(edata->is_persistent) {
+			group->flags |= WFD_GROUP_FLAG_PERSISTENT;
+		} else {
+			group->flags &= ~(WFD_GROUP_FLAG_PERSISTENT);
+		}
 		manager->group = group;
 		manager->local->dev_role = event->dev_role;
 
@@ -807,6 +817,29 @@ int wfd_process_event(void *user_data, void *data)
 		if (res < 0) {
 			WDS_LOGE("Failed to update peer service data");
 		}
+	}
+	break;
+	case WFD_OEM_PERSISTENT_INVITE_ACCEPTED:
+	{
+		wfd_session_s *session = (wfd_session_s*) manager->session;
+		if (!session) {
+			session = wfd_create_session(manager, event->dev_addr, event->wps_mode, SESSION_DIRECTION_INCOMING);
+			if (!session) {
+				WDS_LOGE("Failed to create session with peer [" MACSTR "]", MAC2STR(event->dev_addr));
+				break;
+			}
+		}
+
+		session->state = SESSION_STATE_STARTED;
+
+		wfd_state_set(manager, WIFI_DIRECT_STATE_CONNECTING);
+
+		wifi_direct_client_noti_s noti;
+		memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
+		noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_START;
+		noti.error = WIFI_DIRECT_ERROR_NONE;
+		snprintf(noti.param1, sizeof(noti.param1), MACSTR, MAC2STR(event->dev_addr));
+		wfd_client_send_event(manager, &noti);
 	}
 	break;
 	default:

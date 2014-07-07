@@ -144,7 +144,8 @@ wfd_session_s *wfd_create_session(void *data, unsigned char *peer_addr, int wps_
 	peer = wfd_peer_find_by_dev_addr(manager, peer_addr);
 	if (!peer) {
 		WDS_LOGE("Failed to find peer info[" MACSTR "]", MAC2STR(peer_addr));
-		free(session);
+		if (session)
+			free(session);
 		__WDS_LOG_FUNC_EXIT__;
 		return NULL;
 	}
@@ -189,13 +190,14 @@ int wfd_destroy_session(void *data)
 	}
 	wfd_session_timer(session, 0);
 	peer = session->peer;
-	
+
 	if (session->state == SESSION_STATE_COMPLETED)
 		peer->state = WFD_PEER_STATE_CONNECTED;
 	else
 		peer->state = WFD_PEER_STATE_DISCOVERED;
 
-	free(session);
+	if (session)
+		free(session);
 	manager->session = NULL;
 	manager->local->wps_mode = WFD_WPS_MODE_PBC;
 	manager->autoconnection = 0;
@@ -535,7 +537,7 @@ wfd_device_s *wfd_session_get_peer(wfd_session_s *session)
 		WDS_LOGE("Invalid parameter");
 		return NULL;
 	}
-	
+
 	peer = session->peer;
 
 	__WDS_LOG_FUNC_EXIT__;
@@ -551,7 +553,7 @@ unsigned char *wfd_session_get_peer_addr(wfd_session_s *session)
 		WDS_LOGE("Invalid parameter");
 		return NULL;
 	}
-	
+
 	peer = session->peer;
 
 	__WDS_LOG_FUNC_EXIT__;
@@ -734,7 +736,7 @@ int wfd_session_process_event(wfd_manager_s *manager, wfd_oem_event_s *event)
 		} else {
 			session->state = SESSION_STATE_WPS;
 		}
-		
+
 		break;
 	case WFD_OEM_EVENT_WPS_DONE:
 		if (!session) {
@@ -743,7 +745,7 @@ int wfd_session_process_event(wfd_manager_s *manager, wfd_oem_event_s *event)
 		} else {
 			session->state = SESSION_STATE_KEY_NEG;
 		}
-		
+
 		break;
 	case WFD_OEM_EVENT_CONNECTED:
 	{
@@ -775,7 +777,7 @@ int wfd_session_process_event(wfd_manager_s *manager, wfd_oem_event_s *event)
 		} else {
 			session->state = SESSION_STATE_COMPLETED;
 		}
-		
+
 		break;
 	default:
 		break;

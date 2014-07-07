@@ -112,6 +112,7 @@ static int _wfd_local_init_device(wfd_manager_s *manager)
 	if (res < 0) {
 		WDS_LOGE("Failed to get local device MAC address");
 	}
+
 	memcpy(local->intf_addr, local->dev_addr, MACADDR_LEN);
 	local->intf_addr[4] ^= 0x80;
 	WDS_LOGD("Local Interface MAC address [" MACSTR "]", MAC2STR(local->intf_addr));
@@ -146,8 +147,14 @@ static int _wfd_local_deinit_device(wfd_manager_s *manager)
 int wfd_local_reset_data(wfd_manager_s *manager)
 {
 	__WDS_LOG_FUNC_ENTER__;
-	wfd_device_s *local = manager->local;
+	wfd_device_s *local = NULL;
 
+	if (!manager) {
+		WDS_LOGE("Invalid parameter");
+		return -1;
+	}
+
+	local = manager->local;
 	/* init local device data */
 	local->dev_role = WFD_DEV_ROLE_NONE;
 	local->wps_mode = WFD_WPS_MODE_PBC;
@@ -371,7 +378,7 @@ int wfd_manager_set_max_station(int max_station)
 {
 	__WDS_LOG_FUNC_ENTER__;
 
-	if (max_station < 1) {
+	if (max_station < 1 || max_station > 8) {
 		WDS_LOGE("Invalid parameter");
 		__WDS_LOG_FUNC_EXIT__;
 		return -1;
@@ -1032,7 +1039,7 @@ int wfd_manager_get_peers(wfd_manager_s *manager, wfd_discovery_entry_s **peers_
 		peer = temp->data;
 		if (!peer)
 			goto next;
-		if (peer->time + 4 < time) {
+		if (peer->time + 8 < time) {
 			WDS_LOGD("Device data is too old to report to application [%s]", peer->dev_name);
 			res = wfd_update_peer(manager, peer);
 			if (res < 0) {
@@ -1062,8 +1069,14 @@ int wfd_manager_get_peers(wfd_manager_s *manager, wfd_discovery_entry_s **peers_
 		peers[count].category = peer->pri_dev_type;
 		peers[count].subcategory = peer->sec_dev_type;
 		_wfd_manager_service_copy(peers[count].services, peer->services, 1024);
-		if(peer->wifi_display)
+		if(peer->wifi_display) {
 			peers[count].is_wfd_device = peer->wifi_display->availability;
+			peers[count].wfd_info.type = peer->wifi_display->type;
+			peers[count].wfd_info.availability = peer->wifi_display->availability;
+			peers[count].wfd_info.hdcp_support = peer->wifi_display->hdcp_support;
+			peers[count].wfd_info.ctrl_port = peer->wifi_display->ctrl_port;
+			peers[count].wfd_info.max_tput = peer->wifi_display->max_tput;
+		}
 
 		count++;
 		WDS_LOGD("%dth peer [%s]", count, peer->dev_name);
@@ -1127,6 +1140,13 @@ int wfd_manager_get_connected_peers(wfd_manager_s *manager, wfd_connected_peer_i
 			peers[count].subcategory = peer->sec_dev_type;
 			peers[count].channel = peer->channel;
 			peers[count].is_p2p = 1;
+			if(peer->wifi_display) {
+				peers[count].wfd_info.type = peer->wifi_display->type;
+				peers[count].wfd_info.availability = peer->wifi_display->availability;
+				peers[count].wfd_info.hdcp_support = peer->wifi_display->hdcp_support;
+				peers[count].wfd_info.ctrl_port = peer->wifi_display->ctrl_port;
+				peers[count].wfd_info.max_tput = peer->wifi_display->max_tput;
+			}
 			_wfd_manager_service_copy(peers[count].services, peer->services, 1024);
 			WDS_LOGD("%dth member converted[%s]", count, peers[count].device_name);
 			count++;

@@ -20,7 +20,7 @@
 /**
  * This file declares wifi direct oem functions and structures.
  *
- * @file		wifi-direct-ome.h
+ * @file		wifi-direct-oem.h
  * @author	Gibyoung Kim (lastkgb.kim@samsung.com)
  * @version	0.7
  */
@@ -73,7 +73,7 @@ typedef enum {
 	WFD_OEM_EVENT_SERV_DISC_RESP,	// 25
 
 	WFD_OEM_EVENT_TERMINATING,
-
+	WFD_OEM_PERSISTENT_INVITE_ACCEPTED,
 	WFD_OEM_EVENT_MAX,
 } wfd_oem_event_e;
 
@@ -148,6 +148,7 @@ typedef struct {
 	int freq;
 	char pass[OEM_PASS_PHRASE_LEN+1];
 	unsigned char go_dev_addr[OEM_MACADDR_LEN];
+	int is_persistent;
 } wfd_oem_group_data_s;
 
 typedef struct {

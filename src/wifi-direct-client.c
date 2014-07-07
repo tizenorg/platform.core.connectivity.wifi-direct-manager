@@ -51,14 +51,13 @@
 #include "wifi-direct-state.h"
 #include "wifi-direct-peer.h"
 
-
 static int _wfd_deregister_client(void *data, int client_id);
 static gboolean wfd_client_process_request(GIOChannel *source,
 									GIOCondition condition,
 									gpointer user_data);
 
 
-char *wfd_server_print_cmd(wifi_direct_cmd_e cmd)
+const char *wfd_server_print_cmd(wifi_direct_cmd_e cmd)
 {
 	switch (cmd)
 	{
@@ -681,10 +680,15 @@ int wfd_client_handler_deinit(wfd_manager_s *manager)
 		client->asock = -1;
 		g_source_remove(client->gsource_id);
 		client->gsource_id = 0;
-		free(client);
+		if (client)
+			free(client);
 		temp = g_list_next(temp);
 	}
-	g_list_free(manager->clients);
+
+	if (manager->clients) {
+		g_list_free(manager->clients);
+		manager->clients = NULL;
+	}
 
 	manager->client_count = 0;
 	manager->clients = NULL;
@@ -764,7 +768,8 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 		res = wfd_client_send_event(manager, noti);
 		if (res < 0) {
 			WDS_LOGE("Failed to send Notification to client");
-			free(noti);
+			if (noti)
+				free(noti);
 			__WDS_LOG_FUNC_EXIT__;
 			return FALSE;
 		}
@@ -774,7 +779,8 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 			wfd_manager_local_config_set(manager);
 			wfd_util_start_wifi_direct_popup();
 		}
-		free(noti);
+		if (noti)
+			free(noti);
 
 		goto done;
 		break;
@@ -797,12 +803,14 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 		res = wfd_client_send_event(manager, noti);
 		if (res < 0) {
 			WDS_LOGE("Failed to send Notification to client");
-			free(noti);
+			if (noti)
+				free(noti);
 			__WDS_LOG_FUNC_EXIT__;
 			return FALSE;
 		}
 		WDS_LOGD("Succeeded to send Notification[%d] to client", noti->event);
-		free(noti);
+		if (noti)
+			free(noti);
 		wfd_state_set(manager, WIFI_DIRECT_STATE_DEACTIVATED);
 		wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_DEACTIVATED);
 
@@ -1677,7 +1685,8 @@ send_response:
 		res = _wfd_send_to_client(sock, (char*) extra_rsp, rsp.data_length);
 		if (res < 0) {
 			WDS_LOGE("Failed to send extra response data to client");
-			free(extra_rsp);
+			if (extra_rsp)
+				free(extra_rsp);
 			if (noti)
 				free(noti);
 			_wfd_deregister_client(manager, req.client_id);
@@ -1693,12 +1702,14 @@ send_notification:
 		res = wfd_client_send_event(manager, noti);
 		if (res < 0) {
 			WDS_LOGE("Failed to send Notification to client");
-			free(noti);
+			if (noti)
+				free(noti);
 			__WDS_LOG_FUNC_EXIT__;
 			return FALSE;
 		}
 		WDS_LOGD("Succeeded to send Notification[%d] to client", noti->event);
-		free(noti);
+		if (noti)
+			free(noti);
 	}
 
 done:

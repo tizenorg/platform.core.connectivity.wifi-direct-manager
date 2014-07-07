@@ -60,7 +60,7 @@ typedef struct {
 wfd_group_s *wfd_create_group(void *data, char *ifname, int role, unsigned char *go_dev_addr);
 wfd_group_s *wfd_create_pending_group(void *data, unsigned char * bssid);
 int wfd_group_complete(void *data, char *ifname, int role, unsigned char *go_dev_addr);
-int wfd_destroy_group(void * data, char *ifname);
+int wfd_destroy_group(void *data, const char *ifname);
 int wfd_group_add_member(wfd_group_s *group, unsigned char *addr);
 int wfd_group_remove_member(wfd_group_s *group, unsigned char *addr);
 int wfd_group_get_channel(wfd_group_s *group);
