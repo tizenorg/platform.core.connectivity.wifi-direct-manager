@@ -401,7 +401,7 @@ int wfd_util_get_access_list(GList **access_list)
 		return -1;
 	}
 
-	while ((res = fgets(device_info, MACSTR_LEN + DEV_NAME_LEN + 2, fd)) != NULL)
+	while (fgets(device_info, MACSTR_LEN + DEV_NAME_LEN + 2, fd) != NULL)
 	{
 		if (device_info[0] == '\0') {
 			printf("end of list\n");
