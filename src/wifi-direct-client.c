@@ -1188,13 +1188,11 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 		break;
 	case WIFI_DIRECT_CMD_IS_AUTONOMOUS_GROUP:
 		{
-			wfd_group_s *group = manager->group;
-			if (!group) {
-				WDS_LOGE("Group not exist");
+			if ((rsp.param1 = wfd_group_is_autonomous(manager->group)) < 0) {
+				rsp.param1 = FALSE;
 				rsp.result = WIFI_DIRECT_ERROR_NOT_PERMITTED;
 				break;
 			}
-			rsp.param1 = group->flags & WFD_GROUP_FLAG_AUTONOMOUS;
 		}
 		break;
 	case WIFI_DIRECT_CMD_IS_PERSISTENT_GROUP:
@@ -1383,7 +1381,7 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 		break;
 	case WIFI_DIRECT_CMD_IS_DISCOVERABLE:
 		if (manager->state == WIFI_DIRECT_STATE_DISCOVERING
-				|| wfd_group_is_autonomous(manager->group) == 1)
+				|| wfd_group_is_autonomous(manager->group) == TRUE)
 			rsp.param1 = TRUE;
 		else
 			rsp.param1 = FALSE;

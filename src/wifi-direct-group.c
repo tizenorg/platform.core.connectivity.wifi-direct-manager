@@ -240,7 +240,7 @@ int wfd_group_is_autonomous(wfd_group_s *group)
 	}
 
 	__WDS_LOG_FUNC_EXIT__;
-	return group->flags & WFD_GROUP_FLAG_AUTONOMOUS;;
+	return ((group->flags & WFD_GROUP_FLAG_AUTONOMOUS) == WFD_GROUP_FLAG_AUTONOMOUS);
 }
 
 int wfd_group_get_members()
