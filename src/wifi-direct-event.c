@@ -630,8 +630,9 @@ int wfd_process_event(void *user_data, void *data)
 				noti.event = WIFI_DIRECT_CLI_EVENT_DISCONNECTION_IND;
 			noti.error = WIFI_DIRECT_ERROR_NONE;
 			snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
-			/* If there is no member, GO should be destroyed */
-			if (!group->member_count) {
+			/* If there is no member and GO is not Auto GO,
+			 * then GO should be destroyed */
+			if (!group->member_count && (wfd_group_is_autonomous(group) == FALSE)) {
 				wfd_oem_destroy_group(manager->oem_ops, group->ifname);
 				wfd_destroy_group(manager, group->ifname);
 			}
