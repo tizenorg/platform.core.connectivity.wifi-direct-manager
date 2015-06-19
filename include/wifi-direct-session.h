@@ -55,6 +55,7 @@ typedef struct {
 	int state;
 	int timer;
 	int connecting_120;
+	unsigned int retry_gsrc;
 	int direction;
 	wfd_device_s *peer;
 	int wps_mode;
@@ -75,8 +76,10 @@ int wfd_session_invite(wfd_session_s *session);
 int wfd_session_join(wfd_session_s *session);
 wfd_device_s *wfd_session_get_peer(wfd_session_s *session);
 unsigned char *wfd_session_get_peer_addr(wfd_session_s *session);
+#if 0
 int wfd_session_get_state(wfd_session_s *session);
 int wfd_session_stop(wfd_session_s *session);
+#endif
 int wfd_session_complete(wfd_session_s *session);
 int wfd_session_timer(wfd_session_s *session, int start);
 
