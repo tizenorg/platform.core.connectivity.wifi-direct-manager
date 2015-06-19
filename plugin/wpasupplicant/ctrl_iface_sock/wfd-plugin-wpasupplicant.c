@@ -29,9 +29,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <sys/wait.h>
 #include <unistd.h>
 #include <fcntl.h>
 #define _GNU_SOURCE
@@ -41,9 +41,16 @@
 #include <net/if.h>
 
 #include <glib.h>
+#include <gio/gio.h>
 
 #include "wifi-direct-oem.h"
 #include "wfd-plugin-wpasupplicant.h"
+
+#define NETCONFIG_SERVICE				"net.netconfig"
+#define NETCONFIG_WIFI_INTERFACE		"net.netconfig.wifi"
+#define NETCONFIG_WIFI_PATH				"/net/netconfig/wifi"
+
+#define NETCONFIG_DBUS_REPLY_TIMEOUT	(10 * 1000)
 
 ws_string_s ws_event_strs[] = {
 	// discovery
@@ -60,6 +67,7 @@ ws_string_s ws_event_strs[] = {
 
 	// connection
 	{"P2P-GO-NEG-REQUEST", WS_EVENT_GO_NEG_REQUEST},
+	{"P2P: Received GO Negotiation Request from", WS_EVENT_GO_NEG_REQUEST},
 	{"P2P-GO-NEG-FAILURE", WS_EVENT_GO_NEG_FAILURE},
 	{"P2P-GO-NEG-SUCCESS", WS_EVENT_GO_NEG_SUCCESS},
 	{"WPS-FAIL", WS_EVENT_WPS_FAIL},
@@ -82,10 +90,13 @@ ws_string_s ws_event_strs[] = {
 	{"P2P-GROUP-STARTED", WS_EVENT_GROUP_STARTED},
 	{"P2P-GROUP-REMOVED", WS_EVENT_GROUP_REMOVED},
 
-	//service
+#ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
 	{"P2P-SERV-DISC-RESP", WS_EVENT_SERV_DISC_RESP},
+#endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
 
 	{"CTRL-EVENT-TERMINATING", WS_EVENT_TERMINATING},
+
+	{"", WS_EVENT_LIMIT},
 	};
 
 ws_string_s ws_dev_info_strs[] = {
@@ -96,7 +107,9 @@ ws_string_s ws_dev_info_strs[] = {
 	{"dev_capab", WS_DEV_INFO_DEV_CAP},
 	{"group_capab", WS_DEV_INFO_GROUP_CAP},
 	{"p2p_go_addr", WS_DEV_INFO_P2P_GO_ADDR},
-	{"wfd_subelems", WS_DEV_INFO_WFD_SUBELEMS},
+#ifdef TIZEN_FEATURE_WIFI_DISPLAY
+	{"wfd_dev_info", WS_DEV_INFO_WFD_DEV_INFO},
+#endif /* TIZEN_FEATURE_WIFI_DISPLAY */
 	{"", WS_DEV_INFO_LIMIT},
 	};
 
@@ -143,7 +156,6 @@ ws_string_s ws_peer_info_strs[] = {
 	{"config_methods", WS_PEER_INFO_CONFIG_METHODS},
 	{"dev_capab", WS_PEER_INFO_DEV_CAPAB},
 	{"group_capab", WS_PEER_INFO_GROUP_CAPAB},
-	{"is_wfd_device", WS_PEER_INFO_IS_WFD_DEVICE},
 	{"go_neg_req_sent", WS_PEER_INFO_GO_NEG_REQ_SENT},
 	{"go_state", WS_PEER_INFO_GO_STATE},
 	{"dialog_token", WS_PEER_INFO_DIALOG_TOKEN},
@@ -155,7 +167,23 @@ ws_string_s ws_peer_info_strs[] = {
 	{"status", WS_PEER_INFO_STATUS},
 	{"wait_count", WS_PEER_INFO_WAIT_COUNT},
 	{"invitation_reqs", WS_PEER_INFO_INVITATION_REQS},
+#ifdef TIZEN_FEATURE_WIFI_DISPLAY
 	{"wfd_subelems", WS_PEER_INFO_WFD_SUBELEMS},
+#endif /* TIZEN_FEATURE_WIFI_DISPLAY */
+	};
+
+ws_string_s ws_conf_attr_strs[] = {
+	{"device_name", WFD_OEM_CONFIG_ATTR_STR_DEVICE_NAME},
+	{"p2p_ssid_postfix", WFD_OEM_CONFIG_ATTR_STR_SSID_POSTFIX},
+	{"country", WFD_OEM_CONFIG_ATTR_STR_COUNTRY},
+	{"p2p_go_intent", WFD_OEM_CONFIG_ATTR_NUM_GO_INTENT},
+	{"p2p_listen_channel", WFD_OEM_CONFIG_ATTR_NUM_LISTEN_FREQ},
+	{"p2p_oper_channel", WFD_OEM_CONFIG_ATTR_NUM_OPER_FREQ},
+	{"p2p_pref_chan", WFD_OEM_CONFIG_ATTR_NUM_PREF_FREQ},
+	{"persistent_reconnect", WFD_OEM_CONFIG_ATTR_NUM_PERSIST_RECONN},
+	{"wifi_display", WFD_OEM_CONFIG_ATTR_NUM_WIFI_DISPLAY},
+	{"p2p_disabled", WFD_OEM_CONFIG_ATTR_NUM_P2P_DISABLED},
+	{"max_num_sta", WFD_OEM_CONFIG_ATTR_NUM_MAX_STA},
 	};
 
 static wfd_oem_ops_s supplicant_ops = {
@@ -197,21 +225,35 @@ static wfd_oem_ops_s supplicant_ops = {
 	.set_dev_type = ws_set_dev_type,
 	.get_go_intent = ws_get_go_intent,
 	.set_go_intent = ws_set_go_intent,
+	.set_country = ws_set_country,
 	.get_persistent_groups = ws_get_persistent_groups,
 	.remove_persistent_group = ws_remove_persistent_group,
 	.set_persistent_reconnect = ws_set_persistent_reconnect,
 
-	.service_add = ws_service_add,
-	.service_del = ws_service_del,
-	.serv_disc_req = ws_serv_disc_req,
-	.serv_disc_cancel = ws_serv_disc_cancel,
+#ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
+	.start_service_discovery = ws_start_service_discovery,
+	.cancel_service_discovery = ws_cancel_service_discovery,
 
-	.init_wifi_display = ws_init_wifi_display,
-	.deinit_wifi_display= ws_deinit_wifi_display,
+	.serv_add = ws_serv_add,
+	.serv_del = ws_serv_del,
+#endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
+
+#ifdef TIZEN_FEATURE_WIFI_DISPLAY
+	.miracast_init = ws_miracast_init,
+	.set_display = ws_set_display,
+#endif /* TIZEN_FEATURE_WIFI_DISPLAY */
+
+	.refresh = ws_refresh,
+
 	};
 
 static ws_plugin_data_s *g_pd;
-static unsigned char null_mac[OEM_MACADDR_LEN];
+static unsigned char g_pd_out[OEM_MACADDR_LEN];
+static unsigned char null_mac[OEM_MACADDR_LEN] = {0, 0, 0, 0, 0, 0};
+
+#ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
+static GList *service_list;
+#endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
 
 static gboolean ws_event_handler(GIOChannel *source,
 							   GIOCondition condition,
@@ -228,6 +270,83 @@ int wfd_plugin_load(wfd_oem_ops_s **ops)
 
 	return 0;
 }
+
+#ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
+static int _change_str_order(char *src, int length, int unit, char *dest)
+{
+	int i = 0;
+
+	if (!src || length < 0 || length < unit || !dest) {
+		WDP_LOGE("Invalid parameter");
+		return -1;
+	}
+
+	for (i=0; i<length/unit; i++)
+		memcpy(dest + length - (i+1)*unit, src + i*unit, unit);
+
+	return 0;
+}
+
+
+static int _ws_hex_to_num(char *src, int len)
+{
+	char *temp = NULL;
+	int num = 0;
+
+	if (!src || len < 0) {
+		WDP_LOGE("Invalid parameter");
+		return -1;
+	}
+
+	temp = (char*) calloc(1, len+1);
+	if (!temp) {
+		WDP_LOGE("Failed to allocate memory");
+		return -1;
+	}
+
+	memcpy(temp, src, len);
+	num = strtoul(temp, NULL, 16);
+	free(temp);
+
+	return num;
+}
+
+static int _ws_hex_to_txt(char *src, int length, char *dest)
+{
+	// TODO: check it is good to change dest parameter as double pointer.
+	// It could be better to allocate memory for dest parameter here.
+	char *temp = NULL;
+	char *ptr = NULL;
+	int len = 0;
+	int i = 0;
+
+	if (!src || length < 0 || !dest) {
+		WDP_LOGE("Invalid parameter");
+		return -1;
+	}
+
+	// TODO: flush destination memory
+
+	ptr = src;
+	temp = dest;
+
+	if (!length)
+		len = strlen(src);
+	else
+		len = length;
+
+	for (i=0; i<len/2 && *ptr!=0; i++) {
+		temp[i] = (char) _ws_hex_to_num(ptr, 2);
+		if (temp[i] < 0) {
+			WDP_LOGE("Failed to convert hexa string to num");
+			return -1;
+		}
+		ptr += 2;
+	}
+
+	return 0;
+}
+#endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
 
 static int _ws_txt_to_devtype(char *txt, int *pri, int *sec)
 {
@@ -289,7 +408,8 @@ static char *_ws_wps_to_txt(int wps_mode)
 
 static int _ws_freq_to_channel(int freq)
 {
-	if (freq < 2412 || freq > 5825) {
+	if (freq < 2412 || freq > 5825 ||
+		(freq > 2484 && freq < 5180)) {
 		WDP_LOGE("Invalid parameter");
 		return -1;
 	}
@@ -364,13 +484,13 @@ static int _ws_check_socket(int sock)
 	} else {
 
 		if (p_fd.revents & POLLERR) {
-			WDP_LOGF("Error! POLLERR from socket[%d]", sock);
+			WDP_LOGE("Error! POLLERR from socket[%d]", sock);
 			return -1;
 		} else if (p_fd.revents & POLLHUP) {
-			WDP_LOGF("Error! POLLHUP from socket[%d]", sock);
+			WDP_LOGE("Error! POLLHUP from socket[%d]", sock);
 			return -1;
 		} else if (p_fd.revents & POLLNVAL) {
-			WDP_LOGF("Error! POLLNVAL from socket[%d]", sock);
+			WDP_LOGE("Error! POLLNVAL from socket[%d]", sock);
 			return -1;
 		} else if (p_fd.revents & POLLIN) {
 			WDP_LOGD("POLLIN from socket [%d]", sock);
@@ -411,7 +531,6 @@ static int _ws_read_sock(int sock, char *data, int data_len)
 				WDP_LOGE("Failed to read data from socket[%d]. [%s]", sock, strerror(errno));
 				return -1;
 			}
-			WDP_LOGD("===== Read Data =====\n%s", data);
 			data[data_len-1] = '\0';
 			__WDP_LOG_FUNC_EXIT__;
 			return rbytes;
@@ -442,7 +561,7 @@ static int _ws_send_cmd(int sock, char *cmd, char *reply, int reply_len)
 		WDP_LOGE("Invalid parameter");
 		return -1;
 	}
-	WDP_LOGI("Sending command [%s]", cmd);
+	WDP_SECLOGD("Sending command [%s]", cmd);
 
 	res = _ws_check_socket(sock);
 	if (res < 0) {
@@ -558,11 +677,11 @@ static int _create_ctrl_intf(char *ctrl_intf_path, char *supp_path)
 
 	memset(&srv_addr, 0, sizeof(srv_addr));
 	srv_addr.sun_family = AF_UNIX;
-	snprintf(srv_addr.sun_path, sizeof(srv_addr.sun_path), supp_path);
+	snprintf(srv_addr.sun_path, sizeof(srv_addr.sun_path), "%s", supp_path);
 
 	memset(&local_addr, 0, sizeof(local_addr));
 	local_addr.sun_family = AF_UNIX;
-	snprintf(local_addr.sun_path, sizeof(local_addr.sun_path), ctrl_intf_path);
+	snprintf(local_addr.sun_path, sizeof(local_addr.sun_path), "%s", ctrl_intf_path);
 
 	res = bind(sock, (struct sockaddr*) &local_addr, sizeof(local_addr));
 	if (res < 0)
@@ -637,11 +756,6 @@ static int _connect_to_supplicant(char *ifname, ws_sock_data_s **sock_data)
 		return -1;
 	}
 
-	if (sock && sock->ctrl_sock > SOCK_FD_MIN) {
-		WDP_LOGE("Socket already connected [%d]", sock->ctrl_sock);
-		return -1;
-	}
-
 	errno = 0;
 	sock = (ws_sock_data_s*) calloc(1, sizeof(ws_sock_data_s));
 	if (!sock) {
@@ -652,7 +766,11 @@ static int _connect_to_supplicant(char *ifname, ws_sock_data_s **sock_data)
 
 	snprintf(ctrl_path, sizeof(ctrl_path), "/tmp/%s_control", ifname);
 	snprintf(mon_path, sizeof(mon_path), "/tmp/%s_monitor", ifname);
-	snprintf(suppl_path, sizeof(suppl_path), SUPPL_IFACE_PATH "%s", ifname);
+	if (strncmp(ifname, GROUP_IFACE_NAME, 11))
+		snprintf(suppl_path, sizeof(suppl_path), SUPPL_IFACE_PATH "%s", ifname);
+	else
+		snprintf(suppl_path, sizeof(suppl_path), SUPPL_GROUP_IFACE_PATH "%s", ifname);
+
 
 	for(i = 0; i < WS_CONN_RETRY_COUNT; i++) {
 		ctrl_sock = _create_ctrl_intf(ctrl_path, suppl_path);
@@ -702,7 +820,8 @@ static int _connect_to_supplicant(char *ifname, ws_sock_data_s **sock_data)
 	GIOChannel *gio;
 	int gsource = 0;
 	gio = g_io_channel_unix_new(mon_sock);
-	gsource = g_io_add_watch(gio, G_IO_IN | G_IO_ERR | G_IO_HUP, (GIOFunc) ws_event_handler, sock);
+	if (!strstr(ifname, GROUP_IFACE_PREFIX))
+		gsource = g_io_add_watch(gio, G_IO_IN | G_IO_ERR | G_IO_HUP, (GIOFunc) ws_event_handler, sock);
 	g_io_channel_unref(gio);
 
 	sock->gsource = gsource;
@@ -725,7 +844,7 @@ static gboolean _remove_event_source(gpointer data)
 
 	res = g_source_remove(source_id);
 	if (!res) {
-		WDP_LOGE("Failed to remove GSource");
+		WDP_LOGE("Failed to remove GSource(%d)", source_id);
 		return FALSE;
 	}
 	WDP_LOGD("Succeeded to remove GSource");
@@ -790,40 +909,49 @@ static int _disconnect_from_supplicant(char *ifname, ws_sock_data_s *sock_data)
 	return 0;
 }
 
-static int hex2num(const char c)
+#ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
+int _check_service_query_exists(wfd_oem_service_s *service)
 {
-	if (c >= '0' && c <= '9')
-		return c - '0';
-	if (c >= 'a' && c <= 'f')
-		return c - 'a' + 10;
-	if (c >= 'A' && c <= 'F')
-		return c - 'A' + 10;
-	return -1;
+	int count = 0;
+	wfd_oem_service_s *data = NULL;
+
+	for (count = 0; count < g_list_length(service_list); count ++) {
+		data = (wfd_oem_service_s*) g_list_nth_data(service_list, count);
+		if (strncmp(service->query_id, data->query_id, OEM_QUERY_ID_LEN) == 0) {
+			WDP_LOGD("Query already exists");
+			return 1;
+		}
+	}
+	return 0;
 }
 
-static int hex2byte(const char *hex)
+static wfd_oem_service_s* _remove_service_query(char * s_type, char *mac_str, char *query_id)
 {
-	int a, b;
-	a = hex2num(*hex++);
-	if (a < 0)
-		return -1;
-	b = hex2num(*hex++);
-	if (b < 0)
-		return -1;
-	return (a << 4) | b;
-}
+	if (NULL == s_type || NULL == mac_str || NULL == query_id)
+		return NULL;
 
-static int _get_subelem_len(const char* value)
-{
-	int a, b;
-	a = hex2byte(value);
-	b = hex2byte(value + 2);
+	int count = 0;
+	wfd_oem_service_s *data = NULL;
 
-	if( a >= 0 && b >= 0)
-		return ( a << 8) | b;
-	else
-		return -1;
+	for (count = 0; count < g_list_length(service_list); count ++) {
+		data = (wfd_oem_service_s*) g_list_nth_data(service_list, count);
+		if (data && !strncmp(data->service_type, s_type, SERVICE_TYPE_LEN) &&
+				memcmp(data->dev_addr, mac_str, OEM_MACSTR_LEN - 1) == 0) {
+			strncpy(query_id, data->query_id, OEM_QUERY_ID_LEN);
+			break;
+		}
+	}
+	if (strlen(query_id) <= 0) {
+		WDP_LOGD("!! Query ID not found !!");
+		return NULL;
+	}
+
+	WDP_LOGD("query id :[0x%s]",query_id);
+
+	return data;
+
 }
+#endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
 
 static int _extract_word(const char *data, char **value)
 {
@@ -844,6 +972,7 @@ static int _extract_word(const char *data, char **value)
 		*value = (char*) calloc(1, i+1);
 		strncpy(*value, data, i);
 		(*value)[i] = '\0';
+		WDP_LOGV("Extracted word: %s", *value);
 	}
 
 	return i;
@@ -923,56 +1052,123 @@ static int _extract_peer_value_str(const char *data, const char *key, char **val
 	return 0;
 }
 
-static int _ws_parse_subelement(int id, char *data, int len,
-					wfd_oem_display_info_s *display_info)
+#if 0
+static int _check_dev_type(unsigned char *dev_addr, int *pri_dev_type, int *sec_dev_type)
 {
-	switch (id){
-	case WFD_SUBELEM_ID_DEVICE_INFO:
-		WDP_LOGD("WFD_SUBELEM_ID_DEVICE_INFO subelement ID");
-		if(len != 6){
-			WDP_LOGE("Wrong Length");
-		}else {
-			display_info->dev_info[1] = hex2byte(data);
-			display_info->dev_info[0] = hex2byte(data + 2);
-			display_info->ctrl_port = _get_subelem_len(data + 4);
-			display_info->max_tput = _get_subelem_len(data + 8);
-			display_info->type = display_info->dev_info[0] & WFD_DEVICE_TYPE;
-			display_info->availability = display_info->dev_info[0] &
-					WFD_DEVICE_SESSION_AVAILABILITY;
-			display_info->hdcp_support = display_info->dev_info[1] &
-					(WFD_DEVICE_CONTENT_PROTECTION_SUPPORT >> 8);
-		}
-		break;
-	default:
-		WDP_LOGD("MISC or UNKNOWN WFD subelement ID");
-		break;
+	ws_sock_data_s *sock = g_pd->common;
+	char cmd[32] = {0, };
+	char reply[1024] = {0,};
+	char *manufacturer = NULL;
+	char *model_name = NULL;
+	char *model_number = NULL;
+	int res = 0;
+
+	if (!dev_addr || !pri_dev_type || !sec_dev_type) {
+		WDP_LOGE("Invalid parameter");
+		return -1;
 	}
+
+	if (!sock) {
+		WDP_LOGE("Socket is NULL");
+		return -1;
+	}
+
+	snprintf(cmd, sizeof(cmd), WS_CMD_P2P_PEER MACSTR, MAC2STR(dev_addr));
+	res = _ws_send_cmd(sock->ctrl_sock, cmd, reply, sizeof(reply));
+	if (res < 0) {
+			WDP_LOGE("Failed to send command to wpa_supplicant");
+			__WDP_LOG_FUNC_EXIT__;
+			return -1;
+	}
+
+	if (strstr(reply, "FAIL")) {
+		WDP_SECLOGD("Failed to get peer info [" MACSTR "]", MAC2STR(dev_addr));
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+	WDP_SECLOGD("Succeeded to get peer info [" MACSTR "]", MAC2STR(dev_addr));
+
+	res = _extract_peer_value_str(reply, "model_number", &model_number);
+	if (res > 0 && !strncmp(model_number, "EAD-T10", 7)) {
+		*pri_dev_type = 8;
+		*sec_dev_type = 5;
+		free(model_number);
+		WDP_LOGD("peer device type set as Dongle");
+		return 0;
+	}
+	if (model_number)
+		free(model_number);
+
+	_extract_peer_value_str(reply, "manufacturer", &manufacturer);
+	_extract_peer_value_str(reply, "model_name", &model_name);
+	if (!manufacturer || !model_name) {
+		WDP_LOGE("parsing error");
+		if (manufacturer)
+			free(manufacturer);
+		if (model_name)
+			free(model_name);
+		return -1;
+	}
+
+	if (!strncmp(manufacturer, "SAMSUNG_ELECTRONICS", 19) &&
+				!strncmp(model_name, "SAMSUNG_MOBILE", 14)) {
+		*pri_dev_type = 8;
+		*sec_dev_type = 4;
+		WDP_LOGD("peer device type set as Homesync");
+		free(manufacturer);
+		free(model_name);
+		return 0;
+	}
+	if (manufacturer)
+		free(manufacturer);
+	if (model_name)
+		free(model_name);
+
+	return -1;
+}
+#endif
+
+#ifdef TIZEN_FEATURE_WIFI_DISPLAY
+static int _parsing_wfd_info(char *msg, wfd_oem_display_s *display )
+{
+	__WDP_LOG_FUNC_ENTER__;
+
+	char wfd_info_msg[5] = {0, };
+	char ctrl_port_msg[5] = {0, };
+	char max_tput_msg[5] = {0, };
+	int wfd_info = 0;
+	if (!msg || strlen(msg) < 12) {
+		WDP_LOGE("Invalid parameter");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+	/*wfd_info_msg:0013 1c44 000a */
+	WDP_LOGE("Message to parse: %s", msg);
+
+	strncpy(wfd_info_msg, msg, 4);
+	wfd_info = strtoul(wfd_info_msg, NULL, 16);
+
+	if (wfd_info & WS_WFD_INFO_PRIMARY_SINK)
+		display->type |= WS_WFD_INFO_PRIMARY_SINK;
+	if (wfd_info & WS_WFD_INFO_SECONDARY_SINK)
+		display->type |= WS_WFD_INFO_SECONDARY_SINK;
+
+	display->availablity = (wfd_info & WS_WFD_INFO_AVAILABLITY) >> 4;
+	display->hdcp_support = (wfd_info & WS_WFD_INFO_HDCP_SUPPORT) >> 8;
+
+	strncpy(ctrl_port_msg, msg+4, 4);
+	display->port =  strtoul(ctrl_port_msg, NULL, 16);
+	strncpy(max_tput_msg, msg+8, 4);
+	display->max_tput =  strtoul(max_tput_msg, NULL, 16);
+
+	WDP_LOGE("type [%d],availablity [%d],hdcp_support [%d],ctrl_port [%d] max_tput[%d]",
+			display->type,display->availablity,display->hdcp_support,
+			display->port,display->max_tput);
+
+	__WDP_LOG_FUNC_EXIT__;
 	return 0;
 }
-
-static int _parsing_wfd_subelems(char *buf, wfd_oem_display_info_s *display_info)
-{
-	char *pos = buf;
-	char *end = buf + strlen(buf);
-
-	while (pos < end) {
-		int subelem_len;
-		if (pos + 2 >= end) {
-			WDP_LOGE("Invalid WFD subelement");
-			return -1;
-		}
-		subelem_len = _get_subelem_len(pos + 2);
-
-		if (pos + 6 + subelem_len*2 > end) {
-			WDP_LOGE("subelement underflow ");
-			return -1;
-		}
-		if (_ws_parse_subelement(hex2byte(pos), pos + 6, subelem_len, display_info))
-			return -1;
-		pos += (6 + subelem_len*2);
-	}
-	return 0;
-}
+#endif /* TIZEN_FEATURE_WIFI_DISPLAY */
 
 static int _parsing_peer_info(char *msg, wfd_oem_device_s *peer)
 {
@@ -1070,8 +1266,6 @@ static int _parsing_peer_info(char *msg, wfd_oem_device_s *peer)
 			if (group_capab & WS_GROUP_CAP_PERSISTENT_GROUP)
 				peer->group_flags = WFD_OEM_GROUP_FLAG_PERSISTENT_GROUP;
 			break;
-		case WS_PEER_INFO_IS_WFD_DEVICE:
-			break;
 		case WS_PEER_INFO_GO_NEG_REQ_SENT:
 			break;
 		case WS_PEER_INFO_GO_STATE:
@@ -1097,9 +1291,13 @@ static int _parsing_peer_info(char *msg, wfd_oem_device_s *peer)
 			break;
 		case WS_PEER_INFO_INVITATION_REQS:
 			break;
+#ifdef TIZEN_FEATURE_WIFI_DISPLAY
 		case WS_PEER_INFO_WFD_SUBELEMS:
-			res = _parsing_wfd_subelems(infos[i].string, &(peer->wifi_display));
+			res = _parsing_wfd_info(infos[i].string+6,&peer->display);
+			if (res < 0)
+				memset(&peer->display, 0x00, sizeof(wfd_oem_display_s));
 			break;
+#endif /* TIZEN_FEATURE_WIFI_DISPLAY */
 		default:
 			break;
 		}
@@ -1129,14 +1327,17 @@ static wfd_oem_dev_data_s *_convert_msg_to_dev_info(char *msg)
 		WDP_LOGE("Invalid parameter");
 		return NULL;
 	}
-	WDP_LOGD("msg to be converted [%s]", msg);
+	WDP_SECLOGD("msg to be converted [%s]", msg);
 
 	memset(infos, 0x0, (WS_DEV_INFO_LIMIT) * sizeof(ws_string_s));
-	for (i = 0; i < WS_DEV_INFO_LIMIT; i++) {
+	for (i = 0; ws_dev_info_strs[i].index < WS_DEV_INFO_LIMIT; i++) {
 		res = _extract_value_str(msg, ws_dev_info_strs[i].string, &infos[info_cnt].string);
 		if (res > 0) {
 			infos[info_cnt].index = ws_dev_info_strs[i].index;
-			WDP_LOGD("%dth info [%d:%s]", i, infos[info_cnt].index, infos[info_cnt].string);
+			if (infos[info_cnt].index == WS_DEV_INFO_P2P_DEV_ADDR)
+				WDP_SECLOGD("%dth info [%d:%s]", i, infos[info_cnt].index, infos[info_cnt].string);
+			else
+				WDP_LOGD("%dth info [%d:%s]", i, infos[info_cnt].index, infos[info_cnt].string);
 			info_cnt++;
 		}
 	}
@@ -1198,9 +1399,15 @@ static wfd_oem_dev_data_s *_convert_msg_to_dev_info(char *msg)
 			if (res < 0)
 				memset(edata->p2p_go_addr, 0x00, OEM_MACADDR_LEN);
 			break;
-		case WS_DEV_INFO_WFD_SUBELEMS:
-			res = _parsing_wfd_subelems(infos[i].string, &(edata->wifi_display));
+#ifdef TIZEN_FEATURE_WIFI_DISPLAY
+		case WS_DEV_INFO_WFD_DEV_INFO:
+			/* wfd_dev_info=0x00 0006 015d 022a0032 */
+			res = _parsing_wfd_info(infos[i].string+2,&edata->display);
+			if (res < 0)
+				memset(&edata->display, 0x00, sizeof(wfd_oem_display_s));
 			break;
+#endif /* TIZEN_FEATURE_WIFI_DISPLAY */
+
 		default:
 			WDP_LOGE("Unknown parameter [%d:%s]", infos[i].index, infos[i].string);
 			break;
@@ -1220,6 +1427,7 @@ static wfd_oem_conn_data_s *_convert_msg_to_conn_info(char *msg)
 	int info_cnt = 0;
 	ws_string_s infos[WS_CONN_INFO_LIMIT];
 	wfd_oem_conn_data_s *edata = NULL;
+	int dev_pwd_id;
 	int res = 0;
 
 	if (!msg) {
@@ -1229,7 +1437,7 @@ static wfd_oem_conn_data_s *_convert_msg_to_conn_info(char *msg)
 	WDP_LOGD("msg to convert [%s]", msg);
 
 	memset(infos, 0x0, (WS_CONN_INFO_LIMIT) * sizeof(ws_string_s));
-	for (i = 0; i < WS_CONN_INFO_LIMIT; i++) {
+	for (i = 0; ws_conn_info_strs[i].index < WS_CONN_INFO_LIMIT; i++) {
 		res = _extract_value_str(msg, ws_conn_info_strs[i].string, &infos[info_cnt].string);
 		if (res > 0) {
 			infos[info_cnt].index = ws_conn_info_strs[i].index;
@@ -1252,7 +1460,15 @@ static wfd_oem_conn_data_s *_convert_msg_to_conn_info(char *msg)
 	for (i = 0; i < info_cnt; i++) {
 		switch (infos[i].index) {
 		case WS_CONN_INFO_DEV_PWD_ID:
-			edata->dev_pwd_id = atoi(infos[i].string);
+			dev_pwd_id = atoi(infos[i].string);
+			if (dev_pwd_id == WS_DEV_PASSWD_ID_PUSH_BUTTON)
+				edata->wps_mode = WFD_OEM_WPS_MODE_PBC;
+			else if (dev_pwd_id == WS_DEV_PASSWD_ID_REGISTRAR_SPECIFIED)
+				edata->wps_mode = WFD_OEM_WPS_MODE_DISPLAY;
+			else if (dev_pwd_id == WS_DEV_PASSWD_ID_USER_SPECIFIED)
+				edata->wps_mode = WFD_OEM_WPS_MODE_KEYPAD;
+			else
+				edata->wps_mode = WFD_OEM_WPS_MODE_NONE;
 			break;
 		case WS_CONN_INFO_STATUS:
 			edata->status = atoi(infos[i].string);
@@ -1288,7 +1504,7 @@ static wfd_oem_invite_data_s *_convert_msg_to_invite_info(char *msg)
 	WDP_LOGD("msg to convert [%s]", msg);
 
 	memset(infos, 0x0, (WS_INVITE_INFO_LIMIT) * sizeof(ws_string_s));
-	for (i = 0; i < WS_INVITE_INFO_LIMIT; i++) {
+	for (i = 0; ws_invite_info_strs[i].index < WS_INVITE_INFO_LIMIT; i++) {
 		res = _extract_value_str(msg, ws_invite_info_strs[i].string, &infos[info_cnt].string);
 		if (res > 0) {
 			infos[info_cnt].index = ws_invite_info_strs[i].index;
@@ -1354,7 +1570,7 @@ static wfd_oem_group_data_s *_convert_msg_to_group_info(char *msg)
 	WDP_LOGD("msg to convert [%s]", msg);
 
 	memset(infos, 0x0, WS_GROUP_INFO_LIMIT * sizeof(ws_string_s));
-	for (i = 0; i < WS_GROUP_INFO_LIMIT; i++) {
+	for (i = 0; ws_group_info_strs[i].index < WS_GROUP_INFO_LIMIT; i++) {
 		res = _extract_value_str(msg, ws_group_info_strs[i].string, &infos[info_cnt].string);
 		if (res > 0) {
 			infos[info_cnt].index = ws_group_info_strs[i].index;
@@ -1404,6 +1620,131 @@ static wfd_oem_group_data_s *_convert_msg_to_group_info(char *msg)
 	return edata;
 }
 
+#ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
+static int _ws_segment_to_service(char *segment, wfd_oem_new_service_s **service)
+{
+	wfd_oem_new_service_s *serv_tmp = NULL;
+	char *ptr = NULL;
+	char *temp = NULL;
+	int len = 0;
+	int i = 0;
+
+	if (!segment || !service) {
+		WDP_LOGE("Invalid parameter");
+		return -1;
+	}
+
+	ptr = segment;
+	WDP_LOGD("Segment: %s", segment);
+
+	serv_tmp = (wfd_oem_new_service_s*) calloc(1, sizeof(wfd_oem_new_service_s));
+	if (!serv_tmp) {
+		WDP_LOGE("Failed to allocate memory for service");
+		return -1;
+	}
+
+	serv_tmp->protocol = _ws_hex_to_num(ptr, 2);
+	serv_tmp->trans_id = _ws_hex_to_num(ptr+2, 2);
+	serv_tmp->status = _ws_hex_to_num(ptr+4, 2);
+	ptr += 6;
+	WDP_LOGD("Protocol[%d], Transaction ID[%d], Status[%d]", serv_tmp->protocol, serv_tmp->trans_id, serv_tmp->status);
+
+	if (serv_tmp->status != 0) {
+		WDP_LOGE("Service status is not success");
+		free(serv_tmp);
+		return -1;
+	}
+
+	if (serv_tmp->protocol == WFD_OEM_SERVICE_TYPE_BONJOUR) {
+		WDP_LOGD("===== Bonjour service =====");
+		char compr[5] = {0, };
+		char query[256] = {0, };
+		char rdata[256] = {0, };
+		int dns_type = 0;
+
+		while (*ptr != 0 && strncmp(ptr, "c0", 2)) {
+			len = _ws_hex_to_num(ptr, 2);
+			ptr +=2;
+			if (len) {
+				temp = (char*) calloc(1, len+2);
+				temp[0] = '.';
+				for (i=0; i<len; i++) {
+					temp[i+1] = (char) _ws_hex_to_num(ptr, 2);
+					ptr += 2;
+				}
+				strncat(query, temp, len+1);
+				free(temp);
+				temp = NULL;
+			}
+		}
+
+		if (!strncmp(ptr, "c0", 2)) {
+			memcpy(compr, ptr, 4);
+			ptr += 2;
+
+			if (!strncmp(ptr, "27", 2)) {
+				WDP_LOGD("Segment ended");
+				ptr += 2;
+			} else {
+				ptr += 2;
+				dns_type = _ws_hex_to_num(ptr, 4);
+				ptr += 6;
+				if (dns_type == 12) {
+					if (!strncmp(compr, "c011", 4))
+						strncat(query, ".local.", 7);
+					else if (!strncmp(compr, "c00c", 4))
+						strncat(query, "._tcp.local.", 12);
+					else if (!strncmp(compr, "c01c", 4))
+						strncat(query, "._udp.local.", 12);
+				}
+			}
+		}
+		serv_tmp->data.bonjour.query = strdup(query + 1);
+		while (*ptr != 0 && strncmp(ptr, "c0", 2)) {
+			len = _ws_hex_to_num(ptr, 2);
+			ptr += 2;
+			if (len) {
+				temp = (char*) calloc(1, len+2);
+				temp[0] = '.';
+				for (i=0; i<len; i++) {
+					temp[i+1] = (char) _ws_hex_to_num(ptr, 2);
+					ptr += 2;
+				}
+				strncat(rdata, temp, len+1);
+				free(temp);
+				temp = NULL;
+			}
+		}
+		serv_tmp->data.bonjour.rdata = strdup(rdata + 1);
+
+		WDP_LOGD("Query: %s", serv_tmp->data.bonjour.query);
+		WDP_LOGD("RData: %s", serv_tmp->data.bonjour.rdata);
+	} else if (serv_tmp->protocol == WFD_OEM_SERVICE_TYPE_VENDOR) {
+		WDP_LOGD("===== Vendor specific service =====");
+		if (!strncmp(ptr, "0000f00b", 8)) {
+			WDP_LOGD("\tSAMSUNG_BT_ADDR");
+			ptr += 16;
+			serv_tmp->protocol = WFD_OEM_SERVICE_TYPE_BT_ADDR;
+			serv_tmp->data.vendor.data1 = (char*) calloc(1, 9);
+			g_strlcpy(serv_tmp->data.vendor.data1, "0000f00b", 9);
+			serv_tmp->data.vendor.data2 = (char*) calloc(1, 18);
+			_ws_hex_to_txt(ptr, 0, serv_tmp->data.vendor.data2);
+		}
+		WDP_LOGD("Info1: %s", serv_tmp->data.vendor.data1);
+		WDP_LOGD("Info2: %s", serv_tmp->data.vendor.data2);
+	} else {
+		WDP_LOGE("Not supported yet. Only bonjour and samsung vendor service supproted [%d]",
+					serv_tmp->protocol);
+		free(serv_tmp);
+		return -1;
+	}
+
+	*service = serv_tmp;
+
+	return 0;
+}
+#endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
+
 static int _parsing_event_info(char *ifname, char *msg, wfd_oem_event_s *data)
 {
 	__WDP_LOG_FUNC_ENTER__;
@@ -1416,21 +1757,22 @@ static int _parsing_event_info(char *ifname, char *msg, wfd_oem_event_s *data)
 		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
-	WDP_LOGD("Event message [%s]", msg);
+	WDP_SECLOGD("Event message [%s]", msg);
 
 	// parsing event string
-	for(i = 0; i < WS_EVENT_LIMIT; i++) {
+	for(i = 0; ws_event_strs[i].index < WS_EVENT_LIMIT; i++) {
 		if (!strncmp(ws_event_strs[i].string, msg, strlen(ws_event_strs[i].string))) {
 			break;
 		}
 	}
-	data->event_id = i;
-	WDP_LOGD("Event ID [%d]", i);
 
-	if (i == WS_EVENT_LIMIT) {
-		WDP_LOGE("Unknown event [%d]", i);
+	if (i == sizeof(ws_event_strs)) {
+		WDP_LOGE("Unknown event [%d]", WS_EVENT_LIMIT);
+		data->event_id = WS_EVENT_LIMIT;
 		return 1;
 	}
+	data->event_id = ws_event_strs[i].index;
+	WDP_LOGD("Event ID [%d]", data->event_id);
 
 	// parsing event info
 	info_str = msg + strlen(ws_event_strs[i].string) + 1;
@@ -1472,7 +1814,8 @@ static int _parsing_event_info(char *ifname, char *msg, wfd_oem_event_s *data)
 			_ws_txt_to_mac(info_str, data->dev_addr);
 			info_str += OEM_MACSTR_LEN;
 
-			if (data->event_id == WS_EVENT_PROV_DISC_PBC_REQ) {
+			if (data->event_id == WS_EVENT_PROV_DISC_PBC_REQ ||
+				data->event_id == WS_EVENT_PROV_DISC_PBC_RESP) {
 				data->wps_mode = WFD_OEM_WPS_MODE_PBC;
 			} else if (data->event_id == WS_EVENT_PROV_DISC_ENTER_PIN) {
 				data->wps_mode = WFD_OEM_WPS_MODE_KEYPAD;
@@ -1482,6 +1825,8 @@ static int _parsing_event_info(char *ifname, char *msg, wfd_oem_event_s *data)
 				data->wps_pin[OEM_PINSTR_LEN] = '\0';
 				info_str += OEM_PINSTR_LEN +1;
 			}
+
+			WDP_LOGD("info string left [%s]", info_str ? info_str:"NULL");
 
 			data->edata_type = WFD_OEM_EDATA_TYPE_NONE;
 
@@ -1523,12 +1868,23 @@ static int _parsing_event_info(char *ifname, char *msg, wfd_oem_event_s *data)
 			}
 			data->edata_type = WFD_OEM_EDATA_TYPE_CONN;
 			data->edata = (void*) edata;
-
 		}
 		break;
 	case WS_EVENT_PROV_DISC_FAILURE:
-	case WS_EVENT_GO_NEG_FAILURE:
 	case WS_EVENT_WPS_FAIL:		// M_id(msg), error(config_error)
+		break;
+	case WS_EVENT_GO_NEG_FAILURE:
+		{
+			wfd_oem_conn_data_s *edata = NULL;
+			edata = _convert_msg_to_conn_info(info_str);
+			if (!edata) {
+				WDP_LOGE("Failed to convert information string to connection data");
+				data->edata_type = WFD_OEM_EDATA_TYPE_NONE;
+				break;
+			}
+			data->edata_type = WFD_OEM_EDATA_TYPE_CONN;
+			data->edata = (void*) edata;
+		}
 		break;
 	case WS_EVENT_GROUP_FORMATION_FAILURE:	// No incofmation sring
 	case WS_EVENT_GO_NEG_SUCCESS:
@@ -1541,11 +1897,25 @@ static int _parsing_event_info(char *ifname, char *msg, wfd_oem_event_s *data)
 		/* Interface address of peer will come up */
 		break;
 	case WS_EVENT_CONNECTED:	// intf_addr(to)
-	case WS_EVENT_DISCONNECTED:
 		{
 			/* Interface address of connected peer will come up */
 			char *temp_mac = NULL;
 			res = _extract_value_str(info_str, "to", &temp_mac);
+			if (res < 0) {
+				WDP_LOGE("Failed to extract interface address");
+				break;
+			}
+			_ws_txt_to_mac(temp_mac, data->intf_addr);
+			if (temp_mac)
+				free(temp_mac);
+			data->edata_type = WFD_OEM_EDATA_TYPE_NONE;
+		}
+		break;
+	case WS_EVENT_DISCONNECTED:
+		{
+			/* Interface address of disconnected peer will come up */
+			char *temp_mac = NULL;
+			res = _extract_value_str(info_str, "bssid", &temp_mac);
 			if (res < 0) {
 				WDP_LOGE("Failed to extract interface address");
 				break;
@@ -1677,22 +2047,59 @@ static int _parsing_event_info(char *ifname, char *msg, wfd_oem_event_s *data)
 
 		}
 		break;
+#ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
 	case WS_EVENT_SERV_DISC_RESP:
 		{
+			char mac_addr[OEM_MACSTR_LEN] ={0, };
+			char *up_indic = NULL;
+			int len = 0;
+
 			_ws_txt_to_mac(info_str, data->dev_addr);
 			info_str += OEM_MACSTR_LEN;
+			snprintf(mac_addr, OEM_MACSTR_LEN, MACSTR, MAC2STR(data->dev_addr));
 
-			WDP_LOGD("service tlv is %s", info_str);
-
-			if (!strlen(info_str)) {
-				WDP_LOGD("Nothing to parse anymore");
-				data->edata_type = WFD_OEM_EDATA_TYPE_NONE;
-				break;
+			_extract_word(info_str, &up_indic);
+			if (up_indic) {
+				WDP_LOGD("Update indicator: %s", up_indic);
+				info_str += strlen(up_indic) + 1;
+				g_free(up_indic);
 			}
-			data->edata = (void*)strndup(info_str, strlen(info_str));
-			data->edata_type = WFD_OEM_EDATA_TYPE_SERVICE;
+			WDP_LOGD("Info string [%s]", info_str);
+
+			char seglen_str[5] = {0, };
+			char *segment = NULL;
+			char *ptr = info_str;
+			GList *services = NULL;
+			wfd_oem_new_service_s *new_service = NULL;
+			int count = 0;
+
+			while (*ptr != '\0') {
+				_change_str_order(ptr, 4, 2, seglen_str);
+				len = strtoul(seglen_str, NULL, 16);
+				if (len == 0)
+					break;
+				segment = (char*) calloc(1, len*2+1);
+				memcpy(segment, ptr+4, len*2);
+				ptr = ptr + 4 + len*2;
+				res = _ws_segment_to_service(segment, &new_service);
+				if (res < 0) {
+					WDP_LOGE("Failed to convert segment as service instance");
+					free(segment);
+					segment = NULL;
+					continue;
+				}
+				services = g_list_append(services, new_service);
+				count++;
+				free(segment);
+				segment = NULL;
+			}
+			data->edata_type = WFD_OEM_EDATA_TYPE_NEW_SERVICE;
+			data->dev_role = count;
+			data->edata = (void*) services;
 		}
 		break;
+#endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
+
 	default:
 		WDP_LOGE("Unknown event");
 		break;
@@ -1708,8 +2115,9 @@ static gboolean ws_event_handler(GIOChannel *source,
 {
 	__WDP_LOG_FUNC_ENTER__;
 	ws_sock_data_s * sd = (ws_sock_data_s*) data;
-	char msg[2048] = {0, };
-	char *param;
+	char msg[1024] = {0, };
+	char *pos = NULL;
+	char *param = NULL;
 	int event_id = -1;
 	wfd_oem_event_s *event = NULL;
 	int res = 0;
@@ -1733,7 +2141,13 @@ static gboolean ws_event_handler(GIOChannel *source,
 		return FALSE;
 	}
 
-	param = &msg[3];
+	if (!strncmp(msg, "IFNAME", 6)) {
+		pos = strchr(msg, ' ');
+		param = pos+4;
+	} else {
+		param = &msg[3];
+	}
+
 	res = _parsing_event_info(sd->ifname, param, event);
 	if (res < 0) {
 		WDP_LOGE("Failed to parse event string");
@@ -1745,6 +2159,7 @@ static gboolean ws_event_handler(GIOChannel *source,
 		// This means event->event_data is NULL
 	}
 
+	/* Converting WS event to OEM event */
 	switch (event->event_id) {
 	case WS_EVENT_DEVICE_FOUND:
 		event_id = WFD_OEM_EVENT_PEER_FOUND;
@@ -1759,25 +2174,41 @@ static gboolean ws_event_handler(GIOChannel *source,
 		event_id = WFD_OEM_EVENT_PROV_DISC_REQ;
 		break;
 	case WS_EVENT_PROV_DISC_PBC_RESP:
-		event_id = WFD_OEM_EVENT_PROV_DISC_RESP;
+		if (!memcmp(event->dev_addr, g_pd_out, OEM_MACADDR_LEN)) {
+			event_id = WFD_OEM_EVENT_PROV_DISC_RESP;
+			memset(g_pd_out, 0x0, OEM_MACADDR_LEN);
+		} else {
+			WDP_LOGE("Invalid peer mac address[" MACSTR "]", MAC2STR(event->dev_addr));
+			goto done;
+		}
 		break;
 	case WS_EVENT_PROV_DISC_SHOW_PIN:
 	case WS_EVENT_PROV_DISC_ENTER_PIN:
-		if (!memcmp(g_pd->pd_addr, event->dev_addr, OEM_MACADDR_LEN))
+		if (!memcmp(event->dev_addr, g_pd_out, OEM_MACADDR_LEN)) {
 			event_id = WFD_OEM_EVENT_PROV_DISC_RESP;
-		else if (!memcmp(g_pd->pd_addr, null_mac, OEM_MACADDR_LEN))
+			memset(g_pd_out, 0x0, OEM_MACADDR_LEN);
+			WDP_LOGD("Peer mac address verified");
+		} else if (!memcmp(g_pd_out, null_mac, OEM_MACADDR_LEN)) {
 			event_id = WFD_OEM_EVENT_PROV_DISC_REQ;
-		else
+			WDP_LOGD("	PD request from peer[" MACSTR "]", MAC2STR(event->dev_addr));
+		} else {
+			WDP_LOGE("Invalid peer mac address[" MACSTR "]", MAC2STR(event->dev_addr));
 			goto done;
-		memset(g_pd->pd_addr, 0x0, OEM_MACADDR_LEN);
+		}
+
+		break;
+	case WS_EVENT_PROV_DISC_FAILURE:
+		event_id = WFD_OEM_EVENT_PROV_DISC_FAIL;
+		if (!memcmp(event->dev_addr, g_pd_out, OEM_MACADDR_LEN)) {
+			memset(g_pd_out, 0x0, OEM_MACADDR_LEN);
+			WDP_LOGD("Peer mac address verified, but PD failed");
+		}
 		break;
 	case WS_EVENT_GO_NEG_REQUEST:
 		event_id = WFD_OEM_EVENT_GO_NEG_REQ;
 		break;
 	case WS_EVENT_GO_NEG_FAILURE:
 		event_id = WFD_OEM_EVENT_GO_NEG_FAIL;
-		_ws_cancel();
-		_ws_flush();
 		break;
 	case WS_EVENT_GO_NEG_SUCCESS:
 		event_id = WFD_OEM_EVENT_GO_NEG_DONE;
@@ -1793,11 +2224,9 @@ static gboolean ws_event_handler(GIOChannel *source,
 		// TODO: connect to supplicant via group interface
 		break;
 	case WS_EVENT_CONNECTED:
-		{
-			if (!memcmp(event->intf_addr, null_mac, OEM_MACADDR_LEN))
-				goto done;
-			event_id = WFD_OEM_EVENT_CONNECTED;
-		}
+		if (!memcmp(event->intf_addr, null_mac, OEM_MACADDR_LEN))
+			goto done;
+		event_id = WFD_OEM_EVENT_CONNECTED;
 		break;
 	case WS_EVENT_STA_CONNECTED:
 		event_id = WFD_OEM_EVENT_STA_CONNECTED;
@@ -1807,7 +2236,7 @@ static gboolean ws_event_handler(GIOChannel *source,
 		res = _connect_to_supplicant(GROUP_IFACE_NAME, &g_pd->group);
 		if (res < 0) {
 			WDP_LOGE("Failed to connect to group interface of supplicant");
-			goto done;
+			// goto done;
 		}
 		break;
 	case WS_EVENT_GROUP_REMOVED:
@@ -1816,7 +2245,7 @@ static gboolean ws_event_handler(GIOChannel *source,
 			res = _disconnect_from_supplicant(GROUP_IFACE_NAME, g_pd->group);
 			if (res < 0) {
 				WDP_LOGE("Failed to disconnect from group interface of supplicant");
-				goto done;
+				// goto done;
 			}
 			g_pd->group = NULL;
 		}
@@ -1828,17 +2257,21 @@ static gboolean ws_event_handler(GIOChannel *source,
 		event_id = WFD_OEM_EVENT_INVITATION_RES;
 		break;
 	case WS_EVENT_DISCONNECTED:
+		if (!memcmp(event->intf_addr, null_mac, OEM_MACADDR_LEN))
+			goto done;
 		event_id = WFD_OEM_EVENT_DISCONNECTED;
 		break;
 	case WS_EVENT_STA_DISCONNECTED:
 		event_id = WFD_OEM_EVENT_STA_DISCONNECTED;
 		break;
+	case WS_EVENT_TERMINATING:
+		event_id = WFD_OEM_EVENT_DEACTIVATED;
+		break;
+#ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
 	case WS_EVENT_SERV_DISC_RESP:
 		event_id = WFD_OEM_EVENT_SERV_DISC_RESP;
 		break;
-	case WS_EVENT_TERMINATING:
-		event_id = WFD_OEM_EVENT_TERMINATING;
-		break;
+#endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
 	default:
 		WDP_LOGD("Unknown event [%d]", event->event_id);
 		goto done;
@@ -1848,8 +2281,14 @@ static gboolean ws_event_handler(GIOChannel *source,
 	g_pd->callback(g_pd->user_data, event);
 
 done:
-	if (event->edata)
+	if (event->edata) {
+#ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
+		if (event->edata_type == WFD_OEM_EDATA_TYPE_NEW_SERVICE)
+			g_list_free((GList*) event->edata);
+		else
+#endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
 		free(event->edata);
+	}
 	free(event);
 
 	__WDP_LOG_FUNC_EXIT__;
@@ -1867,11 +2306,50 @@ static int _ws_reset_plugin(ws_plugin_data_s *pd)
 	}
 
 	if (pd->activated)
-		ws_deactivate();
+		ws_deactivate(g_pd->concurrent);
 
 	free(pd);
 
 	__WDP_LOG_FUNC_EXIT__;
+	return 0;
+}
+
+
+static int __ws_check_net_interface(char* if_name)
+{
+	struct ifreq ifr;
+	int fd;
+
+	if (if_name == NULL) {
+		WDP_LOGE("Invalid param");
+		return -1;
+	}
+
+	fd = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+	if (fd < 0) {
+		WDP_LOGE("socket create error: %d", fd);
+		return -2;
+	}
+
+	memset(&ifr, 0, sizeof(ifr));
+	strncpy(ifr.ifr_name, if_name, sizeof(ifr.ifr_name));
+	ifr.ifr_name[IFNAMSIZ-1] = '\0';
+
+	if (ioctl(fd, SIOCGIFFLAGS, &ifr) < 0) {
+		close(fd);
+		WDP_LOGE("ioctl error: SIOCGIFFLAGS: %s", strerror(errno));  // interface is not found..
+		return -3;
+	}
+
+	close(fd);
+
+	if (ifr.ifr_flags & IFF_UP) {
+		WDP_LOGD("%s interface is up", if_name);
+		return 1;
+	} else if (!(ifr.ifr_flags & IFF_UP)) {
+		WDP_LOGD("%s interface is down", if_name);
+		return 0;
+	}
 	return 0;
 }
 
@@ -1910,135 +2388,499 @@ int ws_deinit()
 	return 0;
 }
 
-int ws_activate()
+static int __ws_p2p_firmware_start(void)
+{
+	GError *error = NULL;
+	GVariant *reply = NULL;
+	GVariant *param = NULL;
+	GDBusConnection *connection = NULL;
+	const char *device = "p2p";
+
+	connection = g_bus_get_sync(G_BUS_TYPE_SYSTEM, NULL, &error);
+	if (connection == NULL) {
+		if(error != NULL){
+			WDP_LOGE("Error! Failed to connect to the D-BUS daemon: [%s]",
+					error->message);
+			g_error_free(error);
+		}
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+	param = g_variant_new("(s)", device);
+
+	reply = g_dbus_connection_call_sync (connection,
+			NETCONFIG_SERVICE, /* bus name */
+			NETCONFIG_WIFI_PATH, /* object path */
+			NETCONFIG_WIFI_INTERFACE ".Firmware", /* interface name */
+			"Start", /* method name */
+			param, /* GVariant *params */
+			NULL, /* reply_type */
+			G_DBUS_CALL_FLAGS_NONE, /* flags */
+			NETCONFIG_DBUS_REPLY_TIMEOUT , /* timeout */
+			NULL, /* cancellable */
+			&error); /* error */
+
+	if(error != NULL){
+		if(strstr(error->message, ".AlreadyExists") != NULL) {
+			WDP_LOGD("p2p already enabled");
+			g_error_free(error);
+
+		} else {
+			WDP_LOGE("Error! Failed to call net-config method: [%s]",
+					error->message);
+			g_error_free(error);
+			if(reply)
+				 g_variant_unref(reply);
+			g_object_unref(connection);
+			__WDP_LOG_FUNC_EXIT__;
+			return -1;
+		}
+	}
+	if(reply)
+		 g_variant_unref(reply);
+	g_object_unref(connection);
+	return 0;
+}
+
+static int __ws_p2p_firmware_stop(void)
+{
+	GError *error = NULL;
+	GVariant *reply = NULL;
+	GVariant *param = NULL;
+	GDBusConnection *connection = NULL;
+	const char *device = "p2p";
+
+	connection = g_bus_get_sync(G_BUS_TYPE_SYSTEM, NULL, &error);
+	if (connection == NULL) {
+		if(error != NULL){
+			WDP_LOGE("Error! Failed to connect to the D-BUS daemon: [%s]",
+					error->message);
+			g_error_free(error);
+		}
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+	param = g_variant_new("(s)", device);
+
+	reply = g_dbus_connection_call_sync (connection,
+			NETCONFIG_SERVICE, /* bus name */
+			NETCONFIG_WIFI_PATH, /* object path */
+			NETCONFIG_WIFI_INTERFACE ".Firmware", /* interface name */
+			"Stop", /* method name */
+			param, /* GVariant *params */
+			NULL, /* reply_type */
+			G_DBUS_CALL_FLAGS_NONE, /* flags */
+			NETCONFIG_DBUS_REPLY_TIMEOUT , /* timeout */
+			NULL, /* cancellable */
+			&error); /* error */
+
+	if(error != NULL){
+		if(strstr(error->message, ".AlreadyExists") != NULL) {
+			WDP_LOGD("p2p already disabled");
+			g_error_free(error);
+
+		} else {
+			WDP_LOGE("Error! Failed to call net-config method: [%s]",
+					error->message);
+			g_error_free(error);
+			if(reply)
+				 g_variant_unref(reply);
+			g_object_unref(connection);
+			__WDP_LOG_FUNC_EXIT__;
+			return -1;
+		}
+	}
+	if(reply)
+		 g_variant_unref(reply);
+	g_object_unref(connection);
+	return 0;
+}
+
+static int __ws_p2p_supplicant_start(void)
+{
+	gboolean rv = FALSE;
+	const char *path = "/usr/sbin/p2p_supp.sh";
+	char *const args[] = { "/usr/sbin/p2p_supp.sh", "start", NULL };
+	char *const envs[] = { NULL };
+
+	rv = _ws_util_execute_file(path, args, envs);
+
+	if (rv != TRUE) {
+		WDP_LOGE("Failed to start p2p_supp.sh");
+		return -1;
+	}
+
+	WDP_LOGI("Successfully started p2p_supp.sh");
+	return 0;
+}
+
+static int __ws_p2p_supplicant_stop(void)
+{
+	gboolean rv = FALSE;
+	const char *path = "/usr/sbin/p2p_supp.sh";
+	char *const args[] = { "/usr/sbin/p2p_supp.sh", "stop", NULL };
+	char *const envs[] = { NULL };
+
+	rv = _ws_util_execute_file(path, args, envs);
+
+	if (rv != TRUE) {
+		WDP_LOGE("Failed to stop p2p_supp.sh");
+		return -1;
+	}
+
+	WDP_LOGI("Successfully stopped p2p_supp.sh");
+	return 0;
+}
+
+#if 0
+static int __ws_p2p_on(void)
+{
+	DBusError error;
+	DBusMessage *reply = NULL;
+	DBusMessage *message = NULL;
+	DBusConnection *connection = NULL;
+
+	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
+	if (connection == NULL) {
+		WDP_LOGE("Failed to get system bus");
+		return -EIO;
+	}
+
+	message = dbus_message_new_method_call(NETCONFIG_SERVICE,
+			NETCONFIG_WIFI_PATH, NETCONFIG_WIFI_INTERFACE, "LoadP2pDriver");
+	if (message == NULL) {
+		WDP_LOGE("Failed DBus method call");
+		dbus_connection_unref(connection);
+		return -EIO;
+	}
+
+	dbus_error_init(&error);
+
+	reply = dbus_connection_send_with_reply_and_block(connection, message,
+			NETCONFIG_DBUS_REPLY_TIMEOUT, &error);
+	if (dbus_error_is_set(&error) == TRUE) {
+		if (NULL != strstr(error.message, ".AlreadyExists")) {
+			// p2p already enabled
+		} else {
+			WDP_LOGE("dbus_connection_send_with_reply_and_block() failed. "
+					"DBus error [%s: %s]", error.name, error.message);
+
+			dbus_error_free(&error);
+		}
+
+		dbus_error_free(&error);
+	}
+
+	if (reply != NULL)
+		dbus_message_unref(reply);
+
+	dbus_message_unref(message);
+	dbus_connection_unref(connection);
+
+	return 0;
+}
+
+static int __ws_p2p_off(void)
+{
+	DBusError error;
+	DBusMessage *reply = NULL;
+	DBusMessage *message = NULL;
+	DBusConnection *connection = NULL;
+
+	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
+	if (connection == NULL) {
+		WDP_LOGE("Failed to get system bus");
+		return -EIO;
+	}
+
+	message = dbus_message_new_method_call(NETCONFIG_SERVICE,
+			NETCONFIG_WIFI_PATH, NETCONFIG_WIFI_INTERFACE, "RemoveP2pDriver");
+	if (message == NULL) {
+		WDP_LOGE("Failed DBus method call");
+		dbus_connection_unref(connection);
+		return -EIO;
+	}
+
+	dbus_error_init(&error);
+
+	reply = dbus_connection_send_with_reply_and_block(connection, message,
+			NETCONFIG_DBUS_REPLY_TIMEOUT, &error);
+	if (dbus_error_is_set(&error) == TRUE) {
+		if (NULL != strstr(error.message, ".AlreadyExists")) {
+			// p2p already disabled
+		} else {
+			WDP_LOGE("dbus_connection_send_with_reply_and_block() failed. "
+					"DBus error [%s: %s]", error.name, error.message);
+
+			dbus_error_free(&error);
+		}
+
+		dbus_error_free(&error);
+	}
+
+	if (reply != NULL)
+		dbus_message_unref(reply);
+
+	dbus_message_unref(message);
+	dbus_connection_unref(connection);
+
+	return 0;
+}
+#endif
+static int _ws_update_local_dev_addr_from_file()
 {
 	__WDP_LOG_FUNC_ENTER__;
-	int global_sock = -1;
+	FILE *fd = NULL;
+	char local_mac[OEM_MACSTR_LEN] = {0, };
+	char *ptr = NULL;
 	int res = 0;
-	char cmd[128] = {0, };
-	char reply[1024] = {0, };
 
-	/* load wlan driver and wpa_supplicant */
-	system("/usr/bin/wlan.sh p2p");
-	system("/usr/sbin/p2p_supp.sh start");
-
-	global_sock = _create_ctrl_intf(GLOBAL_INTF_PATH, SUPPL_GLOBAL_INTF_PATH);
-	if (global_sock < SOCK_FD_MIN) {
-		WDP_LOGE("Failed to create global socket");
+	errno = 0;
+	fd = fopen(DEFAULT_MAC_FILE_PATH, "r");
+	if (!fd) {
+		WDP_LOGE("Failed to open MAC info file (%s)", strerror(errno));
 		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
-	WDP_LOGD("Succeeded to create global socket. [%d]", global_sock);
 
-	res = _ws_send_cmd(global_sock, WS_CMD_INTERFACES, reply, sizeof(reply));
+	errno = 0;
+	ptr = fgets(local_mac, OEM_MACSTR_LEN, fd);
+	if (!ptr) {
+		WDP_LOGE("Failed to read file or no data read(%s)", strerror(errno));
+		fclose(fd);
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+	WDP_SECLOGD("Local MAC address [%s]", ptr);
+
+	res = _ws_txt_to_mac(local_mac, g_pd->local_dev_addr);
+	if (res < 0) {
+		WDP_LOGE("Failed to convert text to MAC address");
+		fclose(fd);
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	g_pd->local_dev_addr[0] |= 0x2;
+	WDP_LOGD("Local Device MAC address [" MACSECSTR "]", MAC2SECSTR(g_pd->local_dev_addr));
+
+	fclose(fd);
+	__WDP_LOG_FUNC_EXIT__;
+	return 0;
+}
+
+static int _ws_update_local_dev_addr()
+{
+	int res = 0;
+	char reply[96] = {0, };
+	char *mac_str = NULL;
+
+	res = _ws_send_cmd(g_pd->common->ctrl_sock, "status", reply, sizeof(reply));
 	if (res < 0) {
 		WDP_LOGE("Failed to send command to wpa_supplicant");
-		__WDP_LOG_FUNC_EXIT__;
+		goto failed;
+	}
+
+	res = _extract_value_str(reply, "p2p_device_address", &mac_str);
+	if (res < 0) {
+		WDP_LOGE("Failed to parsing p2p_device_address");
+		goto failed;
+	}
+
+	res = _ws_txt_to_mac(mac_str, g_pd->local_dev_addr);
+	if (res < 0) {
+		WDP_LOGE("Failed to convert MAC string to address");
+		free(mac_str);
+		goto failed;
+	}
+
+	free(mac_str);
+
+	return 0;
+
+failed:
+	res = _ws_update_local_dev_addr_from_file();
+	if (res < 0) {
+		WDP_LOGE("Failed to update local device address from file");
 		return -1;
 	}
 
-	if (!strstr(reply, COMMON_IFACE_NAME)){
-		memset(cmd, 0x0, 128);
-		memset(reply, 0x0, 1024);
+	return 1;
+}
 
-		snprintf(cmd, sizeof(cmd), WS_CMD_INTERFACE_ADD "%s%s",
-				COMMON_IFACE_NAME, "\t/usr/etc/wifi-direct/p2p_supp.conf\tnl80211\t/var/run/wpa_supplicant");
-		res = _ws_send_cmd(global_sock, cmd, reply, sizeof(reply));
+int ws_activate(int concurrent)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	int res = 0;
+	int retry_count = 0;
+
+	while (retry_count < 10) {
+		/* load wlan driver */
+		res = __ws_p2p_firmware_start();
 		if (res < 0) {
-			WDP_LOGE("Failed to send command to wpa_supplicant");
-			close(global_sock);
-			system("/usr/sbin/p2p_supp.sh stop");
-			system("/usr/bin/wlan.sh stop");
-			__WDP_LOG_FUNC_EXIT__;
+			WDP_LOGE("Failed to load driver [ret=%d]", res);
 			return -1;
 		}
+		WDP_LOGI("P2P firmware started with error %d", res);
 
-		if (strstr(reply, "FAIL")) {
-			WDP_LOGE("Failed to create %s interface", COMMON_IFACE_NAME);
-			close(global_sock);
-			system("/usr/sbin/p2p_supp.sh stop");
-			system("/usr/bin/wlan.sh stop");
-			__WDP_LOG_FUNC_EXIT__;
-			return -1;
+		if (__ws_check_net_interface(COMMON_IFACE_NAME) < 0) {
+			usleep(150000); // wait for 150ms
+			retry_count++;
+			WDP_LOGE("interface is not up: retry, %d", retry_count);
+		} else {
+			break;
 		}
-		WDP_LOGD("Succeeded to create %s interface", COMMON_IFACE_NAME);
 	}
-	WDP_LOGD("%s interface exist", COMMON_IFACE_NAME);
+
+	if (retry_count >= 10) {
+		WDP_LOGE("Driver loading is failed", res);
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+	if (retry_count > 0) {
+		// Give driver marginal time to config net
+		WDP_LOGE("Driver loading is done. Wait marginal time for driver");
+		sleep(1); // 1s
+	}
+
+	g_pd->concurrent = concurrent;
+
+
+	/* load wpa_supplicant */
+	res = __ws_p2p_supplicant_start();
+	if (res == -1) {
+		WDP_LOGE("Failed to start p2p_supplicant [%d: %s]", res, strerror(errno));
+		res = __ws_p2p_firmware_stop();
+		WDP_LOGI("P2P firmware stopped with error %d", res);
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
 
 	res = _connect_to_supplicant(COMMON_IFACE_NAME, &g_pd->common);
 	if (res < 0) {
-		close(global_sock);
-		system("/usr/sbin/p2p_supp.sh stop");
-		system("/usr/bin/wlan.sh stop");
+		res = __ws_p2p_supplicant_stop();
+		WDP_LOGI("[/usr/sbin/p2p_supp.sh stop] returns %d", res);
+		res = __ws_p2p_firmware_stop();
+		WDP_LOGI("P2P firmware stopped with error %d", res);
 		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
-	g_pd->global_sock = global_sock;
 	g_pd->activated = TRUE;
+
+	_ws_update_local_dev_addr();
 
 	__WDP_LOG_FUNC_EXIT__;
 	return 0;
 }
 
-int ws_deactivate()
+int ws_deactivate(int concurrent)
 {
 	__WDP_LOG_FUNC_ENTER__;
 	char cmd[32] = {0, };
 	char reply[1024]={0,};
 	int res = 0;
-	char ifname[OEM_IFACE_NAME_LEN];
 
 	if (!g_pd->activated) {
 		WDP_LOGE("Wi-Fi Direct is not activated");
 		return -1;
 	}
 
+	ws_stop_scan();
+
+	g_pd->concurrent = concurrent;
+
 	if (g_pd->group) {
 		_disconnect_from_supplicant(GROUP_IFACE_NAME, g_pd->group);
 		g_pd->group = NULL;
 	}
 
-	res = _disconnect_from_supplicant("wlan0", g_pd->common);
-	if (res < 0)
-		WDP_LOGE("Failed to disconnect common interface(%s) from supplicant. ", ifname);
-	g_pd->common = NULL;
-
 	// terminate wpasupplicant
 	snprintf(cmd, sizeof(cmd), WS_CMD_TERMINATE);
-	res = _ws_send_cmd(g_pd->global_sock, cmd, reply, sizeof(reply));
+	res = _ws_send_cmd(g_pd->common->ctrl_sock, cmd, reply, sizeof(reply));
 	if (res < 0) {
 		WDP_LOGE("Failed to send command to wpa_supplicant");
-		system("/usr/sbin/p2p_supp.sh stop");
+		res = __ws_p2p_supplicant_stop();
+		WDP_LOGI("[/usr/sbin/p2p_supp.sh stop] returns %d", res);
 		goto done;
 	}
 
 	if (!strncmp(reply, "FAIL", 4)) {
-		WDP_LOGE("Failed to terminate wpa_supplicant");
-		system("/usr/sbin/p2p_supp.sh stop");
+		WDP_LOGE( "Failed to terminate wpa_supplicant");
+		res = __ws_p2p_supplicant_stop();
+		WDP_LOGI("[/usr/sbin/p2p_supp.sh stop] returns %d", res);
+		goto done;
 	}
 
-done:
-	unlink(GLOBAL_INTF_PATH);
-	if (g_pd->global_sock >= SOCK_FD_MIN)
-		close(g_pd->global_sock);
-	g_pd->global_sock = -1;
+	res = _disconnect_from_supplicant(COMMON_IFACE_NAME, g_pd->common);
+	if (res < 0) {
+		WDP_LOGE("Failed to disconnect common interface(%s) from supplicant. ",
+			COMMON_IFACE_NAME);
+	}
 
-	system("/usr/bin/wlan.sh stop");
+	res = __ws_p2p_supplicant_stop();
+	WDP_LOGI("[/usr/sbin/p2p_supp.sh stop] returns %d", res);
+
+done:
+	res = __ws_p2p_firmware_stop();
+	WDP_LOGI("P2P firmware stopped with error %d", res);
 	g_pd->activated = FALSE;
 
 	__WDP_LOG_FUNC_EXIT__;
 	return 0;
 }
 
+static gboolean _retry_start_scan(gpointer data)
+{
+	ws_sock_data_s *sock = g_pd->common;
+	char reply[1024] = {0, };
+	static int retry_cnt = 0;
+	int res = 0;
+	char *cmd = (char *)data;
+
+	if (NULL == sock || NULL == cmd) {
+		WDP_LOGE("Data is NULL, Retry Scan Failed !!!");
+		goto done;
+	}
+
+	if (WS_SCAN_RETRY_COUNT == retry_cnt) {
+		WDP_LOGE("Maximum Retry Reached. Aborting Scan.");
+		goto done;
+	}
+
+	res = _ws_send_cmd(sock->ctrl_sock, cmd, reply, sizeof(reply));
+	if (res < 0) {
+		WDP_LOGE("Failed to send command to wpa_supplicant");
+		goto done;
+	}
+
+	if (strstr(reply, "FAIL")) {
+		WDP_LOGE("Retry Scan Failed, Retry after 100ms...");
+		retry_cnt++;
+		return TRUE;
+	}
+
+	WDP_LOGD("Retry Scan Succeeded.");
+
+done:
+	retry_cnt = 0;
+	if (NULL != cmd) {
+		free(cmd);
+		cmd = NULL;
+	}
+	return FALSE;
+}
+
 int ws_start_scan(wfd_oem_scan_param_s *param)
 {
 	__WDP_LOG_FUNC_ENTER__;
 	ws_sock_data_s *sock = g_pd->common;
-	char cmd[32] = {0, };
+	char cmd[40] = {0, };
 	char reply[1024] = {0, };
 	char time_str[4] = {0, };
+	char type_str[20] = {0, };
 	int res = 0;
+	char *retry_cmd = NULL;
 
 	if (!param) {
 		WDP_LOGE("Invalid parameter");
@@ -2056,8 +2898,24 @@ int ws_start_scan(wfd_oem_scan_param_s *param)
 	if (param->scan_time)
 		snprintf(time_str, 4, " %d", param->scan_time);
 
+	if (param->scan_type == WFD_OEM_SCAN_TYPE_SOCIAL)
+		snprintf(type_str, 20, " type=social");
+	else if (param->scan_type == WFD_OEM_SCAN_TYPE_SPECIFIC &&
+			param->freq > 0)
+		snprintf(type_str, 20, " freq=%d", param->freq);
+	else if (param->scan_type == WFD_OEM_SCAN_TYPE_CHANNEL1)
+		snprintf(type_str, 20, " type=specific1");
+	else if (param->scan_type == WFD_OEM_SCAN_TYPE_CHANNEL6)
+		snprintf(type_str, 20, " type=specific6");
+	else if (param->scan_type == WFD_OEM_SCAN_TYPE_CHANNEL11)
+		snprintf(type_str, 20, " type=specific11");
+	else if (param->scan_type == WFD_OEM_SCAN_TYPE_GO_FREQ)
+		snprintf(type_str, 20, " type=frequency");
+
 	if (param->scan_mode == WFD_OEM_SCAN_MODE_ACTIVE)
-		snprintf(cmd, sizeof(cmd), WS_CMD_P2P_FIND "%s", (param->scan_time > 0) ? time_str : "");
+		snprintf(cmd, sizeof(cmd), WS_CMD_P2P_FIND "%s%s",
+					(param->scan_time > 0) ? time_str : "",
+					(param->scan_type) ? type_str : "");
 	else
 		snprintf(cmd, sizeof(cmd), WS_CMD_P2P_LISTEN);
 
@@ -2069,45 +2927,12 @@ int ws_start_scan(wfd_oem_scan_param_s *param)
 	}
 
 	if (strstr(reply, "FAIL")) {
-		WDP_LOGE("Failed to start scan");
+		WDP_LOGE("Failed to start scan, Retry");
+		retry_cmd = strdup(cmd);
+		/* Add Timeout of 100ms for retry SCAN */
+		g_timeout_add(100, _retry_start_scan, (gpointer) retry_cmd);
 		__WDP_LOG_FUNC_EXIT__;
-		return -1;
-	}
-	WDP_LOGD("Succeeded to start scan");
-
-	__WDP_LOG_FUNC_EXIT__;
-	return 0;
-}
-
-int ws_restart_scan(int freq)
-{
-	__WDP_LOG_FUNC_ENTER__;
-	ws_sock_data_s *sock = g_pd->common;
-	char cmd[32] = {0, };
-	char reply[1024] = {0, };
-	int res = 0;
-
-	if (!sock) {
-		WDP_LOGE("Socket is NULL");
-		return -1;
-	}
-
-	if (freq)
-		snprintf(cmd, sizeof(cmd), WS_CMD_P2P_FIND " 2 freq=%d", freq);
-	else
-		snprintf(cmd, sizeof(cmd), WS_CMD_P2P_FIND " 2");
-
-	res = _ws_send_cmd(sock->ctrl_sock, cmd, reply, sizeof(reply));
-	if (res < 0) {
-			WDP_LOGE("Failed to send command to wpa_supplicant");
-			__WDP_LOG_FUNC_EXIT__;
-			return -1;
-	}
-
-	if (strstr(reply, "FAIL")) {
-		WDP_LOGE("Failed to start scan");
-		__WDP_LOG_FUNC_EXIT__;
-		return -1;
+		return 0;
 	}
 	WDP_LOGD("Succeeded to start scan");
 
@@ -2266,15 +3091,14 @@ int ws_get_peer_info(unsigned char *peer_addr, wfd_oem_device_s **peer)
 	}
 
 	if (strstr(reply, "FAIL")) {
-		WDP_LOGE("Failed to get peer info [" MACSTR "]", MAC2STR(peer_addr));
+		WDP_LOGD("Failed to get peer info [" MACSECSTR "]", MAC2SECSTR(peer_addr));
 		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
-	WDP_LOGD("Succeeded to get peer info [" MACSTR "]", MAC2STR(peer_addr));
+	WDP_LOGD("Succeeded to get peer info [" MACSECSTR "]", MAC2SECSTR(peer_addr));
 
 	ws_dev = (wfd_oem_device_s*) calloc(1, sizeof(wfd_oem_device_s));
 
-	// TODO: parsing peer info
 	res = _parsing_peer_info(reply, ws_dev);
 	if (res < 0) {
 		WDP_LOGE("Failed to parsing peer info");
@@ -2302,7 +3126,7 @@ int ws_prov_disc_req(unsigned char *peer_addr, wfd_oem_wps_mode_e wps_mode, int 
 	}
 
 	snprintf(cmd, sizeof(cmd), WS_CMD_P2P_PROV_DISC MACSTR "%s",
-							MAC2STR(peer_addr), _ws_wps_to_txt(wps_mode));
+					MAC2STR(peer_addr), _ws_wps_to_txt(wps_mode));
 
 	if (join)
 		strncat(cmd, WS_STR_JOIN, 5);
@@ -2315,12 +3139,14 @@ int ws_prov_disc_req(unsigned char *peer_addr, wfd_oem_wps_mode_e wps_mode, int 
 	}
 
 	if (strstr(reply, "FAIL")) {
-		WDP_LOGE("Failed to send provision discovery to peer[" MACSTR "]", MAC2STR(peer_addr));
+		WDP_LOGD("Failed to send provision discovery to peer[" MACSECSTR "]",
+								MAC2SECSTR(peer_addr));
 		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
-	WDP_LOGD("Succeeded to send provision discovery to peer[" MACSTR "]", MAC2STR(peer_addr));
-	memcpy(g_pd->pd_addr, peer_addr, OEM_MACADDR_LEN);
+	WDP_LOGD("Succeeded to send provision discovery to peer[" MACSECSTR "]",
+								MAC2SECSTR(peer_addr));
+	memcpy(g_pd_out, peer_addr, OEM_MACADDR_LEN);
 
 	__WDP_LOG_FUNC_EXIT__;
 	return 0;
@@ -2331,6 +3157,7 @@ int ws_connect(unsigned char *peer_addr, wfd_oem_conn_param_s *param)
 	__WDP_LOG_FUNC_ENTER__;
 	ws_sock_data_s *sock = g_pd->common;
 	char cmd[64] = {0, };
+	char freq_str[11] ={0, };
 	char reply[1024] = {0, };
 	int res = 0;
 
@@ -2361,6 +3188,11 @@ int ws_connect(unsigned char *peer_addr, wfd_oem_conn_param_s *param)
 	if (param->conn_flags & WFD_OEM_CONN_TYPE_PERSISTENT)
 		strncat(cmd, WS_STR_PERSISTENT, 11);
 
+	if (param->freq > 0) {
+		snprintf(freq_str, sizeof(freq_str), WS_STR_FREQ "%d", param->freq);
+		strncat(cmd, freq_str, sizeof(freq_str));
+	}
+
 	WDP_LOGI("Connection command [%s]", cmd);
 
 	res = _ws_send_cmd(sock->ctrl_sock, cmd, reply, sizeof(reply));
@@ -2371,11 +3203,11 @@ int ws_connect(unsigned char *peer_addr, wfd_oem_conn_param_s *param)
 	}
 
 	if (strstr(reply, "FAIL")) {
-		WDP_LOGE("Failed to connect with peer[" MACSTR "]", MAC2STR(peer_addr));
+		WDP_LOGD("Failed to connect with peer[" MACSECSTR "]", MAC2SECSTR(peer_addr));
 		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
-	WDP_LOGD("Succeeded to send connection command to peer[" MACSTR "]", MAC2STR(peer_addr));
+	WDP_LOGD("Succeeded to send connection command to peer[" MACSECSTR "]", MAC2SECSTR(peer_addr));
 
 	__WDP_LOG_FUNC_EXIT__;
 	return 0;
@@ -2385,11 +3217,23 @@ int ws_disconnect(unsigned char *peer_addr)
 {
 	__WDP_LOG_FUNC_ENTER__;
 	ws_sock_data_s *sock = g_pd->common;
-	char cmd[32] = {0, };
+	char cmd[48] = {0, };
 	char reply[1024]={0,};
 	int res;
 
-	snprintf(cmd, sizeof(cmd), WS_CMD_P2P_GROUP_REMOVE "%s", GROUP_IFACE_NAME);
+	if (!peer_addr) {
+		WDP_LOGE("Invalid parameter");
+		return -1;
+	}
+
+	if (!sock) {
+		WDP_LOGE("Socket is NULL");
+		return -1;
+	}
+
+	WDP_LOGD("Peer address is [" MACSECSTR "]. Disconnect selected peer", MAC2SECSTR(peer_addr));
+
+	snprintf(cmd, sizeof(cmd), WS_CMD_DISCONNECT MACSTR " %s", MAC2STR(peer_addr), GROUP_IFACE_NAME);
 	res = _ws_send_cmd(sock->ctrl_sock, cmd, reply, sizeof(reply));
 	if (res < 0) {
 		WDP_LOGE("Failed to send command to wpa_supplicant");
@@ -2398,11 +3242,11 @@ int ws_disconnect(unsigned char *peer_addr)
 	}
 
 	if (strstr(reply, "FAIL")) {
-		WDP_LOGE("Failed to disconnect with peer[" MACSTR "]", MAC2STR(peer_addr));
+		WDP_LOGD("Failed to disconnect with peer[" MACSECSTR "]", MAC2SECSTR(peer_addr));
 		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
-	WDP_LOGD("Succeeded to send disconnection command to peer[" MACSTR "]", MAC2STR(peer_addr));
+	WDP_LOGD("Succeeded to send disconnection command to peer[" MACSECSTR "]", MAC2SECSTR(peer_addr));
 
 	__WDP_LOG_FUNC_EXIT__;
 	return 0;
@@ -2412,7 +3256,7 @@ int ws_reject_connection(unsigned char *peer_addr)
 {
 	__WDP_LOG_FUNC_ENTER__;
 	ws_sock_data_s *sock = g_pd->common;
-	char cmd[40] = {0, };
+	char cmd[64] = {0, };
 	char reply[1024]={0,};
 	int res;
 
@@ -2421,7 +3265,7 @@ int ws_reject_connection(unsigned char *peer_addr)
 		return -1;
 	}
 
-	snprintf(cmd, sizeof(cmd), WS_CMD_P2P_REJECT MACSTR, MAC2STR(peer_addr));
+	snprintf(cmd, sizeof(cmd), WS_CMD_P2P_CONNECT MACSTR "%s userReject", MAC2STR(peer_addr), WS_STR_PBC);
 	res = _ws_send_cmd(sock->ctrl_sock, cmd, reply, sizeof(reply));
 	if (res < 0) {
 			WDP_LOGE("Failed to send command to wpa_supplicant");
@@ -2430,11 +3274,11 @@ int ws_reject_connection(unsigned char *peer_addr)
 	}
 
 	if (strstr(reply, "FAIL")) {
-		WDP_LOGE("Failed to reject connection with peer[" MACSTR "]", MAC2STR(peer_addr));
+		WDP_LOGD("Failed to reject connection with peer[" MACSECSTR "]", MAC2SECSTR(peer_addr));
 		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
-	WDP_LOGD("Succeeded to send reject connection command to peer[" MACSTR "]", MAC2STR(peer_addr));
+	WDP_LOGD("Succeeded to send reject connection command to peer[" MACSECSTR "]", MAC2SECSTR(peer_addr));
 
 	__WDP_LOG_FUNC_EXIT__;
 	return 0;
@@ -2482,11 +3326,12 @@ int ws_get_supported_wps_mode()
 	return 0;
 }
 
-int ws_create_group(int persistent, int freq)
+int ws_create_group(int persistent, int freq, const char *passphrase)
 {
 	__WDP_LOG_FUNC_ENTER__;
 	ws_sock_data_s *sock = g_pd->common;
 	char cmd[44] = {0, };
+	char freq_str[11] = {0, };
 	char reply[1024]={0,};
 	int res = 0;
 
@@ -2495,12 +3340,24 @@ int ws_create_group(int persistent, int freq)
 		return -1;
 	}
 
-	if (persistent)
+	if (persistent) {
 		snprintf(cmd, sizeof(cmd), WS_CMD_P2P_GROUP_ADD WS_STR_PERSISTENT);
-	else
-		snprintf(cmd, sizeof(cmd), WS_CMD_P2P_GROUP_ADD WS_STR_FREQ_2G);
+	} else {
+		if (passphrase[0] != '\0') {
 
-	// TODO: add frequency option
+			snprintf(cmd, sizeof(cmd), WS_CMD_P2P_GROUP_ADD " passphrase=%s", passphrase);
+
+		}else{
+			snprintf(cmd, sizeof(cmd), WS_CMD_P2P_GROUP_ADD);
+		}
+	}
+
+	if (freq > 0) {
+		snprintf(freq_str, sizeof(freq_str), WS_STR_FREQ "%d", freq);
+		strncat(cmd, freq_str, sizeof(freq_str));
+	} else {
+		strncat(cmd, WS_STR_FREQ_2G, 8);
+	}
 
 	res = _ws_send_cmd(sock->ctrl_sock, cmd, reply, sizeof(reply));
 	if (res < 0) {
@@ -2563,7 +3420,7 @@ int ws_destroy_group(const char *ifname)
 int ws_invite(unsigned char *peer_addr, wfd_oem_invite_param_s *param)
 {
 	__WDP_LOG_FUNC_ENTER__;
-	ws_sock_data_s *sock = g_pd->group;
+	ws_sock_data_s *sock = g_pd->common;
 	char cmd[128] = {0, };
 	char reply[1024]={0,};
 	int res = 0;
@@ -2578,7 +3435,8 @@ int ws_invite(unsigned char *peer_addr, wfd_oem_invite_param_s *param)
 		return -1;
 	}
 
-	WDP_LOGD("Invite: Peer[" MACSTR "], GO Addr[" MACSTR "]", MAC2STR(peer_addr), MAC2STR(param->go_dev_addr));
+	WDP_LOGD("Invite: Peer[" MACSECSTR "], GO Addr[" MACSECSTR "]",
+				MAC2SECSTR(peer_addr), MAC2SECSTR(param->go_dev_addr));
 
 	if (param->net_id)
 		snprintf(cmd, sizeof(cmd), WS_CMD_P2P_INVITE "persistent=%d peer=" MACSTR " go_dev_addr=" MACSTR,
@@ -2652,7 +3510,7 @@ int ws_wps_start(unsigned char *peer_addr, int wps_mode, const char *pin)
 int ws_enrollee_start(unsigned char *peer_addr, int wps_mode, const char *pin)
 {
 	__WDP_LOG_FUNC_ENTER__;
-	ws_sock_data_s *sock = g_pd->common;
+	ws_sock_data_s *sock = g_pd->group;
 	char cmd[64] = {0, };
 	char reply[1024]={0,};
 	int res;
@@ -2695,7 +3553,7 @@ int ws_enrollee_start(unsigned char *peer_addr, int wps_mode, const char *pin)
 int ws_wps_cancel()
 {
 	__WDP_LOG_FUNC_ENTER__;
-	ws_sock_data_s *sock = g_pd->common;
+	ws_sock_data_s *sock = g_pd->group;
 	char reply[1024]={0,};
 	int res;
 
@@ -2813,6 +3671,7 @@ int ws_set_dev_type(int pri_dev_type, int sec_dev_type)
 int ws_get_go_intent(int *go_intent)
 {
 	__WDP_LOG_FUNC_ENTER__;
+
 	ws_sock_data_s *sock = g_pd->common;
 	char cmd[80] = {0, };
 	char reply[1024]={0,};
@@ -2854,6 +3713,7 @@ int ws_get_go_intent(int *go_intent)
 int ws_set_go_intent(int go_intent)
 {
 	__WDP_LOG_FUNC_ENTER__;
+
 	ws_sock_data_s *sock = g_pd->common;
 	char cmd[80] = {0, };
 	char reply[1024]={0,};
@@ -2879,6 +3739,39 @@ int ws_set_go_intent(int go_intent)
 		return -1;
 	}
 	WDP_LOGD("Succeeded to set go intent(%d)", go_intent);
+
+	__WDP_LOG_FUNC_EXIT__;
+	return 0;
+}
+
+int ws_set_country(char *ccode)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	ws_sock_data_s *sock = g_pd->common;
+	char cmd[80] = {0, };
+	char reply[1024]={0,};
+	int res;
+
+	if (!sock) {
+		WDP_LOGE("Socket is NULL");
+		return -1;
+	}
+
+	snprintf(cmd, sizeof(cmd), WS_CMD_SET "country %s", ccode);
+
+	res = _ws_send_cmd(sock->ctrl_sock, cmd, (char*) reply, sizeof(reply));
+	if (res < 0) {
+		WDP_LOGE("Failed to send command to wpa_supplicant");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	if (strstr(reply, "FAIL")) {
+		WDP_LOGE("Failed to set country");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+	WDP_LOGD("Succeeded to set country(%s)", ccode);
 
 	__WDP_LOG_FUNC_EXIT__;
 	return 0;
@@ -2911,7 +3804,7 @@ int _parsing_networks(char* buf, ws_network_info_s networks[], int *network_cnt)
 
 		res = _extract_word(ptr, &tmp_str);
 		if (res > 0) {
-			snprintf(networks[count].ssid, WS_SSID_LEN, tmp_str);
+			snprintf(networks[count].ssid, WS_SSID_LEN, "%s", tmp_str);
 			free(tmp_str);
 			tmp_str = NULL;
 			ptr += res;
@@ -2947,348 +3840,6 @@ int _parsing_networks(char* buf, ws_network_info_s networks[], int *network_cnt)
 	}
 
 	*network_cnt = count;
-
-	__WDP_LOG_FUNC_EXIT__;
-	return 0;
-}
-
-int ws_service_add(wfd_oem_service_e service_type, char *data)
-{
-	__WDP_LOG_FUNC_ENTER__;
-	ws_sock_data_s *sock = g_pd->common;
-	char cmd[256] = {0, };
-	char reply[1024]={0,};
-	int res;
-
-	if (!sock) {
-		WDP_LOGE("Socket is NULL");
-		return -1;
-	}
-	if (!data || !strlen(data)) {
-		WDP_LOGE( "Invalid parameter");
-	 	__WDP_LOG_FUNC_EXIT__;
-	 	return -1;
-	}
-
-	if (service_type == WFD_OEM_SERVICE_BONJOUR)
-		snprintf(cmd, sizeof(cmd), WS_CMD_P2P_SERVICE_ADD "bonjour %s", data);
-	else if (service_type == WFD_OEM_SERVICE_UPNP)
-		snprintf(cmd, sizeof(cmd), WS_CMD_P2P_SERVICE_ADD "upnp %s", data);
-	else if (service_type ==WFD_OEM_SERVICE_VENDORSPEC)
-		snprintf(cmd, sizeof(cmd), WS_CMD_P2P_SERVICE_ADD "vendor %s", data);
-	else{
-		WDP_LOGE( "Invalid parameter");
-	 	__WDP_LOG_FUNC_EXIT__;
-	 	return -1;
-	}
-
-	res = _ws_send_cmd(sock->ctrl_sock, cmd, (char*) reply, sizeof(reply));
-	if (res < 0) {
-		WDP_LOGE("Failed to send command to wpa_supplicant");
-		__WDP_LOG_FUNC_EXIT__;
-		return -1;
-	}
-
-	if (strstr(reply, "FAIL")) {
-		WDP_LOGE("Failed to add service");
-		__WDP_LOG_FUNC_EXIT__;
-		return -1;
-	}
-	WDP_LOGD("Succeeded to add service");
-
-	__WDP_LOG_FUNC_EXIT__;
-	return 0;
-}
-
-int ws_service_del(wfd_oem_service_e service_type, char *data)
-{
-	__WDP_LOG_FUNC_ENTER__;
-	ws_sock_data_s *sock = g_pd->common;
-	char cmd[256] = {0, };
-	char reply[1024]={0,};
-	int res;
-
-	if (!sock) {
-		WDP_LOGE("Socket is NULL");
-		return -1;
-	}
-	if (!data || !strlen(data)) {
-		WDP_LOGE( "Invalid parameter");
-	 	__WDP_LOG_FUNC_EXIT__;
-	 	return 1;
-	}
-
-	if ( service_type == WFD_OEM_SERVICE_BONJOUR)
-		snprintf(cmd, sizeof(cmd), WS_CMD_P2P_SERVICE_DEL "bonjour %s", data);
-	else if (service_type == WFD_OEM_SERVICE_UPNP)
-		snprintf(cmd, sizeof(cmd), WS_CMD_P2P_SERVICE_DEL "upnp %s", data);
-	else if (service_type ==WFD_OEM_SERVICE_VENDORSPEC)
-		snprintf(cmd, sizeof(cmd), WS_CMD_P2P_SERVICE_DEL "vendor %s", data);
-	else{
-		WDP_LOGE( "Invalid parameter");
-	 	__WDP_LOG_FUNC_EXIT__;
-	 	return -1;
-	}
-
-	res = _ws_send_cmd(sock->ctrl_sock, cmd, (char*) reply, sizeof(reply));
-	if (res < 0) {
-		WDP_LOGE("Failed to send command to wpa_supplicant");
-		__WDP_LOG_FUNC_EXIT__;
-		return -1;
-	}
-
-	if (strstr(reply, "FAIL")) {
-		WDP_LOGE("Failed to delete service");
-		__WDP_LOG_FUNC_EXIT__;
-		return -1;
-	}
-	WDP_LOGD("Succeeded to delete service");
-
-	__WDP_LOG_FUNC_EXIT__;
-	return 0;
-}
-
-static int _ws_query_generation(unsigned char* MAC, wfd_oem_service_e type, char *data, char *buff)
-{
-	__WDP_LOG_FUNC_ENTER__;
-	int res=0;
-	int tlv_len=0;
-	char *query=NULL;
-
-	switch(type){
-	case WFD_OEM_SERVICE_ALL:
-		query=strndup(SERVICE_TYPE_ALL,8);
-	break;
-	case WFD_OEM_SERVICE_BONJOUR:
-		query=strndup(SERVICE_TYPE_BONJOUR,8);
-	break;
-	case WFD_OEM_SERVICE_UPNP:
-		query=strndup(SERVICE_TYPE_UPNP,8);
-	break;
-	case WFD_OEM_SERVICE_VENDORSPEC:
-		query=strndup(SERVICE_TYPE_VENDOR_SPECIFIC,8);
-	break;
-	default:
-		WDP_LOGE( "Invalid parameter");
-	 	__WDP_LOG_FUNC_EXIT__;
-		return -1;
-	break;
-	}
-
-	if(data && (tlv_len = strlen(data)))
-	{
-		if(type == WFD_OEM_SERVICE_UPNP)
-		{
-			snprintf(buff, 256, WS_CMD_P2P_SERV_DISC_REQ MACSTR " upnp %s", MAC2STR(MAC), data);
-		}else{
-
-			if(type == WFD_OEM_SERVICE_BONJOUR)
-				tlv_len = tlv_len/2 + 2;
-
-			query[0] = '0' + (char)(tlv_len/16);
-			if(tlv_len%16 < 10)
-				query[1] = '0' + (char)(tlv_len%16);
-			else
-				query[1] = 'a' + (char)(tlv_len%16) - 10;
-			snprintf(buff, 256, WS_CMD_P2P_SERV_DISC_REQ MACSTR " %s%s", MAC2STR(MAC), query, data);
-		}
-	}else{
-		snprintf(buff, 256, WS_CMD_P2P_SERV_DISC_REQ MACSTR " %s", MAC2STR(MAC), query);
-	}
-	if(query != NULL)
-		free(query);
-	__WDP_LOG_FUNC_EXIT__;
-	return res;
-}
-
-int ws_serv_disc_req(unsigned char* MAC, wfd_oem_service_e type, char *data)
-{
-	__WDP_LOG_FUNC_ENTER__;
-	ws_sock_data_s *sock = g_pd->common;
-	char cmd[256] = {0, };
-	char reply[1024]={0,};
-	int res;
-
-	if (!sock) {
-		WDP_LOGE("Socket is NULL");
-		return -1;
-	}
-
-	res = _ws_query_generation(MAC, type, data, cmd);
-	if (res < 0) {
-		WDP_LOGE("Failed to generate query");
-		__WDP_LOG_FUNC_EXIT__;
-		return -1;
-	}
-
-	res = _ws_send_cmd(sock->ctrl_sock, cmd, (char*) reply, sizeof(reply));
-	if (res < 0) {
-		WDP_LOGE("Failed to send command to wpa_supplicant");
-		__WDP_LOG_FUNC_EXIT__;
-		return -1;
-	}
-
-	if (strstr(reply, "FAIL")) {
-		WDP_LOGE("Failed to request service discovery");
-		__WDP_LOG_FUNC_EXIT__;
-		return -1;
-	}
-
-	res = strtol(reply, NULL, 16);
-	WDP_LOGD("Succeeded to request service discovery(%d)", res);
-	__WDP_LOG_FUNC_EXIT__;
-	return res;
-
-}
-
-int ws_serv_disc_cancel(int identifier)
-{
-	__WDP_LOG_FUNC_ENTER__;
-	ws_sock_data_s *sock = g_pd->common;
-	char cmd[80] = {0, };
-	char reply[1024]={0,};
-	int res;
-
-	if (!sock) {
-		WDP_LOGE("Socket is NULL");
-		return -1;
-	}
-
-	snprintf(cmd, sizeof(cmd), WS_CMD_P2P_SERV_DISC_CANCEL " %x", identifier);
-
-	res = _ws_send_cmd(sock->ctrl_sock, cmd, (char*) reply, sizeof(reply));
-	if (res < 0) {
-		WDP_LOGE("Failed to send command to wpa_supplicant");
-		__WDP_LOG_FUNC_EXIT__;
-		return -1;
-	}
-
-	if (strstr(reply, "FAIL")) {
-		WDP_LOGE("Failed to cancel service discovery");
-		__WDP_LOG_FUNC_EXIT__;
-		return -1;
-	}
-	WDP_LOGD("Succeeded to cancel service discovery");
-
-	__WDP_LOG_FUNC_EXIT__;
-	return 0;
-
-}
-
-static int _ws_wifi_display_enable(int enable)
-{
-	__WDP_LOG_FUNC_ENTER__;
-	ws_sock_data_s *sock = g_pd->common;
-	char cmd[80] = {0, };
-	char reply[1024]={0,};
-	int res;
-
-	if (!sock) {
-		WDP_LOGE("Socket is NULL");
-		return -1;
-	}
-
-	snprintf(cmd, sizeof(cmd), WS_CMD_SET WS_STR_WIFI_DISPLAY " %d", enable);
-
-	res = _ws_send_cmd(sock->ctrl_sock, cmd, (char*) reply, sizeof(reply));
-	if (res < 0) {
-		WDP_LOGE("Failed to send command to wpa_supplicant");
-		__WDP_LOG_FUNC_EXIT__;
-		return -1;
-	}
-
-	if (strstr(reply, "FAIL")) {
-		WDP_LOGE("Failed to enable or disable wifi display");
-		__WDP_LOG_FUNC_EXIT__;
-		return -1;
-	}
-	WDP_LOGD("Succeeded to enable or disable wifi display");
-
-	__WDP_LOG_FUNC_EXIT__;
-	return 0;
-}
-
-static int _ws_build_element(int value, int field_length, char* buff)
-{
-	__WDP_LOG_FUNC_ENTER__;
-	int i = 0;
-	char tmp =0;
-
-	if(!field_length)
-		return -1;
-
-	for(i = 1; i <= field_length; i++)
-	{
-		tmp = value >> (field_length - i)*4;
-		tmp = tmp%16;
-
-		if(tmp < 10)
-			buff[i - 1] = '0' + tmp;
-		else
-			buff[i - 1] = 'a' + tmp -10;
-	}
-	__WDP_LOG_FUNC_EXIT__;
-	return 0;
-}
-
-int ws_init_wifi_display(wfd_oem_display_e type, int port, int hdcp)
-{
-	__WDP_LOG_FUNC_ENTER__;
-	ws_sock_data_s *sock = g_pd->common;
-	char cmd[80] = {0, };
-	char reply[1024]={0,};
-	int res;
-	char subelem[17] = {0,};
-	unsigned int device_info = 0;
-
-	if (!sock) {
-		WDP_LOGE("Socket is NULL");
-		return -1;
-	}
-
-	if (_ws_wifi_display_enable(1) != 0) {
-		return -1;
-	}
-
-	device_info = type;
-	device_info+= hdcp<<8;
-	device_info+=1<<4;						//for availability bit
-
-	_ws_build_element(6, 4, &subelem[0]);
-	_ws_build_element(device_info, 4, &subelem[4]);
-	_ws_build_element(port, 4, &subelem[8]);
-	_ws_build_element(40, 4, &subelem[12]);	//for maximum throughput
-
-	snprintf(cmd, sizeof(cmd), WS_CMD_WFD_SUBELEM_SET "%d %s",
-			  WFD_SUBELEM_ID_DEVICE_INFO, subelem);
-
-	res = _ws_send_cmd(sock->ctrl_sock, cmd, (char*) reply, sizeof(reply));
-	if (res < 0) {
-		WDP_LOGE("Failed to send command to wpa_supplicant");
-		__WDP_LOG_FUNC_EXIT__;
-		return -1;
-	}
-
-	if (strstr(reply, "FAIL")) {
-		WDP_LOGE("Failed to set wifi display");
-		__WDP_LOG_FUNC_EXIT__;
-		return -1;
-	}
-	WDP_LOGD("Succeeded to initialize wifi display");
-
-	__WDP_LOG_FUNC_EXIT__;
-	return 0;
-}
-
-int ws_deinit_wifi_display(int enable)
-{
-	__WDP_LOG_FUNC_ENTER__;
-
-	if (_ws_wifi_display_enable(0) != 0) {
-		return -1;
-	}
-
-	WDP_LOGD("Succeeded to deinitialize wifi display");
 
 	__WDP_LOG_FUNC_EXIT__;
 	return 0;
@@ -3348,7 +3899,7 @@ int ws_get_persistent_groups(wfd_oem_persistent_group_s **groups, int *group_cou
 		WDP_LOGD("----persistent group [%d]----", i);
 		WDP_LOGD("network_id=%d", networks[i].network_id);
 		WDP_LOGD("ssid=%s", networks[i].ssid);
-		WDP_LOGD("bssid=" MACSTR, MAC2STR(networks[i].bssid));
+		WDP_LOGD("bssid=" MACSECSTR, MAC2SECSTR(networks[i].bssid));
 		WDP_LOGD("flags=%x", networks[i].flags);
 
 		wfd_persistent_groups[i].network_id = networks[i].network_id;
@@ -3408,10 +3959,10 @@ int ws_remove_persistent_group(char *ssid, unsigned char *bssid)
 		WDP_LOGD("----persistent group [%d]----", i);
 		WDP_LOGD("network_id=%d", networks[i].network_id);
 		WDP_LOGD("ssid=%s", networks[i].ssid);
-		WDP_LOGD("bssid=" MACSTR, MAC2STR(networks[i].bssid));
+		WDP_LOGD("bssid=" MACSECSTR, MAC2SECSTR(networks[i].bssid));
 		WDP_LOGD("flags=%x", networks[i].flags);
 
-		if (!memcmp(bssid, networks[i].bssid, WS_MACADDR_LEN) && !strcmp(ssid, networks[i].ssid)) {
+		if (!memcmp(bssid, networks[i].bssid, OEM_MACADDR_LEN) && !strcmp(ssid, networks[i].ssid)) {
 
 			WDP_LOGD("Persistent group found [%d: %s]", networks[i].network_id, ssid);
 
@@ -3459,7 +4010,7 @@ int ws_set_persistent_reconnect(unsigned char *bssid, int reconnect)
 		return -1;
 	}
 
-	snprintf(cmd, sizeof(cmd), "%s persistent_reconnect %d", WS_CMD_SET, reconnect);
+	snprintf(cmd, sizeof(cmd), WS_CMD_SET "persistent_reconnect %d", reconnect);
 	res = _ws_send_cmd(sock->ctrl_sock, cmd, (char*) reply, sizeof(reply));
 	if (res < 0) {
 		WDP_LOGE("Failed to send command to wpa_supplicant");
@@ -3473,6 +4024,585 @@ int ws_set_persistent_reconnect(unsigned char *bssid, int reconnect)
 		return -1;
 	}
 	WDP_LOGD("Succeeded to register WFDS service");
+
+	__WDP_LOG_FUNC_EXIT__;
+	return 0;
+}
+
+#ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
+int ws_start_service_discovery(unsigned char *mac_addr, int service_type)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	ws_sock_data_s *sock = g_pd->common;
+	char cmd[80] = {0, };
+	char reply[1024]={0,};
+	int res;
+	char query[30] = {'0','2','0','0','F','F','0','1'};
+	char mac_str[18] = {0, };
+	wfd_oem_service_s *service = NULL;
+
+	if (!sock) {
+		WDP_LOGE("Socket is NULL");
+		return -1;
+	}
+
+	memset(cmd, 0x00, 80);
+	memset(reply, 0x00, WS_REPLY_LEN);
+
+	query[1] += OEM_SERVICE_TYPE_LEN /2;
+	service = (wfd_oem_service_s*) calloc(1, sizeof(wfd_oem_service_s));
+	if (!service) {
+		WDP_LOGE("Failed to allocate memory for service");
+		return -1;
+	}
+
+	if (mac_addr[0] == 0 && mac_addr[1] == 0 && mac_addr[2] == 0 &&
+		mac_addr[3] == 0 && mac_addr[4] == 0 && mac_addr[5] == 0) {
+		snprintf(mac_str, OEM_MACSTR_LEN , "%s", SERV_BROADCAST_ADDRESS);
+	} else {
+		snprintf(mac_str, OEM_MACSTR_LEN, MACSTR, MAC2STR(mac_addr));
+	}
+
+	switch(service_type) {
+		case WFD_OEM_SERVICE_TYPE_ALL:
+			snprintf(cmd, sizeof(cmd), WS_CMD_SERV_DISC_REQ " %s %s", mac_str, SERV_DISC_REQ_ALL);
+			strncpy(service->service_type, SERV_DISC_REQ_ALL, OEM_SERVICE_TYPE_LEN);
+			service->service_type[OEM_SERVICE_TYPE_LEN] = '\0';
+		break;
+		case WFD_OEM_SERVICE_TYPE_BONJOUR:
+			snprintf(cmd, sizeof(cmd), WS_CMD_SERV_DISC_REQ " %s %s", mac_str, SERV_DISC_REQ_BONJOUR);
+			strncpy(service->service_type, SERV_DISC_REQ_BONJOUR, OEM_SERVICE_TYPE_LEN);
+			service->service_type[OEM_SERVICE_TYPE_LEN] = '\0';
+		break;
+		case WFD_OEM_SERVICE_TYPE_UPNP:
+			snprintf(cmd, sizeof(cmd), WS_CMD_SERV_DISC_REQ " %s %s", mac_str, SERV_DISC_REQ_UPNP);
+			strncpy(service->service_type, SERV_DISC_REQ_UPNP, OEM_SERVICE_TYPE_LEN);
+			service->service_type[OEM_SERVICE_TYPE_LEN] = '\0';
+		break;
+		case WFD_OEM_SERVICE_TYPE_BT_ADDR:
+			strncat(query, SERVICE_TYPE_BT_ADDR, OEM_SERVICE_TYPE_LEN);
+			snprintf(cmd, sizeof(cmd), WS_CMD_SERV_DISC_REQ " %s %s", mac_str, query);
+			strncpy(service->service_type, SERVICE_TYPE_BT_ADDR, OEM_SERVICE_TYPE_LEN);
+			service->service_type[OEM_SERVICE_TYPE_LEN] = '\0';
+			break;
+		case WFD_OEM_SERVICE_TYPE_CONTACT_INFO:
+			strncat(query, SERVICE_TYPE_CONTACT_INFO, OEM_SERVICE_TYPE_LEN);
+			snprintf(cmd, sizeof(cmd), WS_CMD_SERV_DISC_REQ " %s %s", mac_str, query);
+			strncpy(service->service_type, SERVICE_TYPE_CONTACT_INFO, OEM_SERVICE_TYPE_LEN);
+			service->service_type[OEM_SERVICE_TYPE_LEN] = '\0';
+			break;
+		default:
+			WDP_LOGE("Invalid Service type");
+			__WDP_LOG_FUNC_EXIT__;
+			if (service)
+				free(service);
+			return -1;
+	}
+
+	res = _ws_send_cmd(sock->ctrl_sock, cmd, (char*) reply, sizeof(reply));
+	if (res < 0) {
+		WDP_LOGE("Failed to send command to wpa_supplicant");
+		__WDP_LOG_FUNC_EXIT__;
+		if (service)
+			free(service);
+		return -1;
+	}
+
+	if (strstr(reply, "FAIL")) {
+		WDP_LOGE("Failed to start service discovery");
+		__WDP_LOG_FUNC_EXIT__;
+		if (service)
+			free(service);
+		return -1;
+	}
+	WDP_LOGD("Succeeded to start service discovery");
+
+	strncpy(service->dev_addr, mac_str, OEM_MACSTR_LEN - 1);
+	service->dev_addr[OEM_MACSTR_LEN - 1] = '\0';
+	WDP_LOGD("query id :[0x%s]",reply);
+	strncpy(service->query_id, reply, OEM_QUERY_ID_LEN);
+	service->query_id[OEM_QUERY_ID_LEN] = '\0';
+
+	res = _check_service_query_exists(service);
+	if(res) {
+		free(service);
+	} else {
+		service_list = g_list_append(service_list, service);
+	}
+
+	__WDP_LOG_FUNC_EXIT__;
+	return 0;
+}
+
+int ws_cancel_service_discovery(unsigned char *mac_addr, int service_type)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	ws_sock_data_s *sock = g_pd->common;
+	char cmd[80] = {0, };
+	char reply[1024]={0,};
+	int res;
+	char query_id[OEM_QUERY_ID_LEN + 1] = {0, };
+	char mac_str[18] = {0, };
+	wfd_oem_service_s *data = NULL;
+	char s_type[OEM_SERVICE_TYPE_LEN + 1] ={0, };
+
+	if (!sock) {
+		WDP_LOGE("Socket is NULL");
+		return -1;
+	}
+
+	memset(cmd, 0x00, 80);
+	memset(reply, 0x00, WS_REPLY_LEN);
+
+	if (mac_addr[0] == 0 && mac_addr[1] == 0 && mac_addr[2] == 0 &&
+		mac_addr[3] == 0 && mac_addr[4] == 0 && mac_addr[5] == 0) {
+		snprintf(mac_str, OEM_MACSTR_LEN , "%s", SERV_BROADCAST_ADDRESS);
+	} else {
+		snprintf(mac_str, OEM_MACSTR_LEN, MACSTR, MAC2STR(mac_addr));
+	}
+
+	switch(service_type) {
+		case WFD_OEM_SERVICE_TYPE_ALL:
+			strncpy(s_type, SERV_DISC_REQ_ALL, OEM_SERVICE_TYPE_LEN);
+		break;
+		case WFD_OEM_SERVICE_TYPE_BONJOUR:
+			strncpy(s_type, SERV_DISC_REQ_BONJOUR, OEM_SERVICE_TYPE_LEN);
+		break;
+		case WFD_OEM_SERVICE_TYPE_UPNP:
+			strncpy(s_type, SERV_DISC_REQ_UPNP, OEM_SERVICE_TYPE_LEN);
+		break;
+		case WFD_OEM_SERVICE_TYPE_BT_ADDR:
+			strncpy(s_type, SERVICE_TYPE_BT_ADDR, OEM_SERVICE_TYPE_LEN);
+			break;
+		case WFD_OEM_SERVICE_TYPE_CONTACT_INFO:
+			strncpy(s_type, SERVICE_TYPE_CONTACT_INFO, OEM_SERVICE_TYPE_LEN);
+			break;
+		default:
+			__WDP_LOG_FUNC_EXIT__;
+			WDP_LOGE("Invalid Service type");
+			return -1;
+	}
+
+	WDP_LOGD("Cancel service discovery service_type [%d]", service_type);
+	WDP_LOGD("Cancel service discovery s_type [%s]", s_type);
+
+	data = _remove_service_query(s_type, mac_str, query_id);
+	if (NULL == data)
+		return -1;
+
+	snprintf(cmd, sizeof(cmd), WS_CMD_SERV_DISC_CANCEL " %s", query_id);
+	res = _ws_send_cmd(sock->ctrl_sock, cmd, (char*) reply, sizeof(reply));
+	if (res < 0) {
+		WDP_LOGE("Failed to send command to wpa_supplicant");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	if (strstr(reply, "FAIL")) {
+		WDP_LOGE("Failed to cancel service discovery");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+	WDP_LOGD("Succeeded to cancel service discovery");
+
+	service_list = g_list_remove(service_list, data);
+	free(data);
+
+	__WDP_LOG_FUNC_EXIT__;
+	return 0;
+}
+
+int _convert_bonjour_to_hex(char *query, char *rdata, char **hex)
+{
+	char hex_key[256] = {0, };;
+	char hex_value[256] = {0, };;
+	char *token = NULL;
+	char *temp = NULL;
+	int len = 0;
+	int tot_len = 0;
+	int i = 0;
+	char temp_str[256] = {0, };
+	char *result_str = NULL;
+
+	if (!query || !hex) {
+		WDP_LOGE("Invalid parameter");
+		return -1;
+	}
+
+	token = strtok_r(query, ".", &temp);
+	while (token) {
+		if (!strcmp(token, "local")) {
+			WDP_LOGD("Query conversion done");
+			break;
+		}
+		WDP_LOGD("Token: %s", token);
+		len = strlen(token);
+		sprintf(temp_str, "%02x", len);
+		for (i=0; i<len; i++) {
+			sprintf(temp_str+i*2+2, "%02x", token[i]);
+		}
+		strncat(hex_key, temp_str, 2+2*len);
+		WDP_LOGD("Converting: %s", hex_key);
+		memset(temp_str, 0x0, 256);
+
+		token = strtok_r(NULL, ".", &temp);
+	}
+
+	if (token && strstr(token, "local")) {
+		strncat(hex_key, "c011", 4);
+		strncat(hex_key, "000c", 4);
+		strncat(hex_key, "01", 2);
+	} else {
+		strncat(hex_key, "c011", 4);
+		strncat(hex_key, "0010", 4);
+		strncat(hex_key, "01", 2);
+	}
+
+	if (!rdata || !strlen(rdata)) {
+		WDP_LOGD("RDATA is NULL");
+		strncat(hex_value, "00", 2);
+	} else {
+		token = strtok_r(rdata, ".", &temp);
+		while (token) {
+			WDP_LOGD("Token: %s", token);
+			len = strlen(token);
+			sprintf(temp_str, "%02x", len);
+			for (i=0; i<len; i++) {
+				sprintf(temp_str+i*2+2, "%02x", token[i]);
+			}
+			strncat(hex_value, temp_str, 2+2*len);
+			WDP_LOGD("Converting: %s", hex_value);
+			memset(temp_str, 0x0, 256);
+
+			token = strtok_r(NULL, ".", &temp);
+		}
+	}
+
+	strncat(hex_value, "c027", 4);
+
+	tot_len = strlen(hex_key) + strlen(hex_value);
+	result_str = (char*) calloc(1, tot_len+2);
+	if (!result_str) {
+		WDP_LOGE("Failed to allocate memory for result string");
+		return -1;
+	}
+	snprintf(result_str, tot_len+2, "%s %s", hex_key, hex_value);
+
+	*hex = result_str;
+
+	return 0;
+}
+
+int ws_serv_add(wfd_oem_new_service_s *service)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	ws_sock_data_s *sock = g_pd->common;
+	char cmd[256] = {0, };
+	char reply[1024]={0,};
+	int res;
+
+	if (!sock) {
+		WDP_LOGE("Socket is NULL");
+		return -1;
+	}
+
+	switch (service->protocol) {
+	case WFD_OEM_SERVICE_TYPE_BONJOUR:
+		{
+			WDP_LOGD("Service type: WFD_OEM_SERVICE_TYPE_BONJOUR");
+			WDP_LOGD("Query: %s", service->data.bonjour.query);
+			WDP_LOGD("RData: %s", service->data.bonjour.rdata);
+			char *hex = NULL;
+
+			res = _convert_bonjour_to_hex(service->data.bonjour.query,
+								    service->data.bonjour.rdata,
+								    &hex);
+			if (res < 0) {
+				WDP_LOGE("Failed to convert Key string as hex string");
+				return -1;
+			}
+
+			WDP_LOGD("Converted Hexadecimal string [%s]", hex);
+			snprintf(cmd, sizeof(cmd), WS_CMD_SERVICE_ADD " bonjour %s", hex);
+			g_free(hex);
+
+		}
+		break;
+	case WFD_OEM_SERVICE_TYPE_UPNP:
+		{
+			WDP_LOGD("Service type: WFD_OEM_SERVICE_TYPE_UPNP");
+
+			snprintf(cmd, sizeof(cmd), WS_CMD_SERVICE_ADD " upnp %s %s",
+					service->data.upnp.version, service->data.upnp.service);
+		}
+		break;
+	default:
+		WDP_LOGE("This service type is not supported [%d]", service->protocol);
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	res = _ws_send_cmd(sock->ctrl_sock, cmd, (char*) reply, sizeof(reply));
+	if (res < 0) {
+		WDP_LOGE("Failed to send command to wpa_supplicant");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	if (strstr(reply, "FAIL")) {
+		WDP_LOGE("Failed to add service");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+	WDP_LOGD("Succeeded to add service");
+
+	__WDP_LOG_FUNC_EXIT__;
+	return 0;
+}
+
+int ws_serv_del(wfd_oem_new_service_s *service)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	ws_sock_data_s *sock = g_pd->common;
+	char cmd[256] = {0, };
+	char reply[1024]={0,};
+	int res;
+
+	if (!sock) {
+		WDP_LOGE("Socket is NULL");
+		return -1;
+	}
+
+	switch (service->protocol) {
+	case WFD_OEM_SERVICE_TYPE_BONJOUR:
+		{
+			WDP_LOGD("Service type: WFD_OEM_SERVICE_TYPE_BONJOUR, Data: %s", service);
+			char *hex_key = NULL;
+
+			res = _convert_bonjour_to_hex(service->data.bonjour.query, NULL, &hex_key);
+			if (res != 0) {
+				WDP_LOGE("Failed to convert Key string as hex string");
+				return -1;
+			}
+
+			WDP_LOGD("Converted Hexadecimal string [%s]", hex_key);
+			snprintf(cmd, sizeof(cmd), WS_CMD_SERVICE_DEL " bonjour %s", hex_key);
+			g_free(hex_key);
+		}
+		break;
+	case WFD_OEM_SERVICE_TYPE_UPNP:
+		{
+			WDP_LOGD("Service type: WFD_OEM_SERVICE_TYPE_UPNP");
+
+			snprintf(cmd, sizeof(cmd), WS_CMD_SERVICE_DEL " upnp %s %s",
+					service->data.upnp.version, service->data.upnp.service);
+		}
+		break;
+	default:
+		WDP_LOGE("This service type is not supported");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	res = _ws_send_cmd(sock->ctrl_sock, cmd, (char*) reply, sizeof(reply));
+	if (res < 0) {
+		WDP_LOGE("Failed to send command to wpa_supplicant");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	if (strstr(reply, "FAIL")) {
+		WDP_LOGE("Failed to add service");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+	WDP_LOGD("Succeeded to add service");
+
+	__WDP_LOG_FUNC_EXIT__;
+	return 0;
+}
+#endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
+
+#ifdef TIZEN_FEATURE_WIFI_DISPLAY
+int ws_miracast_init(int enable)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	ws_sock_data_s *sock = g_pd->common;
+	char cmd[80] = {0, };
+	char reply[1024]={0,};
+	int res;
+
+	unsigned int length = 0x0006;
+	unsigned int dev_info = 0x0110;
+	unsigned int ctrl_port = 0x07E6;
+	unsigned int max_tput = 0x0028;
+	//unsigned int bssid = 0x00;
+	unsigned int cpled_sink_status = 0x00;
+	/* param : enable or disable*/
+
+	if (!sock) {
+		WDP_LOGE("Socket is NULL");
+		return -1;
+	}
+
+	snprintf(cmd, sizeof(cmd), WS_CMD_SET "wifi_display %d", enable);
+
+	res = _ws_send_cmd(sock->ctrl_sock, cmd, (char*) reply, sizeof(reply));
+	if (res < 0) {
+		WDP_LOGE("Failed to send command to wpa_supplicant");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	if (strstr(reply, "FAIL")) {
+		WDP_LOGE("Failed to initialize miracast");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+	WDP_LOGD("Succeeded to initialize miracast");
+
+	if (enable) {
+		/* param : dev_info */
+		memset(cmd, 0x0, 80);
+		memset(reply, 0x0, WS_REPLY_LEN);
+
+		snprintf(cmd, sizeof(cmd), WS_CMD_SUBELEM_SET "%d %04x%04x%04x%04x",
+								WFD_SUBELM_ID_DEV_INFO, length, dev_info, ctrl_port, max_tput);
+		res = _ws_send_cmd(sock->ctrl_sock, cmd, (char*) reply, sizeof(reply));
+		if (res < 0) {
+			WDP_LOGE("Failed to send command to wpa_supplicant");
+			__WDP_LOG_FUNC_EXIT__;
+			return -1;
+		}
+
+		if (strstr(reply, "FAIL")) {
+			WDP_LOGE("Failed to set miracast parameter(device info)");
+			__WDP_LOG_FUNC_EXIT__;
+			return -1;
+		}
+		WDP_LOGD("Succeeded to set miracast parameter(device info)");
+
+		/* param : Associated BSSID Subelement */
+		memset(cmd, 0x0, 80);
+		memset(reply, 0x0, WS_REPLY_LEN);
+
+		snprintf(cmd, sizeof(cmd), WS_CMD_SUBELEM_SET "%d %04x%s",
+								WFD_SUBELM_ID_ASSOC_BSSID, WFD_SUBELM_LEN_ASSOC_BSSID, "000000000000");
+		res = _ws_send_cmd(sock->ctrl_sock, cmd, (char*) reply, sizeof(reply));
+		if (res < 0) {
+			WDP_LOGE("Failed to send command to wpa_supplicant");
+			__WDP_LOG_FUNC_EXIT__;
+			return -1;
+		}
+
+		if (strstr(reply, "FAIL")) {
+			WDP_LOGE("Failed to set miracast parameter(BSSID subelement)");
+			__WDP_LOG_FUNC_EXIT__;
+			return -1;
+		}
+		WDP_LOGD("Succeeded to set miracast parameter(BSSID subelement)");
+
+		/* param : cpled_sink_status */
+		memset(cmd, 0x0, 80);
+		memset(reply, 0x0, WS_REPLY_LEN);
+
+		snprintf(cmd, sizeof(cmd), WS_CMD_SUBELEM_SET "%d %04x%02x",
+								WFD_SUBELM_ID_CUPLED_SYNC_INFO, 0x01, cpled_sink_status);
+		res = _ws_send_cmd(sock->ctrl_sock, cmd, (char*) reply, sizeof(reply));
+		if (res < 0) {
+			WDP_LOGE("Failed to send command to wpa_supplicant");
+			__WDP_LOG_FUNC_EXIT__;
+			return -1;
+		}
+
+		if (strstr(reply, "FAIL")) {
+			WDP_LOGE("Failed to set miracast parameter(Cuppled sink status)");
+			__WDP_LOG_FUNC_EXIT__;
+			return -1;
+		}
+		WDP_LOGD("Succeeded to set miracast parameter(Cuppled sink status)");
+
+
+		/* param : WFD Extended Capability */
+		memset(cmd, 0x0, 80);
+		memset(reply, 0x0, WS_REPLY_LEN);
+
+		snprintf(cmd, sizeof(cmd), WS_CMD_SUBELEM_SET "%d %04x%04x",
+								WFD_SUBELM_ID_EXT_CAPAB, 0x02, 0x00);
+		res = _ws_send_cmd(sock->ctrl_sock, cmd, (char*) reply, sizeof(reply));
+		if (res < 0) {
+			WDP_LOGE("Failed to send command to wpa_supplicant");
+			__WDP_LOG_FUNC_EXIT__;
+			return -1;
+		}
+
+		if (strstr(reply, "FAIL")) {
+			WDP_LOGE("Failed to set miracast parameter(Extended Capability)");
+			__WDP_LOG_FUNC_EXIT__;
+			return -1;
+		}
+		WDP_LOGD("Succeeded to set miracast parameter(Extended Capability)");
+
+	}
+
+	__WDP_LOG_FUNC_EXIT__;
+	return 0;
+}
+
+int ws_set_display(wfd_oem_display_s *wifi_display)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	ws_sock_data_s *sock = g_pd->common;
+	char cmd[80] = {0, };
+	char reply[1024]={0,};
+	int res;
+	unsigned int device_info = 0;
+
+	if (!sock) {
+		WDP_LOGE("Socket is NULL");
+		return -1;
+	}
+
+	WDP_LOGD("Wi-Fi Display type: [%d]", wifi_display->type);
+	WDP_LOGD("Wi-Fi Display avai: [%d]", wifi_display->availablity);
+	WDP_LOGD("Wi-Fi Display hdcp: [%d]", wifi_display->hdcp_support);
+	WDP_LOGD("Wi-Fi Display hdcp: [%d]", wifi_display->port);
+	WDP_LOGD("Wi-Fi Display sync: [%d]", wifi_display->max_tput);
+
+	device_info = wifi_display->type;
+	device_info+= (wifi_display->hdcp_support)<<8;
+	device_info+= (wifi_display->availablity)<<4;						//for availability bit
+
+	snprintf(cmd, sizeof(cmd), WS_CMD_SUBELEM_SET "%d %04x%04x%04x%04x",
+							WFD_SUBELM_ID_DEV_INFO, WFD_SUBELEM_LEN_DEV_INFO,
+							device_info, wifi_display->port, wifi_display->max_tput);
+
+	WDP_LOGD("Wi-Fi Display set command: [%s]", cmd);
+	res = _ws_send_cmd(sock->ctrl_sock, cmd, (char*) reply, sizeof(reply));
+	if (res < 0) {
+		WDP_LOGE("Failed to send command to wpa_supplicant");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	if (strstr(reply, "FAIL")) {
+		WDP_LOGE("Failed to set wifi display");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+	WDP_LOGD("Succeeded to set wifi display");
+
+	__WDP_LOG_FUNC_EXIT__;
+	return 0;
+}
+#endif /* TIZEN_FEATURE_WIFI_DISPLAY */
+
+int ws_refresh()
+{
+	__WDP_LOG_FUNC_ENTER__;
+
+	_ws_cancel();
+	_ws_flush();
 
 	__WDP_LOG_FUNC_EXIT__;
 	return 0;

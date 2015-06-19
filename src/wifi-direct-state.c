@@ -26,16 +26,13 @@
  */
 
 #include <stdio.h>
-
 #include <glib.h>
-
 #include <wifi-direct.h>
-#include <wifi-direct-internal.h>
 
+#include "wifi-direct-ipc.h"
 #include "wifi-direct-manager.h"
 #include "wifi-direct-state.h"
 #include "wifi-direct-util.h"
-
 
 static char *_wfd_state_string(int state)
 {
@@ -63,6 +60,7 @@ static char *_wfd_state_string(int state)
 	}
 	
 }
+
 int wfd_state_set(wfd_manager_s *manager, int state)
 {
 	__WDS_LOG_FUNC_ENTER__;
@@ -72,8 +70,9 @@ int wfd_state_set(wfd_manager_s *manager, int state)
 		return -1;
 	}
 
-	WDS_LOGD("wifi-direct-manager state set [%s] -> [%s]",
+	WDS_LOGI("wifi-direct-manager state set [%s] -> [%s]",
 				_wfd_state_string(manager->state), _wfd_state_string(state));
+
 	manager->state = state;
 
 	__WDS_LOG_FUNC_EXIT__;

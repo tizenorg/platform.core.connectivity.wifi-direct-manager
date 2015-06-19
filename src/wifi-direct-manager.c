@@ -34,10 +34,9 @@
 
 #include <glib.h>
 #include <glib-object.h>
-
 #include <wifi-direct.h>
-#include <wifi-direct-internal.h>
 
+#include "wifi-direct-ipc.h"
 #include "wifi-direct-manager.h"
 #include "wifi-direct-oem.h"
 #include "wifi-direct-session.h"
@@ -93,7 +92,7 @@ static int _wfd_local_init_device(wfd_manager_s *manager)
 	}
 
 	errno = 0;
-	local = (wfd_device_s*) calloc(1, sizeof(wfd_device_s));
+	local = (wfd_device_s*) g_try_malloc0(sizeof(wfd_device_s));
 	if (!local) {
 		WDS_LOGE("Failed to allocate memory for local device [%s]", strerror(errno));
 		return -1;
@@ -102,8 +101,7 @@ static int _wfd_local_init_device(wfd_manager_s *manager)
 	res = wfd_util_get_phone_name(local->dev_name);
 	if (res < 0) {
 		WDS_LOGE("Failed to get phone name of local device. Use default device name");
-		strncpy(local->dev_name, DEFAULT_DEVICE_NAME, DEV_NAME_LEN);
-		local->dev_name[DEV_NAME_LEN] = '\0';
+		g_strlcpy(local->dev_name, DEFAULT_DEVICE_NAME, DEV_NAME_LEN + 1);
 	}
 	WDS_LOGD("Local Device name [%s]", local->dev_name);
 	wfd_util_set_dev_name_notification();
@@ -112,12 +110,18 @@ static int _wfd_local_init_device(wfd_manager_s *manager)
 	if (res < 0) {
 		WDS_LOGE("Failed to get local device MAC address");
 	}
+
 	memcpy(local->intf_addr, local->dev_addr, MACADDR_LEN);
 	local->intf_addr[4] ^= 0x80;
-	WDS_LOGD("Local Interface MAC address [" MACSTR "]", MAC2STR(local->intf_addr));
+	WDS_LOGD("Local Interface MAC address [" MACSECSTR "]",
+					MAC2SECSTR(local->intf_addr));
 
 	local->config_methods = WFD_WPS_MODE_PBC | WFD_WPS_MODE_DISPLAY | WFD_WPS_MODE_KEYPAD;
 	local->wps_mode = WFD_WPS_MODE_PBC;
+#ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
+	local->services = NULL;
+	local->service_count = 0;
+#endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
 	// TODO: initialize other local device datas
 	manager->local = local;
 
@@ -136,8 +140,8 @@ static int _wfd_local_deinit_device(wfd_manager_s *manager)
 
 	wfd_util_unset_dev_name_notification();
 
-	if (manager->local)
-		free(manager->local);
+	// TODO: free member of local device
+	g_free(manager->local);
 
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
@@ -146,12 +150,21 @@ static int _wfd_local_deinit_device(wfd_manager_s *manager)
 int wfd_local_reset_data(wfd_manager_s *manager)
 {
 	__WDS_LOG_FUNC_ENTER__;
-	wfd_device_s *local = manager->local;
+	wfd_device_s *local = NULL;
 
+	if (!manager) {
+		WDS_LOGE("Invalid parameter");
+		return -1;
+	}
+
+	local = manager->local;
 	/* init local device data */
 	local->dev_role = WFD_DEV_ROLE_NONE;
 	local->wps_mode = WFD_WPS_MODE_PBC;
 	memset(local->go_dev_addr, 0x0, MACADDR_LEN);
+#ifdef TIZEN_FEATURE_WIFI_DISPLAY
+	memset(&(local->display), 0x0, sizeof(wfd_display_s));
+#endif /* TIZEN_FEATURE_WIFI_DISPLAY */
 	memset(local->ip_addr, 0x0, IPADDR_LEN);
 
 	__WDS_LOG_FUNC_EXIT__;
@@ -169,8 +182,7 @@ int wfd_local_get_dev_name(char *dev_name)
 		return -1;
 	}
 
-	strncpy(dev_name, local->dev_name, DEV_NAME_LEN);
-	dev_name[DEV_NAME_LEN-1] = '\0';
+	g_strlcpy(dev_name, local->dev_name, DEV_NAME_LEN + 1);
 	WDS_LOGD("Local device name [%s]", dev_name);
 
 	__WDS_LOG_FUNC_EXIT__;
@@ -188,27 +200,21 @@ int wfd_local_set_dev_name(char *dev_name)
 		return -1;
 	}
 
-	strncpy(local->dev_name, dev_name, DEV_NAME_LEN);
-	local->dev_name[DEV_NAME_LEN-1] = '\0';
+	g_strlcpy(local->dev_name, dev_name, DEV_NAME_LEN + 1);
 
 	if (g_manager->state >= WIFI_DIRECT_STATE_ACTIVATED) {
 		wfd_oem_set_dev_name(g_manager->oem_ops, dev_name);
-
-		wfd_oem_scan_param_s param;
-		param.scan_mode = WFD_OEM_SCAN_MODE_ACTIVE;
-		param.scan_type = WFD_OEM_SCAN_TYPE_FULL;
-		param.scan_time = 5;
-		param.refresh = TRUE;
-		wfd_oem_start_scan(g_manager->oem_ops, &param);
-		g_manager->scan_mode = WFD_SCAN_MODE_ACTIVE;
-		WDS_LOGD("Device name changed. Active scan started");
+		WDS_LOGD("Device name changed.");
+	}
+	else {
+		WDS_LOGE("Device name can't changed: state is %d",g_manager->state);
 	}
 
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
 }
 
-int wfd_local_get_dev_mac(unsigned char *dev_mac)
+int wfd_local_get_dev_mac(char *dev_mac)
 {
 	__WDS_LOG_FUNC_ENTER__;
 	wfd_device_s *local = g_manager->local;
@@ -219,13 +225,14 @@ int wfd_local_get_dev_mac(unsigned char *dev_mac)
 		return -1;
 	}
 
-	memcpy(dev_mac, local->dev_addr, MACADDR_LEN);
-	WDS_LOGD("Local device MAC address [" MACSTR "]", MAC2STR(dev_mac));
+	g_snprintf(dev_mac, MACSTR_LEN, MACSTR, MAC2STR(local->dev_addr));
+	WDS_SECLOGD("Local device MAC address [%s]", dev_mac);
 
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
 }
 
+#if 0
 int wfd_local_get_intf_mac(unsigned char *intf_mac)
 {
 	__WDS_LOG_FUNC_ENTER__;
@@ -237,12 +244,13 @@ int wfd_local_get_intf_mac(unsigned char *intf_mac)
 		return -1;
 	}
 
-	memcpy(intf_mac, local->intf_addr, MACADDR_LEN);
-	WDS_LOGD("Local interface MAC address [" MACSTR "]", MAC2STR(intf_mac));
+	g_snprintf(intf_mac, MACSTR_LEN, MACSTR, MAC2STR(local->intf_addr));
+	WDS_SECLOGD("Local interface MAC address [%s]", intf_mac);
 
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
 }
+#endif
 
 int wfd_local_get_ip_addr(char *ip_str)
 {
@@ -256,7 +264,7 @@ int wfd_local_get_ip_addr(char *ip_str)
 	}
 
 	snprintf(ip_str, IPSTR_LEN, IPSTR, IP2STR(local->ip_addr));
-	WDS_LOGD("Local IP address [" IPSTR "]", IP2STR(local->ip_addr));
+	WDS_SECLOGD("Local IP address [" IPSECSTR "]", IP2SECSTR(local->ip_addr));
 
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
@@ -298,6 +306,7 @@ int wfd_local_get_wps_mode(int *wps_mode)
 	return 0;
 }
 
+#if 0
 int wfd_local_set_wps_mode(int wps_mode)
 {
 	__WDS_LOG_FUNC_ENTER__;
@@ -315,6 +324,7 @@ int wfd_local_set_wps_mode(int wps_mode)
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
 }
+#endif
 
 int wfd_manager_get_go_intent(int *go_intent)
 {
@@ -472,64 +482,32 @@ int wfd_manager_local_config_set(wfd_manager_s *manager)
 
 	local->wps_mode = WFD_WPS_MODE_PBC;
 	WDS_LOGD("Device name set as %s", local->dev_name);
-	wfd_oem_set_dev_type(manager->oem_ops, local->pri_dev_type, local->sec_dev_type);
-	wfd_oem_set_go_intent(manager->oem_ops, manager->go_intent);
-	wfd_oem_set_dev_name(manager->oem_ops, local->dev_name);
+	res = wfd_oem_set_dev_name(manager->oem_ops, local->dev_name);
+	if (res < 0) {
+		WDS_LOGE("Failed to set device name");
+		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
+	}
+
+	res = wfd_oem_set_dev_type(manager->oem_ops, local->pri_dev_type, local->sec_dev_type);
+	if (res < 0) {
+		WDS_LOGE("Failed to set device type");
+		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
+	}
+
+	res = wfd_oem_set_go_intent(manager->oem_ops, manager->go_intent);
+	if (res < 0) {
+		WDS_LOGE("Failed to set go intent");
+		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
+	}
 
 	return WIFI_DIRECT_ERROR_NONE;
-}
-
-int wfd_local_get_display_port(int *port)
-{
-	__WDS_LOG_FUNC_ENTER__;
-	wfd_device_s *local = g_manager->local;
-
-	if (!port) {
-		WDS_LOGE("Invalid parameter");
-		__WDS_LOG_FUNC_EXIT__;
-		return -1;
-	}
-
-	if (!local->wifi_display) {
-		WDS_LOGE("wifi display is not registered");
-		__WDS_LOG_FUNC_EXIT__;
-		return -1;
-	}
-
-	*port = local->wifi_display->ctrl_port;
-	WDS_LOGD("Local display port [%d]", *port);
-
-	__WDS_LOG_FUNC_EXIT__;
-	return 0;
-}
-
-int wfd_local_get_display_type(wifi_direct_display_type_e *type)
-{
-	__WDS_LOG_FUNC_ENTER__;
-	wfd_device_s *local = g_manager->local;
-
-	if (!type) {
-		WDS_LOGE("Invalid parameter");
-		__WDS_LOG_FUNC_EXIT__;
-		return -1;
-	}
-
-	if (!local->wifi_display) {
-		WDS_LOGE("wifi display is not registered");
-		__WDS_LOG_FUNC_EXIT__;
-		return -1;
-	}
-
-	*type = local->wifi_display->type;
-	WDS_LOGD("Local display type [%d]", *type);
-
-	__WDS_LOG_FUNC_EXIT__;
-	return 0;
 }
 
 int wfd_manager_activate(wfd_manager_s *manager)
 {
 	__WDS_LOG_FUNC_ENTER__;
+	int concurrent = 0;
+	int prev_state = 0;
 	int res = 0;
 
 	if (!manager) {
@@ -542,18 +520,42 @@ int wfd_manager_activate(wfd_manager_s *manager)
 		return 1;
 	}
 
+	wfd_state_get(manager, &prev_state);
 	wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATING);
 
-	res = wfd_oem_activate(manager->oem_ops);
+#if 0 /* No need to check wifi state. Net-config will check and proceed driver loading */
+	concurrent = wfd_util_check_wifi_state();
+	if (concurrent < 0) {
+		WDS_LOGE("Failed to get wifi state");
+		concurrent = 0;
+	}
+#endif
+
+	res = wfd_oem_activate(manager->oem_ops, concurrent);
 	if (res < 0) {
 		WDS_LOGE("Failed to activate");
-		wfd_state_set(manager, WIFI_DIRECT_STATE_DEACTIVATED);
+		wfd_state_set(manager, prev_state);
 		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
 	}
 	WDS_LOGE("Succeeded to activate");
 
 	wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
 	wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
+
+	wfd_manager_local_config_set(manager);
+	wfd_util_set_country();
+
+	wfd_util_start_wifi_direct_popup();
+
+	res = wfd_util_get_local_dev_mac(manager->local->dev_addr);
+	if (res < 0) {
+		WDS_LOGE("Failed to get local device MAC address");
+	}
+
+	memcpy(manager->local->intf_addr, manager->local->dev_addr, MACADDR_LEN);
+	manager->local->intf_addr[4] ^= 0x80;
+	WDS_LOGD("Local Interface MAC address [" MACSECSTR "]",
+					MAC2SECSTR(manager->local->intf_addr));
 
 	__WDS_LOG_FUNC_EXIT__;
 	return WIFI_DIRECT_ERROR_NONE;
@@ -562,6 +564,8 @@ int wfd_manager_activate(wfd_manager_s *manager)
 int wfd_manager_deactivate(wfd_manager_s *manager)
 {
 	__WDS_LOG_FUNC_ENTER__;
+	int concurrent = 0;
+	int prev_state = 0;
 	int res = 0;
 
 	if (!manager) {
@@ -574,13 +578,29 @@ int wfd_manager_deactivate(wfd_manager_s *manager)
 		return WIFI_DIRECT_ERROR_NOT_PERMITTED;
 	}
 
+	wfd_state_get(manager, &prev_state);
 	wfd_state_set(manager, WIFI_DIRECT_STATE_DEACTIVATING);
 
-	res = wfd_oem_deactivate(manager->oem_ops);
+	concurrent = wfd_util_check_wifi_state();
+	if (concurrent < 0) {
+		WDS_LOGE("Failed to get wifi state");
+		concurrent = 0;
+	}
+
+#ifdef TIZEN_FEATURE_WIFI_DISPLAY
+	res = wfd_oem_miracast_init(manager->oem_ops, false);
+	if (res < 0)
+		WDS_LOGE("Failed to initialize miracast");
+#endif /* TIZEN_FEATURE_WIFI_DISPLAY */
+
+	res = wfd_oem_destroy_group(manager->oem_ops, "p2p-wlan0-0");
+	if (res < 0)
+		WDS_LOGE("Failed to destroy group before deactivation");
+
+	res = wfd_oem_deactivate(manager->oem_ops, concurrent);
 	if (res < 0) {
 		WDS_LOGE("Failed to deactivate");
-		// TODO: check state setting is correct
-		wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
+		wfd_state_set(manager, prev_state);
 		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
 	}
 	WDS_LOGE("Succeeded to deactivate");
@@ -589,6 +609,11 @@ int wfd_manager_deactivate(wfd_manager_s *manager)
 	wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_DEACTIVATED);
 
 	manager->req_wps_mode = WFD_WPS_MODE_PBC;
+
+	wfd_destroy_group(manager, GROUP_IFNAME);
+	wfd_destroy_session(manager);
+	wfd_peer_clear_all(manager);
+	wfd_local_reset_data(manager);
 
 	__WDS_LOG_FUNC_EXIT__;
 	return WIFI_DIRECT_ERROR_NONE;
@@ -607,7 +632,7 @@ int wfd_manager_connect(wfd_manager_s *manager, unsigned char *peer_addr)
 
 	session = (wfd_session_s*) manager->session;
 	if (session && session->type != SESSION_TYPE_INVITE) {
-		WDS_LOGE("Session already exist or not an invitaion session");
+		WDS_LOGE("Session already exist and it's not an invitation session");
 		return WIFI_DIRECT_ERROR_NOT_PERMITTED;
 	}
 
@@ -620,16 +645,11 @@ int wfd_manager_connect(wfd_manager_s *manager, unsigned char *peer_addr)
 		}
 	}
 
-	if (manager->local->dev_role == WFD_DEV_ROLE_GO && session->type != SESSION_TYPE_INVITE) {
+	if (manager->local->dev_role == WFD_DEV_ROLE_GO &&
+			session->type != SESSION_TYPE_INVITE) {
 		session->type = SESSION_TYPE_INVITE;
 		res = wfd_session_invite(session);
 	} else {
-		/* joining to group or starting connection with PD */
-		/* In case of invitation session PD should be started
-		 * peer->dev_role == WFD_DEV_ROLE_GO
-		 * session->direction == SESSION_DIRECTION_INCOMING
-		 * session->invitation == TRUE;
-		 */
 		res = wfd_session_start(session);
 	}
 	if (res < 0) {
@@ -670,29 +690,42 @@ int wfd_manager_accept_connection(wfd_manager_s *manager, unsigned char *peer_ad
 	// TODO: check peer_addr with session's peer_addr
 
 	if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
-		/* Peer want to join my group(Peer sent PD) */
 		WDS_LOGD("My device is GO and peer want to join my group, so WPS will be started");
 		res = wfd_session_wps(session);
 	} else if (peer->dev_role == WFD_DEV_ROLE_GO) {
-		/* FIX ME: When Enter PIN or Display event comes up from supplicant
-		 * manager send Connection WPS Req event to client.
-		 * So, application use accept_connection API.
-		 * This is odd situation. We need new client event such as WPS_KEYPAD/WPS_DISPLAY for application.
-		 * We can correct alien code below with new client event */
-		if (session->direction == SESSION_DIRECTION_OUTGOING) {
-			WDS_LOGD("Peer device is GO, WPS_Enrollee will be started");
-			wfd_session_wps(manager->session);
+		WDS_LOGD("Peer device is GO, so Prov_Disc or Join will be started");
+		if (session->type == SESSION_TYPE_INVITE) {
+			if (session->state == SESSION_STATE_CREATED) {
+				WDS_LOGD("Invitation session. PD will be started");
+				res = wfd_session_start(session);
+			} else {
+				WDS_LOGD("Invitation session. Join will be started");
+				res = wfd_session_join(session);
+			}
 		} else {
-			WDS_LOGD("Peer device is GO, so Prov_Disc will be started");
-			wfd_session_start(session);
+			if (manager->autoconnection && (manager->auto_pin[0] != 0))
+				g_strlcpy(session->wps_pin, manager->auto_pin, PINSTR_LEN + 1);
+
+			WDS_LOGD("Peer device is GO, so WPS will be started");
+			res = wfd_session_connect(session);
 		}
 	} else {
-		/* Prov_disc_req received. GO Negotiation will be started */
-		WDS_LOGD("My device is Device, so Negotiation will be started");
-		res = wfd_session_connect(session);
+		/* We should wait GO_NEGO_REQ from peer(MO) in autoconnection mode. */
+		/* Otherwise, GO Nego is sometimes failed. */
+		if (manager->autoconnection == FALSE) {
+			WDS_LOGD("My device is Device, so Negotiation will be started");
+			res = wfd_session_connect(session);
+		}
 	}
 	if (res < 0) {
 		WDS_LOGE("Failed to start session");
+		if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
+			wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
+			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
+		} else {
+			wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
+			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
+		}
 		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
 	}
 	wfd_state_set(manager, WIFI_DIRECT_STATE_CONNECTING);
@@ -705,7 +738,6 @@ int wfd_manager_accept_connection(wfd_manager_s *manager, unsigned char *peer_ad
 int wfd_manager_cancel_connection(wfd_manager_s *manager, unsigned char *peer_addr)
 {
 	__WDS_LOG_FUNC_ENTER__;
-	wfd_session_s *session = NULL;
 	wfd_group_s *group = NULL;
 	int res = 0;
 
@@ -764,12 +796,10 @@ int wfd_manager_reject_connection(wfd_manager_s *manager, unsigned char *peer_ad
 		return WIFI_DIRECT_ERROR_NOT_PERMITTED;
 	}
 
-	if (manager->local->dev_role == WFD_DEV_ROLE_NONE) {
-		res = wfd_oem_reject_connection(manager->oem_ops, peer_addr);
-		if (res < 0) {
-			WDS_LOGE("Failed to reject connection");
-			// TODO: check whether set state and break
-		}
+	res = wfd_session_reject(session, peer_addr);
+	if (res < 0) {
+		WDS_LOGE("Failed to reject connection");
+		// TODO: check whether set state and break
 	}
 	wfd_destroy_session(manager);
 
@@ -818,7 +848,12 @@ int wfd_manager_disconnect(wfd_manager_s *manager, unsigned char *peer_addr)
 	wfd_state_set(manager, WIFI_DIRECT_STATE_DISCONNECTING);
 
 	if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
+#ifdef CTRL_IFACE_DBUS
+		/* dbus using device address to identify the peer */
+		res = wfd_oem_disconnect(manager->oem_ops, peer->dev_addr);
+#else /* CTRL_IFACE_DBUS */
 		res = wfd_oem_disconnect(manager->oem_ops, peer->intf_addr);
+#endif /* CTRL_IFACE_DBUS */
 	} else {
 		res = wfd_oem_destroy_group(manager->oem_ops, group->ifname);
 	}
@@ -907,91 +942,108 @@ failed:
 	return res;
 }
 
-static int _wfd_manager_service_copy(char* dst, GList* services, int dst_length)
+int wfd_manager_get_peer_info(wfd_manager_s *manager, unsigned char *addr, wfd_discovery_entry_s **peer)
 {
 	__WDS_LOG_FUNC_ENTER__;
-	wfd_service_s *service = NULL;
-	GList *temp = NULL;
-	char* ptr = dst;
-	int length = dst_length;
+	wfd_device_s *peer_dev = NULL;
+	wfd_discovery_entry_s *peer_info;
+	wfd_oem_device_s *oem_dev = NULL;
 	int res = 0;
 
-	temp = g_list_first(services);
-	while (temp) {
-
-		service = temp->data;
-		if(length < service->service_str_length + 4)
-		{
-			WDS_LOGD("There is not enough space to reserve service list");
-			break;
-		}
-
-		memcpy(ptr, service->service_string, service->service_str_length);
-		ptr+=service->service_str_length;
-		strncpy(ptr," ,\n",3);
-		ptr+=3;
-		length = length - service->service_str_length - 3;
-
-		temp = g_list_next(temp);
-	}
-	*ptr='\0';
-	__WDS_LOG_FUNC_EXIT__;
-	return res;
-}
-
-int wfd_manager_get_access_list(wfd_manager_s *manager, wfd_access_list_info_s **access_list_data)
-{
-	__WDS_LOG_FUNC_ENTER__;
-	GList *temp = NULL;
-	wfd_access_list_info_s *device = NULL;
-	wfd_access_list_info_s *devices = NULL;
-	int device_count = 0;
-	int count = 0;
-	int res = 0;
-
-	if (!manager || !access_list_data) {
+	if (!manager || !addr) {
 		WDS_LOGE("Invalid parameter");
 		return -1;
 	}
 
-	device_count = g_list_length(manager->access_list);
-	if (device_count < 0)
-		return -1;
-	else if (device_count == 0)
-		return 0;
+	unsigned long time = 0;
+#if !(__GNUC__ <= 4 && __GNUC_MINOR__ < 8)
+	wfd_util_get_current_time(&time);
+#else
+	struct timeval tval;
+	gettimeofday(&tval, NULL);
+	time = tval.tv_sec;
+#endif
+	WDS_LOGI("Current time [%ld]", time);
 
-	errno = 0;
-	devices = (wfd_access_list_info_s*) calloc(device_count, sizeof(wfd_access_list_info_s));
-	if (!devices) {
-		WDS_LOGF("Failed to allocate memory for access list. [%s]", strerror(errno));
+	res = wfd_oem_get_peer_info(manager->oem_ops, addr, &oem_dev);
+	if (res < 0 || !oem_dev) {
+		WDS_LOGE("Failed to get peer information");
 		return -1;
 	}
 
-	temp = g_list_first(manager->access_list);
-	while (temp && count < device_count) {
-		device = temp->data;
-		if (!device)
-			goto next;
-
-		strncpy(devices[count].device_name, device->device_name, DEV_NAME_LEN);
-		devices[count].device_name[DEV_NAME_LEN] = '\0';
-		memcpy(devices[count].mac_address, device->mac_address, MACADDR_LEN);
-		devices[count].allowed = device->allowed;
-
-		count++;
-		WDS_LOGD("%dth device in list [%s]", count, device->device_name);
-next:
-		temp = g_list_next(temp);
-		device = NULL;
+	peer_dev = wfd_peer_find_by_addr(manager, addr);
+	if(!peer_dev) {
+		peer_dev = (wfd_device_s*) g_try_malloc0(sizeof(wfd_device_s));
+		if (!peer_dev) {
+			WDS_LOGE("Failed to allocate memory for peer device. [%s]", strerror(errno));
+			free(oem_dev);
+			return -1;
+		}
+		memcpy(peer_dev->dev_addr, addr, MACADDR_LEN);
+		manager->peers = g_list_prepend(manager->peers, peer_dev);
+		manager->peer_count++;
+		peer_dev->time = time;
+		WDS_LOGD("peer_count[%d]", manager->peer_count);
+	} else {
+		if (oem_dev->age > 30 && peer_dev->state == WFD_PEER_STATE_DISCOVERED) {
+			WDS_LOGE("Too old age to update peer");
+			free(oem_dev);
+			return -1;
+		}
 	}
-	WDS_LOGD("%d devices converted", count);
-	WDS_LOGD("Final device count is %d", device_count);
 
-	*access_list_data = devices;
+	g_strlcpy(peer_dev->dev_name, oem_dev->dev_name, DEV_NAME_LEN + 1);
+	memcpy(peer_dev->intf_addr, oem_dev->intf_addr, MACADDR_LEN);
+	memcpy(peer_dev->go_dev_addr, oem_dev->go_dev_addr, MACADDR_LEN);
+	peer_dev->dev_role = oem_dev->dev_role;
+	peer_dev->config_methods = oem_dev->config_methods;
+	peer_dev->pri_dev_type = oem_dev->pri_dev_type;
+	peer_dev->sec_dev_type = oem_dev->sec_dev_type;
+	peer_dev->dev_flags = oem_dev->dev_flags;
+	peer_dev->group_flags = oem_dev->group_flags;
+	peer_dev->wps_mode =  oem_dev->wps_mode;
+
+#ifdef TIZEN_FEATURE_WIFI_DISPLAY
+	memcpy(&(peer_dev->display), &(oem_dev->display), sizeof(wfd_display_s));
+#endif /* TIZEN_FEATURE_WIFI_DISPLAY */
+
+	peer_dev->time = time;
+	peer_dev->channel = oem_dev->channel;
+
+	free(oem_dev);
+
+	peer_info = (wfd_discovery_entry_s*) g_try_malloc0(sizeof(wfd_discovery_entry_s));
+	if (!(peer_info)) {
+		WDS_LOGE("Failed to allocate memory for peer data. [%s]", strerror(errno));
+		return -1;
+	}
+
+	g_strlcpy(peer_info->device_name, peer_dev->dev_name, DEV_NAME_LEN + 1);
+	memcpy(peer_info->mac_address, peer_dev->dev_addr, MACADDR_LEN);
+	memcpy(peer_info->intf_address, peer_dev->intf_addr, MACADDR_LEN);
+	peer_info->channel = peer_dev->channel;
+#ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
+	peer_info->services = 0;
+#endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
+	peer_info->is_group_owner = peer_dev->dev_role == WFD_DEV_ROLE_GO;
+	peer_info->is_persistent_go = peer_dev->group_flags & WFD_OEM_GROUP_FLAG_PERSISTENT_GROUP;
+	peer_info->is_connected = peer_dev->dev_role == WFD_DEV_ROLE_GC;
+	peer_info->wps_device_pwd_id = 0;
+	peer_info->wps_cfg_methods = peer_dev->config_methods;
+	peer_info->category = peer_dev->pri_dev_type;
+	peer_info->subcategory = peer_dev->sec_dev_type;
+
+#ifdef TIZEN_FEATURE_WIFI_DISPLAY
+	if (peer_dev->display.availablity && peer_dev->display.port)
+		peer_info->is_wfd_device = 1;
+#endif /* TIZEN_FEATURE_WIFI_DISPLAY */
+
+	*peer = peer_info;
 
 	__WDS_LOG_FUNC_EXIT__;
-	return count;
+	return res;
 }
+
 
 int wfd_manager_get_peers(wfd_manager_s *manager, wfd_discovery_entry_s **peers_data)
 {
@@ -1009,21 +1061,26 @@ int wfd_manager_get_peers(wfd_manager_s *manager, wfd_discovery_entry_s **peers_
 	}
 
 	unsigned long time = 0;
+#if !(__GNUC__ <= 4 && __GNUC_MINOR__ < 8)
+	wfd_util_get_current_time(&time);
+#else
 	struct timeval tval;
 	gettimeofday(&tval, NULL);
 	time = tval.tv_sec;
+#endif
 	WDS_LOGI("Current time [%ld]", time);
 
 	peer_count = manager->peer_count;
+	WDS_LOGI("peer count [%ld]", peer_count);
 	if (peer_count < 0)
 		return -1;
 	else if (peer_count == 0)
 		return 0;
 
 	errno = 0;
-	peers = (wfd_discovery_entry_s*) calloc(peer_count, sizeof(wfd_discovery_entry_s));
+	peers = (wfd_discovery_entry_s*) g_try_malloc0_n(peer_count, sizeof(wfd_discovery_entry_s));
 	if (!peers) {
-		WDS_LOGF("Failed to allocate memory for peer data. [%s]", strerror(errno));
+		WDS_LOGE("Failed to allocate memory for peer data. [%s]", strerror(errno));
 		return -1;
 	}
 
@@ -1032,7 +1089,7 @@ int wfd_manager_get_peers(wfd_manager_s *manager, wfd_discovery_entry_s **peers_
 		peer = temp->data;
 		if (!peer)
 			goto next;
-		if (peer->time + 4 < time) {
+		if (peer->time + 8 < time) {
 			WDS_LOGD("Device data is too old to report to application [%s]", peer->dev_name);
 			res = wfd_update_peer(manager, peer);
 			if (res < 0) {
@@ -1040,20 +1097,19 @@ int wfd_manager_get_peers(wfd_manager_s *manager, wfd_discovery_entry_s **peers_
 				temp = g_list_next(temp);
 				manager->peers = g_list_remove(manager->peers, peer);
 				manager->peer_count--;
-				wfd_manager_init_service(peer);
-				if(peer->wifi_display)
-					free(peer->wifi_display);
-				free(peer);
+				g_free(peer);
 				peer = NULL;
 				continue;
 			}
 		}
 
-		strncpy(peers[count].device_name, peer->dev_name, DEV_NAME_LEN);
-		peers[count].device_name[DEV_NAME_LEN] = '\0';
+		g_strlcpy(peers[count].device_name, peer->dev_name, DEV_NAME_LEN + 1);
 		memcpy(peers[count].mac_address, peer->dev_addr, MACADDR_LEN);
 		memcpy(peers[count].intf_address, peer->intf_addr, MACADDR_LEN);
 		peers[count].channel = peer->channel;
+#ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
+		peers[count].services = 0;
+#endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
 		peers[count].is_group_owner = peer->dev_role == WFD_DEV_ROLE_GO;
 		peers[count].is_persistent_go = peer->group_flags & WFD_OEM_GROUP_FLAG_PERSISTENT_GROUP;
 		peers[count].is_connected = peer->dev_role == WFD_DEV_ROLE_GC;
@@ -1061,10 +1117,11 @@ int wfd_manager_get_peers(wfd_manager_s *manager, wfd_discovery_entry_s **peers_
 		peers[count].wps_cfg_methods = peer->config_methods;
 		peers[count].category = peer->pri_dev_type;
 		peers[count].subcategory = peer->sec_dev_type;
-		_wfd_manager_service_copy(peers[count].services, peer->services, 1024);
-		if(peer->wifi_display)
-			peers[count].is_wfd_device = peer->wifi_display->availability;
 
+#ifdef TIZEN_FEATURE_WIFI_DISPLAY
+		if (peer->display.availablity && peer->display.port)
+			peers[count].is_wfd_device = 1;
+#endif /* TIZEN_FEATURE_WIFI_DISPLAY */
 		count++;
 		WDS_LOGD("%dth peer [%s]", count, peer->dev_name);
 next:
@@ -1108,7 +1165,7 @@ int wfd_manager_get_connected_peers(wfd_manager_s *manager, wfd_connected_peer_i
 	}
 
 	errno = 0;
-	peers = (wfd_connected_peer_info_s*) calloc(peer_count, sizeof(wfd_connected_peer_info_s));
+	peers = (wfd_connected_peer_info_s*) g_try_malloc0_n(peer_count, sizeof(wfd_connected_peer_info_s));
 	if (!peers) {
 		WDS_LOGE("Failed to allocate memory for connected peer data. [%s]", strerror(errno));
 		return -1;
@@ -1118,8 +1175,7 @@ int wfd_manager_get_connected_peers(wfd_manager_s *manager, wfd_connected_peer_i
 	while (temp && count < group->member_count) {
 		peer = temp->data;
 		{
-			strncpy(peers[count].device_name, peer->dev_name, DEV_NAME_LEN);
-			peers[count].device_name[DEV_NAME_LEN] = '\0';
+			g_strlcpy(peers[count].device_name, peer->dev_name, DEV_NAME_LEN + 1);
 			memcpy(peers[count].mac_address, peer->dev_addr, MACADDR_LEN);
 			memcpy(peers[count].intf_address, peer->intf_addr, MACADDR_LEN);
 			memcpy(peers[count].ip_address, peer->ip_addr, IPADDR_LEN);
@@ -1127,7 +1183,16 @@ int wfd_manager_get_connected_peers(wfd_manager_s *manager, wfd_connected_peer_i
 			peers[count].subcategory = peer->sec_dev_type;
 			peers[count].channel = peer->channel;
 			peers[count].is_p2p = 1;
-			_wfd_manager_service_copy(peers[count].services, peer->services, 1024);
+#ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
+			peers[count].services = 0;
+#endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
+
+#ifdef TIZEN_FEATURE_WIFI_DISPLAY
+			if (peer->display.availablity && peer->display.port)
+				peers[count].is_wfd_device = 1;
+
+#endif /* TIZEN_FEATURE_WIFI_DISPLAY */
+
 			WDS_LOGD("%dth member converted[%s]", count, peers[count].device_name);
 			count++;
 		}
@@ -1142,6 +1207,7 @@ int wfd_manager_get_connected_peers(wfd_manager_s *manager, wfd_connected_peer_i
 	return count;
 }
 
+#if 0
 wfd_device_s *wfd_manager_find_connected_peer(wfd_manager_s *manager, unsigned char *peer_addr)
 {
 	__WDS_LOG_FUNC_ENTER__;
@@ -1157,27 +1223,7 @@ wfd_device_s *wfd_manager_find_connected_peer(wfd_manager_s *manager, unsigned c
 	__WDS_LOG_FUNC_EXIT__;
 	return peer;
 }
-
-wfd_device_s *wfd_manager_get_current_peer(wfd_manager_s *manager)
-{
-	__WDS_LOG_FUNC_ENTER__;
-	wfd_session_s *session = NULL;
-
-	if (!manager) {
-		WDS_LOGE("Invalid parameter");
-		__WDS_LOG_FUNC_EXIT__;
-		return NULL;
-	}
-
-	session = manager->session;
-	if (session && session->peer) {
-		__WDS_LOG_FUNC_EXIT__;
-		return session->peer;
-	}
-
-	__WDS_LOG_FUNC_EXIT__;
-	return NULL;
-}
+#endif
 
 int wfd_manager_get_goup_ifname(char **ifname)
 {
@@ -1201,454 +1247,95 @@ int wfd_manager_get_goup_ifname(char **ifname)
 	return 0;
 }
 
-static wfd_access_list_info_s *_wfd_manager_get_device_from_access_list(void *data, unsigned char *dev_addr)
+#ifdef TIZEN_FEATURE_WIFI_DISPLAY
+int wfd_manager_set_display_device(int type, int port, int hdcp)
 {
 	__WDS_LOG_FUNC_ENTER__;
-	wfd_manager_s *manager = (wfd_manager_s*) data;
-	wfd_access_list_info_s *device = NULL;
-	GList *temp = NULL;
-
-	if (!data || !dev_addr) {
-		WDS_LOGE("Invalid parameter");
-		return NULL;
-	}
-
-	temp = g_list_first(manager->access_list);
-	while (temp) {
-		device = temp->data;
-		if (!memcmp(device->mac_address, dev_addr, MACADDR_LEN)) {
-			WDS_LOGD("device found[" MACSTR "]", MAC2STR(dev_addr));
-			break;
-		}
-		temp = g_list_next(temp);
-		device = NULL;
-	}
-
-	__WDS_LOG_FUNC_EXIT__;
-	return device;
-}
-
-int wfd_manager_access_control(wfd_manager_s *manager, unsigned char *dev_addr)
-{
-	__WDS_LOG_FUNC_ENTER__;
-	wfd_access_list_info_s *result = NULL;
-	int res = 0;
-
-	result = _wfd_manager_get_device_from_access_list(manager, dev_addr);
-
-	if(result)
-		res = result->allowed;
-	else
-		res = WFD_DEV_UNKNOWN;
-
-	__WDS_LOG_FUNC_EXIT__;
-	return res;
-}
-
-int wfd_manager_add_to_access_list(wfd_manager_s *manager, wfd_device_s *peer, int allowed)
-{
-	__WDS_LOG_FUNC_ENTER__;
-	wfd_access_list_info_s *result = NULL;
-	GList *temp = NULL;
-	int res = 0;
-
-	result = _wfd_manager_get_device_from_access_list(manager, peer->dev_addr);
-	if(result)
-	{
-		if(result->allowed == allowed &&
-				!strcmp(result->device_name, peer->dev_name))
-		{
-			WDS_LOGD("already exist");
-			__WDS_LOG_FUNC_EXIT__;
-			return res;
-		}else {
-
-			result->allowed = allowed;
-			strncpy(result->device_name, peer->dev_name, DEV_NAME_LEN);
-			result->device_name[DEV_NAME_LEN] = '\0';
-			res = wfd_util_rewrite_device_list_to_file(manager->access_list);
-			if(res < 0)
-			{
-				WDS_LOGE("fail to modify the peer in access list file");
-			}
-
-		}
-	}else {
-
-		res = wfd_util_add_device_to_list(peer, allowed);
-		if(res > 0)
-		{
-			result = calloc(1, sizeof(wfd_access_list_info_s));
-			strncpy(result->mac_address, peer->dev_addr, MACADDR_LEN);
-			strncpy(result->device_name, peer->dev_name, DEV_NAME_LEN);
-			result->device_name[DEV_NAME_LEN] = '\0';
-			result->allowed = allowed;
-			manager->access_list = g_list_append(manager->access_list, result);
-		}else {
-			WDS_LOGE("fail to append peer to access list file");
-			res = -1;
-		}
-	}
-	__WDS_LOG_FUNC_EXIT__;
-	return res;
-}
-
-int wfd_manager_del_from_access_list(wfd_manager_s *manager, unsigned char *mac)
-{
-	__WDS_LOG_FUNC_ENTER__;
-	wfd_access_list_info_s *device = NULL;
-	GList *temp = NULL;
-	int res = 0;
-
-	device = _wfd_manager_get_device_from_access_list(manager, mac);
-	if(device)
-	{
-		manager->access_list = g_list_remove(manager->access_list , device);
-		free(device);
-
-		res = wfd_util_rewrite_device_list_to_file(manager->access_list);
-		if (res < 0)
-			WDS_LOGE("fail to remove device from list file!");
-
-
-	}else if(!memcmp(mac,"\0x00\0x00\0x00\0x00\0x00\0x00",MACADDR_LEN)){
-
-		res = wfd_util_reset_access_list_file();
-		if(res == 0)
-		{
-			g_list_foreach (manager->access_list, (GFunc)g_free, NULL);
-			g_list_free (manager->access_list);
-			manager->access_list = NULL;
-		}else {
-			WDS_LOGE("fail to reset access list file");
-		}
-
-	}else {
-		WDS_LOGD("device dose not exist");
-	}
-	__WDS_LOG_FUNC_EXIT__;
-	return res;
-}
-
-static wfd_service_s *_wfd_service_find(wfd_device_s *device, wifi_direct_service_type_e type, char *data)
-{
-	__WDS_LOG_FUNC_ENTER__;
-	wfd_service_s *result = NULL;
-	GList *temp = NULL;
-	int cmp_result = 0;
-
-	temp = g_list_first(device->services);
-	while (temp) {
-		result = temp->data;
-
-		if(result->service_type == WIFI_DIRECT_SERVICE_BONJOUR)
-			cmp_result = strncmp(data, result->service_string, strlen(data));
-		else
-			cmp_result = strcmp(data, result->service_string);
-
-		if(type == result->service_type && !cmp_result)
-		{
-			WDS_LOGD("Service found");
-			break;
-		}
-		temp = g_list_next(temp);
-		result = NULL;
-	}
-	__WDS_LOG_FUNC_EXIT__;
-	return result;
-}
-
-static wfd_query_s *_wfd_query_find(wfd_manager_s *manager, unsigned char* mac_addr, wifi_direct_service_type_e  type, char *data)
-{
-	__WDS_LOG_FUNC_ENTER__;
-	wfd_query_s *query = NULL;
-	GList *temp = NULL;
-	int data_len = 0;
-
-	if(data != NULL)
-		data_len = strlen(data);
-
-	temp = g_list_first(manager->query_handles);
-	while (temp) {
-		query = temp->data;
-
-		if(!memcmp(query->mac_addr, mac_addr, MACADDR_LEN) &&
-				type == query->service_type)
-		{
-			if(data_len)
-			{
-				if(!strcmp(data, query->query_string))
-				{
-					WDS_LOGD("Query found");
-					break;
-				}
-			}else{
-				WDS_LOGD("Query found");
-				break;
-			}
-		}
-		temp = g_list_next(temp);
-		query = NULL;
-	}
-	__WDS_LOG_FUNC_EXIT__;
-	return query;
-}
-
-int wfd_manager_service_add(wfd_manager_s *manager, wifi_direct_service_type_e  type, char *data)
-{
-	__WDS_LOG_FUNC_ENTER__;
-	wfd_device_s * device = manager->local;
-	wfd_service_s * service;
-	int res = 0;
-
-	if (!device || !data) {
-		WDS_LOGE("Invalid parameter");
-		return -1;
-	}
-
-	service = _wfd_service_find(device, type, data);
-	if (service) {
-		WDS_LOGE("service already exist");
-		service->ref_counter++;
-		__WDS_LOG_FUNC_EXIT__;
-		return 0;
-	}
-
-	res = wfd_oem_service_add(manager->oem_ops, type, data);
-	if (res < 0) {
-		WDS_LOGE("Failed to add service");
-		__WDS_LOG_FUNC_EXIT__;
-		return -1;
-	}
-
-	service = (wfd_service_s*) calloc(1, sizeof(wfd_service_s));
-	service->service_string = strndup(data, strlen(data));
-	service->service_str_length = strlen(data);
-	service->service_type = type;
-	service->ref_counter=1;
-	device->services = g_list_prepend(device->services, service);
-	__WDS_LOG_FUNC_EXIT__;
-	return res;
-}
-
-int wfd_manager_service_del(wfd_manager_s *manager, wifi_direct_service_type_e  type, char *data)
-{
-	__WDS_LOG_FUNC_ENTER__;
-	wfd_device_s * device = manager->local;
-	wfd_service_s* service;
-	int res = 0;
-
-	if (!device || !data) {
-		WDS_LOGE("Invalid parameter");
-		return -1;
-	}
-	service = _wfd_service_find(device, type, data);
-	if (!service) {
-		WDS_LOGE("Failed to find service");
-		res = -1;
-
-	}else if(service->ref_counter ==1)
-	{
-		res = wfd_oem_service_del(manager->oem_ops, type, data);
-		if (res < 0) {
-			WDS_LOGE("Failed to delete service");
-			__WDS_LOG_FUNC_EXIT__;
-			return -1;
-		}
-		device->services = g_list_remove(device->services, service);
-		free(service->service_string);
-		free(service);
-
-	}else{
-		service->ref_counter--;
-	}
-	__WDS_LOG_FUNC_EXIT__;
-	return res;
-}
-
-int wfd_manager_serv_disc_req(wfd_manager_s *manager, unsigned char* mad_addr, wifi_direct_service_type_e  type, char *data)
-{
-	__WDS_LOG_FUNC_ENTER__;
-	wfd_query_s* query;
-	int res = 0;
-
-	if (!manager) {
-		WDS_LOGE("Invalid parameter");
-		return -1;
-	}
-	query = _wfd_query_find(manager, mad_addr, type, data);
-	if (query) {
-		WDS_LOGE("Query already exist");
-		query->ref_counter++;
-		__WDS_LOG_FUNC_EXIT__;
-		return 0;
-	}
-
-	res = wfd_oem_serv_disc_req(manager->oem_ops, mad_addr, type, data);
-	if (res < 0) {
-		WDS_LOGE("Failed to request service discovery");
-		return res;
-	}
-	query = (wfd_query_s*) calloc(1, sizeof(wfd_query_s));
-	query->handle = res;
-	query->ref_counter=1;
-	memcpy(query->mac_addr, mad_addr, MACADDR_LEN);
-
-	if(data && strlen(data))
-		query->query_string = strndup(data, strlen(data));
-	query->service_type = type;
-	manager->query_handles = g_list_prepend(manager->query_handles, query);
-	__WDS_LOG_FUNC_EXIT__;
-	return res;
-}
-
-int wfd_manager_serv_disc_cancel(wfd_manager_s *manager,  int handle)
-{
-	__WDS_LOG_FUNC_ENTER__;
-	wfd_query_s *query = NULL;
-	GList *temp = NULL;
-	int res = 0;
-
-	temp = g_list_first(manager->query_handles);
-	while (temp) {
-		query = temp->data;
-
-		//TODO : compare the services
-		if(query->handle == handle)
-		{
-			WDS_LOGD("Query handle found");
-			break;
-		}
-		temp = g_list_next(temp);
-		query = NULL;
-	}
-
-	if(query == NULL) {
-		WDS_LOGE("handle does not exist");
-		return -1;
-	}else if(query->ref_counter ==1) {
-
-		res = wfd_oem_serv_disc_cancel(manager->oem_ops, query->handle);
-		if (res < 0) {
-			WDS_LOGE("Failed to cancel service discovery or already canceled");
-		}
-		manager->query_handles = g_list_remove(manager->query_handles, query);
-		if(query->query_string)
-			free(query->query_string);
-		free(query);
-	}else
-		query->ref_counter--;
-
-	__WDS_LOG_FUNC_EXIT__;
-	return res;
-}
-
-int wfd_manager_init_service(wfd_device_s *device)
-{
-	__WDS_LOG_FUNC_ENTER__;
-	wfd_service_s* service = NULL;
-	GList *temp = NULL;
+	wfd_device_s * device = g_manager->local;
+	wfd_oem_display_s display;
 	int res = 0;
 
 	if (!device) {
 		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
-	if(device->services)
-	{
-		temp = g_list_first(device->services);
-		while (temp) {
-			service = temp->data;
-			free(service->service_string);
-			free(service);
-			temp = g_list_next(temp);
-		}
-		g_list_free(device->services);
-	}
-	__WDS_LOG_FUNC_EXIT__;
-	return res;
-}
+	memset(&display, 0x0, sizeof(wfd_oem_display_s));
 
-int wfd_manager_init_query(wfd_manager_s *manager)
-{
-	__WDS_LOG_FUNC_ENTER__;
-	wfd_query_s *query = NULL;
-	GList *temp = NULL;
-	int res = 0;
+	display.type = type;
+	display.port = port;
+	display.hdcp_support = hdcp;
 
-	if (!manager) {
-		WDS_LOGE("Invalid parameter");
+	display.availablity = device->display.availablity;
+	display.max_tput = device->display.max_tput;
+
+	res = wfd_oem_set_display(g_manager->oem_ops, (wfd_oem_display_s*)&display);
+	if (res < 0) {
+		WDS_LOGE("Failed to set wifi display");
 		return -1;
 	}
 
-	if(manager->query_handles)
-	{
-		temp = g_list_first(manager->query_handles);
-		while (temp) {
-			query = temp->data;
-
-			free(query->query_string);
-			free(query);
-			temp = g_list_next(temp);
-		}
-		g_list_free(manager->query_handles);
-	}
+	device->display.type = type;
+	device->display.port = port;
+	device->display.hdcp_support = hdcp;
 
 	__WDS_LOG_FUNC_EXIT__;
 	return res;
 }
 
-int wfd_manager_init_wifi_display(wifi_direct_display_type_e type, int port, int hdcp)
+int wfd_manager_set_session_availability(int availability)
 {
 	__WDS_LOG_FUNC_ENTER__;
 	wfd_device_s * device = g_manager->local;
-	wfd_display_info_s * display;
+	wfd_oem_display_s display;
 	int res = 0;
 
-	if (type < 0 || port < 0 || hdcp < 0) {
+	if (!device) {
 		WDS_LOGE("Invalid parameter");
 		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
-	res = wfd_oem_init_wifi_display(g_manager->oem_ops, type, port, hdcp);
+	memset(&display, 0x0, sizeof(wfd_oem_display_s));
+
+	display.availablity = availability;
+
+	display.type = device->display.type;
+	display.hdcp_support = device->display.hdcp_support;
+	display.port = device->display.port;
+	display.max_tput = device->display.max_tput;
+
+	res = wfd_oem_set_display(g_manager->oem_ops, (wfd_oem_display_s*)&display);
 	if (res < 0) {
-		WDS_LOGE("Failed to initialize wifi display");
+		WDS_LOGE("Failed to set wifi display session availability");
 		return -1;
 	}
 
-	if(!device->wifi_display)
-		device->wifi_display = calloc(1, sizeof(wfd_display_info_s));
-
-	device->wifi_display->type = type;
-	device->wifi_display->hdcp_support = hdcp;
-	device->wifi_display->ctrl_port = port;
+	device->display.availablity = availability;
 
 	__WDS_LOG_FUNC_EXIT__;
 	return res;
 }
 
-int wfd_manager_deinit_wifi_display()
+#endif /* TIZEN_FEATURE_WIFI_DISPLAY */
+
+wfd_device_s *wfd_manager_get_peer_by_addr(wfd_manager_s *manager, unsigned char *peer_addr)
 {
 	__WDS_LOG_FUNC_ENTER__;
-	wfd_device_s * device = g_manager->local;
-	wfd_display_info_s * display;
-	int res = 0;
-
-	res = wfd_oem_deinit_wifi_display(g_manager->oem_ops);
-	if (res < 0) {
-		WDS_LOGE("Failed to deinitialize wifi display");
-		return -1;
+	wfd_device_s *peer = NULL;
+	if(manager->group) {
+		peer = wfd_group_find_member_by_addr(manager->group, peer_addr);
 	}
 
-	if(device->wifi_display)
-	{
-		free(device->wifi_display);
-		device->wifi_display = NULL;
+	if(peer) {
+		return peer;
 	}
+
+	peer = wfd_peer_find_by_addr(manager, peer_addr);
+
+	return peer;
 	__WDS_LOG_FUNC_EXIT__;
-	return res;
 }
 
 static wfd_manager_s *wfd_manager_init()
@@ -1657,7 +1344,7 @@ static wfd_manager_s *wfd_manager_init()
 	wfd_manager_s *manager = NULL;
 	int res = 0;
 
-	manager = (wfd_manager_s*) calloc(1, sizeof(wfd_manager_s));
+	manager = (wfd_manager_s*) g_try_malloc0(sizeof(wfd_manager_s));
 	if (!manager) {
 		WDS_LOGE("Failed to allocate memory for wfd_manager structure");
 		return NULL;
@@ -1666,16 +1353,10 @@ static wfd_manager_s *wfd_manager_init()
 	manager->go_intent = 7;
 	manager->req_wps_mode = WFD_WPS_MODE_PBC;
 	manager->max_station = 8;
-
-	res = wfd_util_get_access_list(&(manager->access_list));
-	if (res < 0) {
-		WDS_LOGE("Failed to get access list");
-	}
-
 	res = _wfd_local_init_device(manager);
 	if (res < 0) {
 		WDS_LOGE("Failed to initialize local device");
-		free(manager);
+		g_free(manager);
 		return NULL;		// really stop manager?
 	}
 	WDS_LOGD("Succeeded to initialize local device");
@@ -1702,14 +1383,9 @@ int wfd_manager_deinit(wfd_manager_s *manager)
 		g_source_remove(manager->exit_timer);
 	manager->exit_timer = 0;
 
-	g_list_foreach (manager->access_list, (GFunc)g_free, NULL);
-	g_list_free (manager->access_list);
-	manager->access_list = NULL;
-
 	_wfd_local_deinit_device(manager);
 
-	if (manager)
-		free(manager);
+	g_free(manager);
 
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
@@ -1794,10 +1470,14 @@ int main(int argc, char *argv[])
 	GMainLoop *main_loop = NULL;
 	int res = 0;
 
+#if !GLIB_CHECK_VERSION(2,32,0)
 	if (!g_thread_supported())
 		g_thread_init(NULL);
+#endif
 
+#if !GLIB_CHECK_VERSION(2,36,0)
 	g_type_init();
+#endif
 
 	// TODO: Parsing argument
 	/* Wi-Fi direct connection for S-Beam can be optimized using argument */
