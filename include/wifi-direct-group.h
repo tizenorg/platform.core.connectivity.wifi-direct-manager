@@ -31,12 +31,6 @@
 #define IFACE_NAME_LEN 16
 
 typedef enum {
-	WFD_GROUP_ROLE_NONE,
-	WFD_GROUP_ROLE_GC,
-	WFD_GROUP_ROLE_GO,
-} wfd_group_role_e;
-
-typedef enum {
 	WFD_GROUP_FLAG_NONE,
 	WFD_GROUP_FLAG_PERSISTENT,
 	WFD_GROUP_FLAG_AUTONOMOUS,
@@ -53,21 +47,23 @@ typedef struct {
 	int freq;		// MHz
 	GList *members;
 	int member_count;
-	char pass[PASSPHRASE_LEN+1];
+	char passphrase[PASSPHRASE_LEN +1];
 } wfd_group_s;
 
 
-wfd_group_s *wfd_create_group(void *data, char *ifname, int role, unsigned char *go_dev_addr);
+wfd_group_s *wfd_create_group(void *data, wfd_oem_event_s *group_info);
 wfd_group_s *wfd_create_pending_group(void *data, unsigned char * bssid);
-int wfd_group_complete(void *data, char *ifname, int role, unsigned char *go_dev_addr);
+int wfd_group_complete(void *data, wfd_oem_event_s *group_info);
 int wfd_destroy_group(void * data, char *ifname);
 int wfd_group_add_member(wfd_group_s *group, unsigned char *addr);
 int wfd_group_remove_member(wfd_group_s *group, unsigned char *addr);
+#if 0
 int wfd_group_get_channel(wfd_group_s *group);
-int wfd_group_is_autonomous(wfd_group_s *group);
+int wfd_group_get_flags(wfd_group_s *group);
 int wfd_group_get_members();
 int wfd_group_make_persistent();
-int wfd_group_get_flags(wfd_group_s *group);
+#endif
+int wfd_group_is_autonomous(wfd_group_s *group);
 wfd_device_s *wfd_group_find_member_by_addr(wfd_group_s *group, unsigned char *addr);
 
 #endif /* __WIFI_DIRECT_GROUP_H__ */

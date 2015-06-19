@@ -28,14 +28,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <poll.h>
-#include <time.h>
 #include <unistd.h>
+#include <time.h>
 #include <errno.h>
 
 #include <glib.h>
 
-#include <wifi-direct-internal.h>
+#include <wifi-direct.h>
 
+#include "wifi-direct-ipc.h"
 #include "wifi-direct-manager.h"
 #include "wifi-direct-oem.h"
 #include "wifi-direct-peer.h"
@@ -46,94 +47,6 @@
 #include "wifi-direct-state.h"
 #include "wifi-direct-util.h"
 
-
-static int _wfd_event_check_socket(int sock)
-{
-	struct pollfd p_fd;
-	int res = 0;
-
-	p_fd.fd = sock;
-	p_fd.events = POLLIN | POLLOUT | POLLERR | POLLHUP | POLLNVAL;
-	res = poll((struct pollfd *) &p_fd, 1, 1);
-
-	if (res < 0) {
-		WDS_LOGE("Polling error from socket[%d]. [%s]", sock, strerror(errno));
-		return -1;
-	} else if (res == 0) {
-		WDS_LOGD( "poll timeout. socket is busy\n");
-		return 1;
-	} else {
-
-		if (p_fd.revents & POLLERR) {
-			WDS_LOGE("Error! POLLERR from socket[%d]", sock);
-			return -1;
-		} else if (p_fd.revents & POLLHUP) {
-			WDS_LOGE("Error! POLLHUP from socket[%d]", sock);
-			return -1;
-		} else if (p_fd.revents & POLLNVAL) {
-			WDS_LOGE("Error! POLLNVAL from socket[%d]", sock);
-			return -1;
-		} else if (p_fd.revents & POLLIN) {
-			WDS_LOGD("POLLIN from socket [%d]", sock);
-			return 0;
-		} else if (p_fd.revents & POLLOUT) {
-			WDS_LOGD("POLLOUT from socket [%d]", sock);
-			return 0;
-		}
-	}
-
-	WDS_LOGD("Unknown poll event [%d]", p_fd.revents);
-	return -1;
-}
-
-static int _wfd_event_send_to_client(int sock, char *data, int data_len)
-{
-	__WDS_LOG_FUNC_ENTER__;
-	int wbytes = 0;
-	int left_len = data_len;
-	char *ptr = data;
-	int res = 0;
-
-	if (sock < SOCK_FD_MIN || !data || data_len < 0) {
-		WDS_LOGE("Invalid parameter");
-		__WDS_LOG_FUNC_EXIT__;
-		return -1;
-	}
-
-	res = _wfd_event_check_socket(sock);
-	if (res < 0) {
-		WDS_LOGE("Socket error");
-		return -1;
-	} else if (res > 0) {
-		WDS_LOGE("Socket is busy");
-		return -2;
-	}
-
-	errno = 0;
-	while (left_len) {
-		wbytes = write(sock, ptr, left_len);
-		if (wbytes <= 0) {
-			WDS_LOGE("Failed to write data into socket[%d]. [%s]", sock, strerror(errno));
-			break;
-		}else if (wbytes < left_len) {
-			WDS_LOGD("%d bytes left. Continue sending...", left_len - wbytes);
-			left_len -= wbytes;
-			ptr += wbytes;
-		} else if (wbytes == left_len) {
-			WDS_LOGD("Succeeded to write data[%d bytes] into socket [%d]", wbytes, sock);
-			left_len = 0;
-		} else {
-			WDS_LOGE("Unknown error occurred. [%s]", strerror(errno));
-			break;
-		}
-	}
-
-	__WDS_LOG_FUNC_EXIT__;
-	if (left_len)
-		return -1;
-	else
-		return 0;
-}
 
 static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *data)
 {
@@ -154,226 +67,64 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 		}
 	} else {
 		if (strcmp(peer->dev_name, data->name)) {
-			strncpy(peer->dev_name, data->name, DEV_NAME_LEN);
-			peer->dev_name[DEV_NAME_LEN] = '\0';
-			WDS_LOGD("Device name is changed [" MACSTR ": %s]", MAC2STR(peer->dev_addr), peer->dev_name);
+			g_strlcpy(peer->dev_name, data->name, DEV_NAME_LEN + 1);
+			WDS_LOGD("Device name is changed [" MACSECSTR ": %s]",
+					MAC2SECSTR(peer->dev_addr), peer->dev_name);
 		}
 	}
+#ifndef CTRL_IFACE_DBUS
 	memcpy(peer->intf_addr, data->p2p_intf_addr, MACADDR_LEN);
+#endif /* CTRL_IFACE_DBUS */
 	peer->pri_dev_type = data->pri_dev_type;
 	peer->sec_dev_type = data->sec_dev_type;
 	peer->config_methods = data->config_methods;
 	peer->dev_flags = data->dev_flags;
 	peer->group_flags = data->group_flags;
 	peer->dev_role = data->dev_role;
+#ifdef TIZEN_FEATURE_WIFI_DISPLAY
+	memcpy(&(peer->display), &(data->display), sizeof(wfd_display_s));
+#endif /* TIZEN_FEATURE_WIFI_DISPLAY */
 
-	if(!peer->wifi_display)
-		peer->wifi_display = calloc(1, sizeof(wfd_display_info_s));
-	memcpy(peer->wifi_display, &data->wifi_display, sizeof(wfd_display_info_s));
-
+#if !(__GNUC__ <= 4 && __GNUC_MINOR__ < 8)
+	wfd_util_get_current_time(&peer->time);
+#else
 	struct timeval tval;
 	gettimeofday(&tval, NULL);
 	peer->time = tval.tv_sec;
-
+#endif
 	WDS_LOGI("Update time [%s - %ld]", peer->dev_name, peer->time);
 
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
 }
 
-static int hex2num(const char c)
+ gboolean _wfd_connection_retry(gpointer *data)
 {
-	if (c >= '0' && c <= '9')
-		return c - '0';
-	if (c >= 'a' && c <= 'f')
-		return c - 'a' + 10;
-	if (c >= 'A' && c <= 'F')
-		return c - 'A' + 10;
-	return -1;
-}
-
-static int hex2byte(const char *hex)
-{
-	int a, b;
-	a = hex2num(*hex++);
-	if (a < 0)
-		return -1;
-	b = hex2num(*hex++);
-	if (b < 0)
-		return -1;
-	return (a << 4) | b;
-}
-
-int hexstr2bin(const char *hex, int len, char *buf)
-{
-	int i;
-	int a;
-	const char *ipos = hex;
-	char *opos = buf;
-
-	for (i = 0; i < len; i++) {
-		a = hex2byte(ipos);
-		if (a < 0)
-			return -1;
-		*opos++ = a;
-		ipos += 2;
-	}
-	return 0;
-}
-
-static int _wfd_get_stlv_len(const char* value)
-{
-	int a, b;
-	a = hex2byte(value +2);
-	b = hex2byte(value);
-
-	if( a >= 0 && b >= 0)
-		return ( a << 8) | b;
-	else
-		return -1;
-}
-
-static int _wfd_service_add(wfd_device_s *device, wifi_direct_service_type_e type, char *data)
-{
-	__WDS_LOG_FUNC_ENTER__;
-	wfd_service_s *service = NULL;
-	GList *temp = NULL;
-	int res = 0;
-
-	temp = g_list_first(device->services);
-	while (temp) {
-		service = temp->data;
-
-		if(type == service->service_type &&
-				!strcmp(data, service->service_string))
-		{
-			WDS_LOGD("Service found");
-			break;
-		}
-		temp = g_list_next(temp);
-		service = NULL;
+	wfd_session_s *session = (wfd_session_s*) data;
+	if (!session) {
+		WDS_LOGE("Session is NULL");
+		return G_SOURCE_REMOVE;
 	}
 
-	if (service) {
-		WDS_LOGE("service already exist");
-		free(data);
-		__WDS_LOG_FUNC_EXIT__;
-		return res;
-	}
-	service = (wfd_service_s*) calloc(1, sizeof(wfd_service_s));
-	service->service_string = data;
-	service->service_str_length = strlen(data);
-	service->service_type = type;
-	device->services = g_list_prepend(device->services, service);
-
-	__WDS_LOG_FUNC_EXIT__;
-	return res;
-}
-
-static int _wfd_update_service(wfd_device_s *peer, char * data, wifi_direct_service_type_e  type, int length)
-{
-	wfd_service_s * service;
-	int res = 0;
-	char *temp = NULL;
-	char *ptr = NULL;
-
-	if (!peer || !data) {
-		WDS_LOGE("Invalid parameter");
-		return -1;
-	}
-	switch (type)
-	{
-		case WIFI_DIRECT_SERVICE_BONJOUR:
-		{
-			temp = strndup(data, length*2);
-			res = _wfd_service_add(peer, type, temp);
+	switch (session->state) {
+		case SESSION_STATE_STARTED:
+			WDS_LOGD("PD again");
+			wfd_session_start(session);
 			break;
-		}
-		case WIFI_DIRECT_SERVICE_UPNP:
-		{
-			temp = calloc(1, length);
-			hexstr2bin(data +2, length - 1, temp);
-			temp[length - 1] = '\0';
-
-			ptr = strtok(temp, ",");
-
-			while(ptr != NULL)
-			{
-				res = _wfd_service_add(peer, type, strndup(ptr, strlen(ptr)));
-				ptr = strtok(NULL, ",");
-			}
-
-			if(temp)
-				free(temp);
+		case SESSION_STATE_GO_NEG:
+			WDS_LOGD("Negotiation again");
+			wfd_session_connect(session);
 			break;
-		}
-		case WIFI_DIRECT_SERVICE_VENDORSPEC:
-		{
-			temp = calloc(1, length + 1);
-			hexstr2bin(data, length, temp);
-			temp[length] = '\0';
-
-			res = _wfd_service_add(peer, type, temp);
+		case SESSION_STATE_WPS:
+			WDS_LOGD("WPS again");
+			wfd_session_wps(session);
 			break;
-		}
 		default:
-		{
-			res = -1;
+			WDS_LOGE("Invalid session state [%d]", session->state);
 			break;
-		}
 	}
-	return res;
-}
 
-static int _wfd_event_update_service(wfd_manager_s *manager, wfd_device_s *peer, char *data)
-{
-	__WDS_LOG_FUNC_ENTER__;
-	int res = 0;
-	int s_len = 0;
-	char *pos = data;
-	char *end = NULL;
-	wifi_direct_service_type_e  service_tlv_type;
-	int status = 0;
-
-	if (!peer || !data) {
-		WDS_LOGE("Invalid parameter");
-		return -1;
-	}
-	end = data + strlen(data);
-
-	while(pos <= end -10){// This is raw data that is not passed any exception handling ex> length, value, ...
-
-		s_len = _wfd_get_stlv_len(pos);
-		pos += 4;
-		if (pos + s_len*2 > end || s_len < 3) {
-			WDS_LOGD("Unexpected Response Data or length: %d", s_len);
-			break;
-		}
-
-		service_tlv_type = hex2byte(pos);
-		if (service_tlv_type < 0) {
-			WDS_LOGD("Unexpected Response service type: %d", service_tlv_type);
-			pos+=(s_len)*2;
-			continue;
-		}else if (service_tlv_type == 255)
-			service_tlv_type = WIFI_DIRECT_SERVICE_VENDORSPEC;
-
-		pos += 4;
-		status = hex2byte(pos);
-		pos += 2;
-
-		if (status == 0)
-		{
-			res = _wfd_update_service(peer, pos, service_tlv_type, s_len -3);
-			if (res != 0) {
-				WDS_LOGE("Invalid type");
-			}
-		} else
-			WDS_LOGD("Service Reaponse TLV status is not vaild status: %d", status);
-		pos+=(s_len-3)*2;
-	}
-	__WDS_LOG_FUNC_EXIT__;
-	return 0;
+	return G_SOURCE_REMOVE;
 }
 
 int wfd_process_event(void *user_data, void *data)
@@ -388,15 +139,37 @@ int wfd_process_event(void *user_data, void *data)
 		return -1;
 	}
 
-	WDS_LOGD("Event[%d] from " MACSTR, event->event_id, MAC2STR(event->dev_addr));
+	WDS_LOGD("Event[%d] from " MACSECSTR, event->event_id, MAC2SECSTR(event->dev_addr));
 
 	switch (event->event_id) {
 	case WFD_OEM_EVENT_DEACTIVATED:
+	{
+		// TODO: notify app
+		wifi_direct_client_noti_s noti;
+		memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
+		noti.event = WIFI_DIRECT_CLI_EVENT_DEACTIVATION;
+		noti.error = WIFI_DIRECT_ERROR_NONE;
+		wfd_client_send_event(manager, &noti);
+
+		// TODO: remove group, session, all peers
+		wfd_destroy_group(manager, GROUP_IFNAME);
+		wfd_destroy_session(manager);
+		wfd_peer_clear_all(manager);
+		wfd_local_reset_data(manager);
+
+		wfd_state_set(manager, WIFI_DIRECT_STATE_DEACTIVATED);
+		wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_DEACTIVATED);
 		manager->req_wps_mode = WFD_WPS_MODE_PBC;
-		break;
+	}
+	break;
 	case WFD_OEM_EVENT_PEER_FOUND:
 	{
 		wfd_oem_dev_data_s *edata = (wfd_oem_dev_data_s*) event->edata;
+		if (!edata || event->edata_type != WFD_OEM_EDATA_TYPE_DEVICE) {
+			WDS_LOGE("Invalid event data");
+			break;
+		}
+
 		res = _wfd_event_update_peer(manager, edata);
 		if (res < 0) {
 			WDS_LOGE("Failed to update peer data");
@@ -408,6 +181,7 @@ int wfd_process_event(void *user_data, void *data)
 				manager->state != WIFI_DIRECT_STATE_DISCONNECTING) {
 			wifi_direct_client_noti_s noti;
 			memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
+			snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(edata->p2p_dev_addr));
 			noti.event = WIFI_DIRECT_CLI_EVENT_DISCOVER_FOUND_PEERS;
 			noti.error = WIFI_DIRECT_ERROR_NONE;
 			wfd_client_send_event(manager, &noti);
@@ -417,14 +191,19 @@ int wfd_process_event(void *user_data, void *data)
 	case WFD_OEM_EVENT_PROV_DISC_REQ:
 	case WFD_OEM_EVENT_PROV_DISC_RESP:
 	{
-		wfd_group_s *group = (wfd_group_s*) manager->group;
-		if ((group && group->member_count >= manager->max_station) ||
-				(wfd_manager_access_control(manager, event->dev_addr) == WFD_DEV_DENIED)) {
-			WDS_LOGD("Provision discovery is not granted");
+		wfd_device_s *peer = NULL;
+#ifdef CTRL_IFACE_DBUS
+		wfd_oem_dev_data_s *edata = (wfd_oem_dev_data_s*) event->edata;
+		if (!edata || event->edata_type != WFD_OEM_EDATA_TYPE_DEVICE) {
+			WDS_LOGE("Invalid event data");
 			break;
 		}
 
-		wfd_device_s *peer = wfd_peer_find_by_dev_addr(manager, event->dev_addr);
+		res = _wfd_event_update_peer(manager, edata);
+		peer = wfd_peer_find_by_dev_addr(manager, event->dev_addr);
+		peer->state = WFD_PEER_STATE_CONNECTING;
+#else /* CTRL_IFACE_DBUS */
+		peer = wfd_peer_find_by_dev_addr(manager, event->dev_addr);
 		if (!peer) {
 			WDS_LOGD("Porv_disc from unknown peer. Add new peer");
 			peer = wfd_add_peer(manager, event->dev_addr, "DIRECT-");
@@ -436,7 +215,7 @@ int wfd_process_event(void *user_data, void *data)
 			wfd_update_peer(manager, peer);
 		}
 		wfd_update_peer_time(manager, event->dev_addr);
-
+#endif /* CTRL_IFACE_DBUS */
 		res = wfd_session_process_event(manager, event);
 		if (res < 0) {
 			WDS_LOGE("Failed to process event of session");
@@ -462,6 +241,11 @@ int wfd_process_event(void *user_data, void *data)
 			break;
 		}
 
+		if (manager->scan_mode == WFD_SCAN_MODE_PASSIVE) {
+			WDS_LOGE("During passive scan, Discover Finished event will not notified");
+			break;
+		}
+
 		if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
 			wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
 			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
@@ -480,12 +264,6 @@ int wfd_process_event(void *user_data, void *data)
 	break;
 	case WFD_OEM_EVENT_INVITATION_REQ:
 	{
-		wfd_dev_connection_flag_e flag = 0;
-		flag = wfd_manager_access_control(manager, event->dev_addr);
-		if (flag == WFD_DEV_DENIED) {
-			WDS_LOGD("Invitation request is not granted");
-			break;
-		}
 		wfd_device_s *peer = NULL;
 		wfd_session_s *session = NULL;
 		wfd_oem_invite_data_s *edata = (wfd_oem_invite_data_s*) event->edata;
@@ -513,29 +291,100 @@ int wfd_process_event(void *user_data, void *data)
 		wfd_session_timer(session, 1);
 
 		wfd_state_set(manager, WIFI_DIRECT_STATE_CONNECTING);
-		if(flag == WFD_DEV_UNKNOWN)
-		{
-			WDS_LOGD("device is not in access/deny list");
-			wifi_direct_client_noti_s noti;
-			memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
-			noti.event = WIFI_DIRECT_CLI_EVENT_INVITATION_REQ;
-			noti.error = WIFI_DIRECT_ERROR_NONE;
-			snprintf(noti.param1, sizeof(noti.param1), MACSTR, MAC2STR(event->dev_addr));
-			wfd_client_send_event(manager, &noti);
-		}else {
-			WDS_LOGD("device is allowed");
-			wfd_session_start(session);
-		}
+
+		wifi_direct_client_noti_s noti;
+		memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
+		noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_REQ;
+		noti.error = WIFI_DIRECT_ERROR_NONE;
+		snprintf(noti.param1, sizeof(noti.param1), MACSTR, MAC2STR(event->dev_addr));
+		wfd_client_send_event(manager, &noti);
 	}
 	break;
 	case WFD_OEM_EVENT_GO_NEG_REQ:
 	{
-		if (wfd_manager_access_control(manager, event->dev_addr) == WFD_DEV_DENIED) {
-			WDS_LOGD("GO negotiation is not granted");
+		wfd_session_s *session = (wfd_session_s*) manager->session;
+#ifdef CTRL_IFACE_DBUS
+		wfd_oem_dev_data_s *edata = (wfd_oem_dev_data_s*) event->edata;
+		if (!edata || event->edata_type != WFD_OEM_EDATA_TYPE_DEVICE) {
+			WDS_LOGE("Invalid event data");
 			break;
 		}
+
+		res = _wfd_event_update_peer(manager, edata);
+		if (res < 0) {
+			WDS_LOGE("Failed to update peer data");
+			break;
+		}
+#else /* CTRL_IFACE_DBUS */
+		wfd_device_s *peer = NULL;
+		wfd_oem_conn_data_s *edata = (wfd_oem_conn_data_s*) event->edata;
+
+		if (!edata || event->edata_type != WFD_OEM_EDATA_TYPE_CONN) {
+			WDS_LOGE("Invalid connection event data");
+			break;
+		}
+
+		peer = wfd_peer_find_by_dev_addr(manager, event->dev_addr);
+		if (!peer) {
+			WDS_LOGD("Invitation from unknown peer. Add new peer");
+			peer = wfd_add_peer(manager, event->dev_addr, "DIRECT-");
+			if (!peer) {
+				WDS_LOGE("Failed to add peer for invitation");
+				break;
+			}
+		}
+
+		if (edata->wps_mode == 0)
+			edata->wps_mode = 1;
+#endif /* CTRL_IFACE_DBUS */
+		if (!session) {
+			session = wfd_create_session(manager, event->dev_addr,
+#ifdef CTRL_IFACE_DBUS
+							event->wps_mode, SESSION_DIRECTION_INCOMING);
+#else /* CTRL_IFACE_DBUS */
+							edata->wps_mode, SESSION_DIRECTION_INCOMING);
+#endif /* CTRL_IFACE_DBUS */
+			if (!session) {
+				WDS_LOGE("Failed to create session");
+				return -1;
+			}
+			session->type = SESSION_TYPE_NORMAL;
+			session->state = SESSION_STATE_GO_NEG;
+			wfd_session_timer(session, 1);
+			wfd_state_set(manager, WIFI_DIRECT_STATE_CONNECTING);
+
+			wifi_direct_client_noti_s noti;
+			memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
+			noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_REQ;
+			noti.error = WIFI_DIRECT_ERROR_NONE;
+			g_snprintf(noti.param1, sizeof(noti.param1), MACSTR, MAC2STR(event->dev_addr));
+			wfd_client_send_event(manager, &noti);
+		} else {
+			wfd_session_process_event(manager, event);
+		}
 	}
+	break;
 	case WFD_OEM_EVENT_GO_NEG_DONE:
+#ifdef CTRL_IFACE_DBUS
+	{
+		wfd_session_s *session = (wfd_session_s*) manager->session;
+		wfd_oem_conn_data_s *edata = (wfd_oem_conn_data_s*) event->edata;
+		wfd_device_s *peer = NULL;
+
+		if (event == NULL || edata == NULL) {
+			WDS_LOGE("Invalid event data");
+			break;
+		}
+
+		if(session && session->peer) {
+			peer = session->peer;
+			memcpy(peer->intf_addr, edata->peer_intf_addr, MACADDR_LEN);
+		}
+		manager->local->dev_role = event->dev_role;
+		wfd_session_process_event(manager, event);
+	}
+	break;
+#endif /* CTRL_IFACE_DBUS */
 	case WFD_OEM_EVENT_WPS_DONE:
 		wfd_session_process_event(manager, event);
 	break;
@@ -548,21 +397,16 @@ int wfd_process_event(void *user_data, void *data)
 			break;
 		}
 
-		if(wfd_manager_find_connected_peer(manager, event->intf_addr)) {
-			WDS_LOGD("Ignore this event");
-			break;
-		}
-
 		wfd_session_s *session = (wfd_session_s*) manager->session;
 		if (!session) {
-			WDS_LOGE("Unexpected event. Session is NULL [peer: " MACSTR "]",
-										MAC2STR(event->dev_addr));
+			WDS_LOGD("Unexpected event. Session is NULL [peer: " MACSECSTR "]",
+										MAC2SECSTR(event->dev_addr));
 			wfd_oem_destroy_group(manager->oem_ops, GROUP_IFNAME);
 			wfd_destroy_group(manager, GROUP_IFNAME);
 			wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
 			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
 			break;
-		} 
+		}
 
 		wfd_device_s *peer = wfd_session_get_peer(session);
 		if (!peer) {
@@ -582,20 +426,26 @@ int wfd_process_event(void *user_data, void *data)
 		wfd_group_add_member(group, peer->dev_addr);
 
 		session->state = SESSION_STATE_COMPLETED;
+#ifndef CTRL_IFACE_DBUS
 		memcpy(peer->intf_addr, event->intf_addr, MACADDR_LEN);
+#endif /* CTRL_IFACE_DBUS */
 		peer->state = WFD_PEER_STATE_CONNECTED;
 
 		if (event->event_id == WFD_OEM_EVENT_STA_CONNECTED) {	// GO
+			wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
+			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
+
 			wifi_direct_client_noti_s noti;
 			memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
 			noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
 			noti.error = WIFI_DIRECT_ERROR_NONE;
 			snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer->dev_addr));
 			wfd_client_send_event(manager, &noti);
+#ifdef CTRL_IFACE_DBUS
+			wfd_update_peer(manager, peer);
+#endif /* CTRL_IFACE_DBUS */
 
 			wfd_util_dhcps_wait_ip_leased(peer);
-			wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
-			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
 			wfd_destroy_session(manager);
 		}
 	}
@@ -610,7 +460,16 @@ int wfd_process_event(void *user_data, void *data)
 		wifi_direct_client_noti_s noti;
 		memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
 
+		if (!group) {
+			WDS_LOGE("Group not found");
+			break;
+		}
+
+#ifdef CTRL_IFACE_DBUS
+		peer = wfd_group_find_member_by_addr(group, event->dev_addr);
+#else /* CTRL_IFACE_DBUS */
 		peer = wfd_group_find_member_by_addr(group, event->intf_addr);
+#endif /* DBUS_IFACE */
 		if (!peer) {
 			WDS_LOGE("Failed to find connected peer");
 			peer = wfd_session_get_peer(session);
@@ -629,7 +488,7 @@ int wfd_process_event(void *user_data, void *data)
 			else
 				noti.event = WIFI_DIRECT_CLI_EVENT_DISCONNECTION_IND;
 			noti.error = WIFI_DIRECT_ERROR_NONE;
-			snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
+			g_snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
 			/* If there is no member, GO should be destroyed */
 			if (!group->member_count) {
 				wfd_oem_destroy_group(manager->oem_ops, group->ifname);
@@ -638,14 +497,24 @@ int wfd_process_event(void *user_data, void *data)
 		} else if (manager->state == WIFI_DIRECT_STATE_DISCONNECTING) {
 			noti.event = WIFI_DIRECT_CLI_EVENT_DISCONNECTION_RSP;
 			noti.error = WIFI_DIRECT_ERROR_NONE;
-			snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
+			g_snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
 		} else if (manager->state == WIFI_DIRECT_STATE_CONNECTING &&
-					/* Some devices(GO) send disconnection message before connection completed.
-					 * This message should be ignored when device is not GO */
-					manager->local->dev_role == WFD_DEV_ROLE_GO) {
-			noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
-			noti.error = WIFI_DIRECT_ERROR_CONNECTION_FAILED;
-			snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
+				/* Some devices(GO) send disconnection message before connection completed.
+				 * This message should be ignored when device is not GO */
+				manager->local->dev_role == WFD_DEV_ROLE_GO) {
+			if (WFD_PEER_STATE_CONNECTED == peer->state) {
+				WDS_LOGD("Peer is already Connected !!!");
+				noti.event = WIFI_DIRECT_CLI_EVENT_DISASSOCIATION_IND;
+				noti.error = WIFI_DIRECT_ERROR_NONE;
+			} else if (WFD_PEER_STATE_CONNECTING == peer->state) {
+				WDS_LOGD("Peer is Connecting...");
+				noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
+				noti.error = WIFI_DIRECT_ERROR_CONNECTION_FAILED;
+			} else {
+				WDS_LOGE("Unexpected Peer State. Ignore it");
+				break;
+			}
+			g_snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
 		} else {
 			WDS_LOGE("Unexpected event. Ignore it");
 			break;
@@ -665,8 +534,18 @@ int wfd_process_event(void *user_data, void *data)
 	break;
 	case WFD_OEM_EVENT_GROUP_CREATED:
 	{
-		wfd_oem_group_data_s *edata = event->edata;
 		wfd_group_s *group = (wfd_group_s*) manager->group;
+#ifdef CTRL_IFACE_DBUS
+		if(event->dev_role == WFD_DEV_ROLE_GC && !group) {
+
+			group = wfd_create_pending_group(manager, event->intf_addr);
+			if (!group) {
+				WDS_LOGE("Failed to create pending group");
+				break;
+			}
+			manager->group = group;
+		}
+#endif /* CTRL_IFACE_DBUS */
 
 		if (!group) {
 			if (!manager->session) {
@@ -675,7 +554,7 @@ int wfd_process_event(void *user_data, void *data)
 				break;
 			}
 
-			group = wfd_create_group(manager, event->ifname, event->dev_role, edata->go_dev_addr);
+			group = wfd_create_group(manager, event);
 			if (!group) {
 				WDS_LOGE("Failed to create group");
 				break;
@@ -688,25 +567,19 @@ int wfd_process_event(void *user_data, void *data)
 			}
 
 			if (group->pending) {
-				wfd_group_complete(manager, event->ifname, event->dev_role, edata->go_dev_addr);
+				wfd_group_complete(manager, event);
 			} else {
 				WDS_LOGE("Unexpected event. Group already exist");
 				break;
 			}
 		}
 
-		strncpy(group->ssid, edata->ssid, DEV_NAME_LEN);
-		group->ssid[DEV_NAME_LEN-1] = '\0';
-		strncpy(group->pass,edata->pass, PASSPHRASE_LEN);
-		group->pass[PASSPHRASE_LEN] = '\0';
-		group->freq = edata->freq;
-		manager->group = group;
-		manager->local->dev_role = event->dev_role;
-
 		wifi_direct_client_noti_s noti;
 		memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
 		if (group->role == WFD_DEV_ROLE_GC) {
+#ifndef CTRL_IFACE_DBUS
 			wfd_destroy_session(manager);
+#endif /* CTRL_IFACE_DBUS */
 			wfd_peer_clear_all(manager);
 		} else {
 			if (group->flags & WFD_GROUP_FLAG_AUTONOMOUS) {
@@ -729,7 +602,8 @@ int wfd_process_event(void *user_data, void *data)
 			noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
 			noti.error = WIFI_DIRECT_ERROR_CONNECTION_FAILED;
 			unsigned char *peer_addr = wfd_session_get_peer_addr(manager->session);
-			snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
+			if(peer_addr != NULL)
+				g_snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
 		} else if (manager->state >= WIFI_DIRECT_STATE_CONNECTED) {
 			noti.event = WIFI_DIRECT_CLI_EVENT_GROUP_DESTROY_RSP;
 			noti.error = WIFI_DIRECT_ERROR_NONE;
@@ -746,8 +620,52 @@ int wfd_process_event(void *user_data, void *data)
 		manager->local->dev_role = WFD_DEV_ROLE_NONE;
 	}
 	break;
-	case WFD_OEM_EVENT_PROV_DISC_FAIL:
 	case WFD_OEM_EVENT_GO_NEG_FAIL:
+	{
+		wfd_session_s *session = (wfd_session_s*) manager->session;
+		if (!session) {
+			WDS_LOGE("Unexpected event. Session not exist");
+			break;
+		}
+
+		unsigned char *peer_addr = wfd_session_get_peer_addr(session);
+		if (!peer_addr) {
+			WDS_LOGE("Session do not has peer");
+			break;
+		}
+
+		if (event->event_id == WFD_OEM_EVENT_GO_NEG_FAIL) {
+			wfd_oem_conn_data_s *edata = (wfd_oem_conn_data_s*) event->edata;
+			if (edata && edata->status < 0 && session->connecting_120) {
+				if (session->retry_gsrc) {
+					g_source_remove(session->retry_gsrc);
+					session->retry_gsrc = 0;
+				}
+				session->retry_gsrc = g_idle_add((GSourceFunc) _wfd_connection_retry, session);
+				WDS_LOGD("Connection will be retried");
+				break;
+			}
+		}
+
+		wifi_direct_client_noti_s noti;
+		memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
+		noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
+		noti.error = WIFI_DIRECT_ERROR_CONNECTION_FAILED;
+		snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
+		wfd_client_send_event(manager, &noti);
+
+		if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
+			wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
+			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
+		} else {
+			wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
+			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
+		}
+
+		wfd_destroy_session(manager);
+	}
+	break;
+	case WFD_OEM_EVENT_PROV_DISC_FAIL:
 	case WFD_OEM_EVENT_WPS_FAIL:
 	case WFD_OEM_EVENT_KEY_NEG_FAIL:
 	{
@@ -761,6 +679,19 @@ int wfd_process_event(void *user_data, void *data)
 		if (!peer_addr) {
 			WDS_LOGE("Session do not has peer");
 			break;
+		}
+
+		if (event->event_id == WFD_OEM_EVENT_GO_NEG_FAIL) {
+			wfd_oem_conn_data_s *edata = (wfd_oem_conn_data_s*) event->edata;
+			if (edata && edata->status < 0 && session->connecting_120) {
+				if (session->retry_gsrc) {
+					g_source_remove(session->retry_gsrc);
+					session->retry_gsrc = 0;
+				}
+				session->retry_gsrc = g_idle_add((GSourceFunc) _wfd_connection_retry, session);
+				WDS_LOGD("Connection will be retried");
+				break;
+			}
 		}
 
 		wifi_direct_client_noti_s noti;
@@ -780,6 +711,8 @@ int wfd_process_event(void *user_data, void *data)
 
 		wfd_destroy_session(manager);
 
+		wfd_oem_refresh(manager->oem_ops);
+#if 0
 		/* After connection failed, scan again */
 		wfd_oem_scan_param_s param;
 		memset(&param, 0x0, sizeof(wfd_oem_scan_param_s));
@@ -788,27 +721,77 @@ int wfd_process_event(void *user_data, void *data)
 		param.scan_type = WFD_OEM_SCAN_TYPE_SOCIAL;
 		wfd_oem_start_scan(manager->oem_ops, &param);
 		manager->scan_mode = WFD_SCAN_MODE_ACTIVE;
+#endif
 	}
 	break;
+
+#ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
 	case WFD_OEM_EVENT_SERV_DISC_RESP:
 	{
-		wfd_device_s *peer = NULL;
-		if(event->edata_type != WFD_OEM_EDATA_TYPE_SERVICE)
-		{
-			WDS_LOGD("There is no service to register");
-			break;
-		}
-		peer = wfd_peer_find_by_dev_addr(manager, event->dev_addr);
-		if (!peer) {
-			WDS_LOGD("serv_disc_resp from unknown peer. Discard it");
-			break;
-		}
-		res = _wfd_event_update_service(manager, peer, (char*) event->edata);
-		if (res < 0) {
-			WDS_LOGE("Failed to update peer service data");
+		wifi_direct_client_noti_s noti;
+		wfd_update_peer_time(manager, event->dev_addr);
+
+		if (event->edata_type == WFD_OEM_EDATA_TYPE_NEW_SERVICE) {
+			wfd_oem_new_service_s *service = NULL;;
+			GList *temp = NULL;
+			GList *services = (GList*) event->edata;
+			int count = 0;
+
+			WDS_LOGD("%d service data found", event->dev_role);
+
+			temp = g_list_first(services);
+			while(temp && count < event->dev_role) {
+				service = (wfd_oem_new_service_s*) temp->data;
+				memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
+				noti.event = WIFI_DIRECT_CLI_EVENT_SERVICE_DISCOVERY_FOUND;
+				noti.type = service->protocol;
+				if (service->protocol == WFD_OEM_SERVICE_TYPE_BONJOUR) {
+					g_snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(event->dev_addr));
+					g_snprintf(noti.param2, 256, "%s|%s", service->data.bonjour.query, service->data.bonjour.rdata);
+					WDS_LOGD("Found service: [%d: %s] - [" MACSECSTR "]", service->protocol,
+								service->data.bonjour.query, MAC2SECSTR(event->dev_addr));
+				} else if (service->protocol == WFD_OEM_SERVICE_TYPE_BT_ADDR) {
+					g_snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(event->dev_addr));
+					g_snprintf(noti.param2, MACSTR_LEN, "%s", service->data.vendor.data2);
+					WDS_LOGD("Found service: [%d: %s] - [" MACSECSTR "]", service->protocol,
+								service->data.vendor.data2, MAC2SECSTR(event->dev_addr));
+				} else {
+					WDS_LOGD("Found service is not supported");
+					goto next;
+				}
+				wfd_client_send_event(manager, &noti);
+next:
+				temp = g_list_next(temp);
+				service = NULL;
+				count++;
+			}
+		} else if (event->edata_type == WFD_OEM_EDATA_TYPE_SERVICE) {
+			wfd_oem_service_data_s *edata = (wfd_oem_service_data_s*) event->edata;
+
+			memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
+			noti.event = WIFI_DIRECT_CLI_EVENT_SERVICE_DISCOVERY_FOUND;
+			if(!edata) {
+				noti.type = -1;
+			} else {
+				noti.type = edata->type;
+				g_snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(event->dev_addr));
+				switch(edata->type) {
+					case WFD_OEM_SERVICE_TYPE_BT_ADDR:
+						g_snprintf(noti.param2, MACSTR_LEN, MACSTR, MAC2STR(edata->data));
+						break;
+					case WFD_OEM_SERVICE_TYPE_CONTACT_INFO:
+						g_snprintf(noti.param2, MACSTR_LEN, "%s", edata->value);
+						break;
+					default:
+						WDS_LOGE("Unknown type [type ID: %d]", edata->type);
+				}
+			}
+			wfd_client_send_event(manager, &noti);
 		}
 	}
 	break;
+#endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
+
 	default:
 		WDS_LOGE("Unknown event [event ID: %d]", event->event_id);
 	break;

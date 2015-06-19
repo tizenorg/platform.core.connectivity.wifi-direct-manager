@@ -35,10 +35,11 @@ int wfd_update_peer(void *data, wfd_device_s *peer);
 int wfd_update_peer_time(void*data, unsigned char *peer_addr);
 int wfd_peer_clear_all(void *data);
 wfd_device_s *wfd_peer_find_by_dev_addr(void *data, unsigned char *dev_addr);
+#if 0
 wfd_device_s *wfd_peer_find_by_intf_addr(void *data, unsigned char *intf_addr);
-wfd_device_s *wfd_peer_find_by_addr(void *data, unsigned char *addr);
 wfd_device_s *wfd_peer_find_current_peer(void *data);
-int wfd_peer_set_data(unsigned char *dev_addr, int type, int data);
 int wfd_peer_get_data(unsigned char *dev_addr, int type, int data);
-
+int wfd_peer_set_data(unsigned char *dev_addr, int type, int data);
+#endif
+wfd_device_s *wfd_peer_find_by_addr(void *data, unsigned char *addr);
 #endif /* __WIFI_DIRECT_PEER_H__ */

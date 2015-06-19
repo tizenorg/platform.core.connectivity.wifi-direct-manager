@@ -27,26 +27,34 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <net/if.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <time.h>
 #include <errno.h>
 
 #include <glib.h>
 
 #include <vconf.h>
-#include <app_service.h>
+#include <app_control.h>
 #include <wifi-direct.h>
-#include <wifi-direct-internal.h>
 
+#include "wifi-direct-ipc.h"
 #include "wifi-direct-manager.h"
 #include "wifi-direct-state.h"
 #include "wifi-direct-client.h"
 #include "wifi-direct-util.h"
+#include "wifi-direct-oem.h"
+#ifdef CTRL_IFACE_DBUS
+#include "wifi-direct-session.h"
+#endif /* CTRL_IFACE_DBUS */
 
 static int _txt_to_mac(char *txt, unsigned char *mac)
 {
@@ -54,14 +62,15 @@ static int _txt_to_mac(char *txt, unsigned char *mac)
 
 	for (;;) {
 		mac[i++] = (char) strtoul(txt, &txt, 16);
-		if (!*txt++ || i == 6)
+		if (i == MACADDR_LEN || !*txt++)
 			break;
 	}
 
 	if (i != MACADDR_LEN)
 		return -1;
 
-	WDS_LOGD("Converted MAC address [" MACSTR "]", MAC2STR(mac));
+	WDS_LOGD("Converted MAC address [" MACSECSTR "]",
+					MAC2SECSTR(mac));
 	return 0;
 }
 
@@ -71,16 +80,44 @@ static int _txt_to_ip(char *txt, unsigned char *ip)
 
 	for (;;) {
 		ip[i++] = (char) strtoul(txt, &txt, 10);
-		if (!*txt++ || i == 4)
+		if (i == IPADDR_LEN || !*txt++)
 			break;
 	}
 
-	if (i != 4)
+	if (i != IPADDR_LEN)
 		return -1;
 
-	WDS_LOGD("Converted IP address [" IPSTR "]", IP2STR(ip));
+	WDS_LOGD("Converted IP address [" IPSECSTR "]", IP2SECSTR(ip));
 	return 0;
 }
+
+#if !(__GNUC__ <= 4 && __GNUC_MINOR__ < 8)
+int wfd_util_get_current_time(unsigned long *cur_time)
+{
+	struct timespec time;
+	int res;
+
+	errno = 0;
+	res = clock_gettime(CLOCK_REALTIME, &time);
+	if (!res) {
+		WDS_LOGD("Succeeded to get current real time");
+		*cur_time = time.tv_sec;
+		return 0;
+	}
+	WDS_LOGE("Failed to get current real time(%s)", strerror(errno));
+
+	errno = 0;
+	res = clock_gettime(CLOCK_MONOTONIC, &time);
+	if (!res) {
+		WDS_LOGD("Succeeded to get current system time");
+		*cur_time = time.tv_sec;
+		return 0;
+	}
+	WDS_LOGE("Failed to get current system time(%s)", strerror(errno));
+
+	return -1;
+}
+#endif
 
 gboolean wfd_util_execute_file(const char *file_path,
 	char *const args[], char *const envs[])
@@ -116,7 +153,6 @@ gboolean wfd_util_execute_file(const char *file_path,
 		} else if (WIFCONTINUED(rv)) {
 			WDS_LOGD("continued");
 		}
-
 		return TRUE;
 	}
 
@@ -124,10 +160,28 @@ gboolean wfd_util_execute_file(const char *file_path,
 	return FALSE;
 }
 
+int wfd_util_channel_to_freq(int channel)
+{
+	if (channel < 1 || channel > 161 ||
+		(channel > 48 && channel < 149) ||
+		(channel > 14 && channel < 36)) {
+		WDS_LOGE("Unsupported channel[%d]", channel);
+		return -1;
+	}
+
+	if (channel >= 36)
+		return 5000 + 5*channel;
+	else if (channel == 14)
+		return 2484;
+	else
+		return 2407 + 5*channel;
+}
+
 int wfd_util_freq_to_channel(int freq)
 {
-	if (freq < 2412 || freq > 5825) {
-		WDS_LOGE("Invalid parameter");
+	if (freq < 2412 || freq > 5825 ||
+		(freq > 2484 && freq < 5180)) {
+		WDS_LOGE("Unsupported frequency[%d]", freq);
 		return -1;
 	}
 
@@ -151,16 +205,14 @@ int wfd_util_get_phone_name(char *phone_name)
 		WDS_LOGE( "Failed to get vconf value for %s", VCONFKEY_SETAPPL_DEVICE_NAME_STR);
 		return -1;
 	}
-	strncpy(phone_name, name, DEV_NAME_LEN);
-	phone_name[DEV_NAME_LEN] = '\0';
-
+	g_strlcpy(phone_name, name, DEV_NAME_LEN + 1);
 	WDS_LOGD( "[%s: %s]", VCONFKEY_SETAPPL_DEVICE_NAME_STR, phone_name);
-	free(name);
+	g_free(name);
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
 }
 
-void _wfd_util_dev_name_changed_cb(keynode_t *key, void* data)
+void _wfd_util_dev_name_changed_cb(keynode_t *key, void *data)
 {
 	__WDS_LOG_FUNC_ENTER__;
 	char dev_name[DEV_NAME_LEN+1] = {0, };
@@ -183,8 +235,13 @@ void _wfd_util_dev_name_changed_cb(keynode_t *key, void* data)
 void wfd_util_set_dev_name_notification()
 {
 	__WDS_LOG_FUNC_ENTER__;
+	int res = 0;
 
-	vconf_notify_key_changed(VCONFKEY_SETAPPL_DEVICE_NAME_STR, _wfd_util_dev_name_changed_cb, NULL);
+	res = vconf_notify_key_changed(VCONFKEY_SETAPPL_DEVICE_NAME_STR, _wfd_util_dev_name_changed_cb, NULL);
+	if (res) {
+		WDS_LOGE("Failed to set vconf notification callback(SETAPPL_DEVICE_NAME_STR)");
+		return;
+	}
 
 	__WDS_LOG_FUNC_EXIT__;
 	return;
@@ -193,11 +250,99 @@ void wfd_util_set_dev_name_notification()
 void wfd_util_unset_dev_name_notification()
 {
 	__WDS_LOG_FUNC_ENTER__;
+	int res = 0;
 
-	vconf_ignore_key_changed(VCONFKEY_SETAPPL_DEVICE_NAME_STR, _wfd_util_dev_name_changed_cb);
+	res = vconf_ignore_key_changed(VCONFKEY_SETAPPL_DEVICE_NAME_STR, _wfd_util_dev_name_changed_cb);
+	if (res) {
+		WDS_LOGE("Failed to set vconf notification callback(SETAPPL_DEVICE_NAME_STR)");
+		return;
+	}
 
 	__WDS_LOG_FUNC_EXIT__;
 	return;
+}
+
+
+void _wfd_util_check_country_cb(keynode_t *key, void *data)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_manager_s *manager = (wfd_manager_s*) data;
+	int res = 0;
+	int plmn = 0;
+	char mcc[4] = {0, };
+	char *ccode;
+	GKeyFile *keyfile = NULL;
+	GError * err = NULL;
+
+	if (!manager) {
+		WDS_LOGE("Invalid parameter");
+		return;
+	}
+
+	res = vconf_get_int(VCONFKEY_TELEPHONY_PLMN, &plmn);
+	if (res) {
+		WDS_LOGE("Failed to get vconf value for PLMN(%d)", res);
+		return;
+	}
+
+	snprintf(mcc, 4, "%d", plmn);
+
+	keyfile = g_key_file_new();
+	res = g_key_file_load_from_file(keyfile, COUNTRY_CODE_FILE, 0, &err);
+	if (!res) {
+		WDS_LOGE("Failed to load key file(%s)", err->message);
+		g_key_file_free(keyfile);
+		return;
+	}
+
+	ccode = g_key_file_get_string(keyfile, "ccode_map", mcc, &err);
+	if (!ccode) {
+		WDS_LOGE("Failed to get country code string(%s)", err->message);
+		return;
+	}
+
+	res = wfd_oem_set_country(manager->oem_ops, ccode);
+	if (res < 0) {
+		WDS_LOGE("Failed to set contry code");
+		return;
+	}
+	WDS_LOGD("Succeeded to set country code(%s)", ccode);
+
+	__WDS_LOG_FUNC_EXIT__;
+	return;
+}
+
+int wfd_util_set_country()
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_manager_s *manager = wfd_get_manager();
+	int res = 0;
+
+	_wfd_util_check_country_cb(NULL, manager);
+
+	res = vconf_notify_key_changed(VCONFKEY_TELEPHONY_PLMN, _wfd_util_check_country_cb, manager);
+	if (res) {
+		WDS_LOGE("Failed to set vconf notification callback(TELEPHONY_PLMN)");
+		return -1;
+	}
+
+	__WDS_LOG_FUNC_EXIT__;
+	return 0;
+}
+
+int wfd_util_unset_country()
+{
+	__WDS_LOG_FUNC_ENTER__;
+	int res = 0;
+
+	res = vconf_ignore_key_changed(VCONFKEY_TELEPHONY_PLMN, _wfd_util_check_country_cb);
+	if (res) {
+		WDS_LOGE("Failed to unset vconf notification callback(TELEPHONY_PLMN)");
+		return -1;
+	}
+
+	__WDS_LOG_FUNC_EXIT__;
+	return 0;
 }
 
 int wfd_util_check_wifi_state()
@@ -250,7 +395,8 @@ int wfd_util_check_mobile_ap_state()
 	}
 	WDS_LOGD("[%s: %d]", VCONFKEY_MOBILE_HOTSPOT_MODE, mobile_ap_state);
 
-	if (mobile_ap_state != VCONFKEY_MOBILE_HOTSPOT_MODE_NONE) {
+	if ((mobile_ap_state & VCONFKEY_MOBILE_HOTSPOT_MODE_WIFI)
+		|| (mobile_ap_state & VCONFKEY_MOBILE_HOTSPOT_MODE_WIFI_AP) ) {
 		WDS_LOGD("Mobile AP is on");
 		__WDS_LOG_FUNC_EXIT__;
 		return 1;
@@ -264,33 +410,43 @@ int wfd_util_check_mobile_ap_state()
 int wfd_util_wifi_direct_activatable()
 {
 	__WDS_LOG_FUNC_ENTER__;
-	int res = 0;
 
-	res = wfd_util_check_wifi_state();
-	if (res < 0) {
+#ifndef TIZEN_WLAN_CONCURRENT_ENABLE
+	int res_wifi = 0;
+
+	res_wifi = wfd_util_check_wifi_state();
+	if (res_wifi < 0) {
 		WDS_LOGE("Failed to check Wi-Fi state");
 		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
-	} else if (res > 0) {
+	} else if (res_wifi > 0) {
 		WDS_LOGE("Wi-Fi is On");
 		return WIFI_DIRECT_ERROR_WIFI_USED;
 	} else {
 		WDS_LOGE("Wi-Fi is Off");
 		return WIFI_DIRECT_ERROR_NONE;
 	}
+#endif
 
-	res = wfd_util_check_mobile_ap_state();
-	if (res < 0) {
+#if defined TIZEN_TETHERING_ENABLE
+	int res_mobap = 0;
+
+	res_mobap = wfd_util_check_mobile_ap_state();
+	if (res_mobap < 0) {
 		WDS_LOGE("Failed to check Mobile AP state");
 		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
-	} else if (res > 0) {
+	} else if (res_mobap > 0) {
 		WDS_LOGE("Mobile AP is On");
 		return WIFI_DIRECT_ERROR_MOBILE_AP_USED;
 	} else {
 		WDS_LOGE("Mobile AP is Off");
 		return WIFI_DIRECT_ERROR_NONE;
 	}
+#endif
+
+	return WIFI_DIRECT_ERROR_NONE;
 }
 
+#if 0
 int wfd_util_get_wifi_direct_state()
 {
 	__WDS_LOG_FUNC_ENTER__;
@@ -307,6 +463,7 @@ int wfd_util_get_wifi_direct_state()
 	__WDS_LOG_FUNC_EXIT__;
 	return state;
 }
+#endif
 
 int wfd_util_set_wifi_direct_state(int state)
 {
@@ -326,6 +483,10 @@ int wfd_util_set_wifi_direct_state(int state)
 		vconf_state = VCONFKEY_WIFI_DIRECT_GROUP_OWNER;
 	else if (state == WIFI_DIRECT_STATE_DISCOVERING)
 		vconf_state = VCONFKEY_WIFI_DIRECT_DISCOVERING;
+	else {
+		WDS_LOGE("This state cannot be set as wifi_direct vconf state[%d]", state);
+		return 0;
+	}
 	WDS_LOGD("Vconf key set [%s: %d]", VCONFKEY_WIFI_DIRECT_STATE, vconf_state);
 
 	res = vconf_set_int(VCONFKEY_WIFI_DIRECT_STATE, vconf_state);
@@ -363,7 +524,7 @@ int wfd_util_get_local_dev_mac(unsigned char *dev_mac)
 		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}
-	WDS_LOGD("Local MAC address [%s]", ptr);
+	WDS_SECLOGD("Local MAC address [%s]", ptr);
 
 	res = _txt_to_mac(local_mac, dev_mac);
 	if (res < 0) {
@@ -374,176 +535,75 @@ int wfd_util_get_local_dev_mac(unsigned char *dev_mac)
 	}
 
 	dev_mac[0] |= 0x2;
-	WDS_LOGD("Local Device MAC address [" MACSTR "]", MAC2STR(dev_mac));
+	WDS_LOGD("Local Device MAC address [" MACSECSTR "]", MAC2SECSTR(dev_mac));
 
 	fclose(fd);
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
-}
-
-int wfd_util_get_access_list(GList **access_list)
-{
-	__WDS_LOG_FUNC_ENTER__;
-
-	wfd_access_list_info_s * device = NULL;
-	char device_info[MACSTR_LEN + DEV_NAME_LEN + 1] = {0, };
-	char dev_mac[MACADDR_LEN] = {0, };
-	int info_str_len = 0;
-
-	FILE *fd = NULL;
-	int res = 0;
-
-
-	fd = fopen(DEFAULT_DEVICE_LIST_FILE_PATH, "r");
-	if (!fd) {
-		WDS_LOGE("Failed to open access list file (%s)", strerror(errno));
-		__WDS_LOG_FUNC_EXIT__;
-		return -1;
-	}
-
-	while ((res = fgets(device_info, MACSTR_LEN + DEV_NAME_LEN + 2, fd)) != NULL)
-	{
-		if (device_info[0] == '\0') {
-			printf("end of list\n");
-			fclose(fd);
-			return 0;
-		}
-
-		info_str_len = strlen(device_info);
-		if(info_str_len > MACSTR_LEN)
-			device_info[info_str_len -1] = '\0';
-
-		res = _txt_to_mac(device_info, dev_mac);
-		if (res < 0) {
-			WDS_LOGE("Failed to convert text to MAC address");
-			continue;
-		}
-
-		device = calloc(1, sizeof(wfd_access_list_info_s));
-		memcpy(device->mac_address, dev_mac, MACADDR_LEN);
-		strncpy(device->device_name, &device_info[MACSTR_LEN], strlen(&device_info[MACSTR_LEN]));
-		device->allowed = (device_info[MACSTR_LEN - 1] == 'O');
-
-		*access_list = g_list_append(*access_list, device);
-	}
-	fclose(fd);
-	__WDS_LOG_FUNC_EXIT__;
-	return 0;
-}
-
-int wfd_util_rewrite_device_list_to_file(GList *access_list)
-{
-	__WDS_LOG_FUNC_ENTER__;
-	FILE *fd = NULL;
-	GList *temp = NULL;
-	wfd_access_list_info_s * device = NULL;
-
-	int list_cnt =0;
-	char * buf = NULL;
-	char * ptr = NULL;
-
-	int res = 0;
-	int i;
-
-	list_cnt =  g_list_length(access_list);
-
-	fd = fopen(DEFAULT_DEVICE_LIST_FILE_PATH, "w");
-	if (!fd) {
-		WDS_LOGE("Failed to open access list file (%s)", strerror(errno));
-		free(buf);
-		__WDS_LOG_FUNC_EXIT__;
-		return -1;
-	}
-	if(list_cnt > 0)
-	{
-		buf = calloc(1,(MACSTR_LEN + DEV_NAME_LEN + 1)*list_cnt +1);
-		ptr = buf;
-		temp = g_list_first(access_list);
-
-		for(i =0; i < list_cnt; i++)
-		{
-			device = (wfd_access_list_info_s *)temp->data;
-			snprintf(ptr, MACSTR_LEN + DEV_NAME_LEN + 2, MACSTR "%c%s\n",
-					  MAC2STR(device->mac_address), device->allowed?'O':'X', device->device_name);
-			ptr+=strlen(ptr);
-			temp = g_list_next(temp);
-		}
-		res = fprintf(fd, "%s",buf);
-	}
-
-	fclose(fd);
-	if(buf != NULL)
-		free(buf);
-	__WDS_LOG_FUNC_EXIT__;
-	return res;
-}
-
-int wfd_util_add_device_to_list(wfd_device_s *peer, int allowed)
-{
-	__WDS_LOG_FUNC_ENTER__;
-	FILE *fd = NULL;
-	char buf[MACSTR_LEN + DEV_NAME_LEN + 2] = {0, };
-	int res = 0;
-
-	if(peer == NULL)
-	{
-		WDS_LOGD("There is nothing to add to list");
-		return -1;
-	}
-
-	snprintf(buf, MACSTR_LEN + DEV_NAME_LEN + 2, MACSTR "%c%s\n",
-			MAC2STR(peer->dev_addr), allowed?'O':'X', peer->dev_name);
-
-	fd = fopen(DEFAULT_DEVICE_LIST_FILE_PATH, "a");
-	if (!fd) {
-		WDS_LOGE("Failed to open access list file (%s)", strerror(errno));
-		__WDS_LOG_FUNC_EXIT__;
-		return -1;
-	}
-	res = fprintf(fd,"%s", buf);
-
-	if(res < 0)
-		WDS_LOGE("Failed to write to access list file (%s)", strerror(errno));
-
-	fclose(fd);
-	__WDS_LOG_FUNC_EXIT__;
-	return res;
-}
-
-int wfd_util_reset_access_list_file()
-{
-	__WDS_LOG_FUNC_ENTER__;
-	int res = 0;
-
-	FILE *fd = NULL;
-	fd = fopen(DEFAULT_DEVICE_LIST_FILE_PATH, "w");
-
-	if (!fd) {
-		WDS_LOGE("Failed to open reset access list file (%s)", strerror(errno));
-		res = -1;
-	}
-	fclose(fd);
-
-	__WDS_LOG_FUNC_EXIT__;
-	return 0;
-
 }
 
 int wfd_util_start_wifi_direct_popup()
 {
 	__WDS_LOG_FUNC_ENTER__;
 
-	service_h service;
-	service_create(&service);
-	service_set_operation(service, SERVICE_OPERATION_DEFAULT);
-	service_set_package(service, "org.tizen.wifi-direct-popup");
-	service_send_launch_request(service, NULL, NULL);
-	service_destroy(service);
+	app_control_h control = NULL;
+	if (APP_CONTROL_ERROR_NONE != app_control_create(&control)) {
+		WDS_LOGE("App control create Failed !");
+		return -1;
+	}
+	if (APP_CONTROL_ERROR_NONE != app_control_set_operation(control,
+		APP_CONTROL_OPERATION_DEFAULT)) {
+		WDS_LOGE("App control set operation Failed !");
+		app_control_destroy(control);
+		return -1;
+	}
+	if (APP_CONTROL_ERROR_NONE != app_control_set_app_id(control,
+		"org.tizen.wifi-direct-popup")) {
+		WDS_LOGE("App control set app id Failed !");
+		app_control_destroy(control);
+		return -1;
+	}
+	if (APP_CONTROL_ERROR_NONE !=
+		app_control_send_launch_request(control, NULL, NULL)) {
+		WDS_LOGE("App control send launch request Failed !");
+		return -1;
+	}
+
+	app_control_destroy(control);
 	WDS_LOGD("Succeeded to launch wifi-direct-popup");
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
 }
 
+int _connect_remote_device(char *ip_str)
+{
+	int sock;
+	int flags;
+	struct sockaddr_in remo_addr;
+
+	errno = 0;
+	sock = socket(PF_INET, SOCK_STREAM, 0);
+	if (sock == -1) {
+		WDS_LOGE("Failed to create socket to remote device(%s)", strerror(errno));
+		return -1;
+	}
+
+	flags = fcntl(sock, F_GETFL, 0);
+	fcntl(sock, F_SETFL, flags | O_NONBLOCK);
+
+	memset(&remo_addr, 0x0, sizeof(remo_addr));
+	remo_addr.sin_family = AF_INET;
+	remo_addr.sin_addr.s_addr = inet_addr(ip_str);
+	remo_addr.sin_port = htons(9999);
+
+	errno = 0;
+	connect(sock, (struct sockaddr*) &remo_addr, sizeof(remo_addr));
+	WDS_SECLOGD("Status of connection to remote device[%s] - (%s)", ip_str, strerror(errno));
+
+	close(sock);
+
+	return 0;
+}
 
 static void _dhcps_ip_leased_cb(keynode_t *key, void* data)
 {
@@ -553,7 +613,7 @@ static void _dhcps_ip_leased_cb(keynode_t *key, void* data)
 	wifi_direct_client_noti_s noti;
 	FILE *fp = NULL;
 	char buf[MAX_DHCP_DUMP_SIZE];
-	char ip_str[IPSTR_LEN];
+	char ip_str[IPSTR_LEN] = {0, };
 	char intf_str[MACSTR_LEN];
 	unsigned char intf_addr[MACADDR_LEN];
 	int n = 0;
@@ -583,16 +643,21 @@ static void _dhcps_ip_leased_cb(keynode_t *key, void* data)
 		if (!memcmp(peer->intf_addr, intf_addr, MACADDR_LEN)) {
 			WDS_LOGD("Peer intf mac found");
 			_txt_to_ip(ip_str, peer->ip_addr);
+			_connect_remote_device(ip_str);
 			noti.event = WIFI_DIRECT_CLI_EVENT_IP_LEASED_IND;
 			snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer->dev_addr));
 			snprintf(noti.param2, IPSTR_LEN, IPSTR, IP2STR(peer->ip_addr));
 			wfd_client_send_event(manager, &noti);
 			break;
 		} else {
-			WDS_LOGE("Different interface address peer[" MACSTR "] vs dhcp[" MACSTR "]", MAC2STR(peer->intf_addr), MAC2STR(intf_addr));
+			WDS_LOGD("Different interface address peer[" MACSECSTR "] vs dhcp[" MACSECSTR "]",
+						MAC2SECSTR(peer->intf_addr), MAC2SECSTR(intf_addr));
 		}
 	}
 	fclose(fp);
+
+	vconf_ignore_key_changed(VCONFKEY_DHCPS_IP_LEASE, _dhcps_ip_leased_cb);
+	vconf_set_int(VCONFKEY_DHCPS_IP_LEASE, 0);
 
 	__WDS_LOG_FUNC_EXIT__;
 	return;
@@ -605,29 +670,36 @@ static gboolean _polling_ip(gpointer user_data)
 	wfd_device_s *local = (wfd_device_s*) manager->local;
 	wfd_device_s *peer = (wfd_device_s*) user_data;
 	char *ifname = NULL;
+	char ip_str[IPSTR_LEN] = {0, };
 	static int count = 0;
 	int res = 0;
 
-	if (count > 28) {
-		WDS_LOGE("Failed to get IP");
-		count = 0;
-		__WDS_LOG_FUNC_EXIT__;
+	if (!peer) {
+		WDS_LOGE("peer data is not exists");
 		return FALSE;
 	}
+
 	res = wfd_manager_get_goup_ifname(&ifname);
 	if (res < 0 || !ifname) {
 		WDS_LOGE("Failed to get group interface name");
 		return FALSE;
 	}
 
+	if (count > 28) {
+		WDS_LOGE("Failed to get IP");
+		count = 0;
+		wfd_oem_destroy_group(manager->oem_ops, ifname);
+		__WDS_LOG_FUNC_EXIT__;
+		return FALSE;
+	}
 	res = wfd_util_dhcpc_get_ip(ifname, local->ip_addr, 0);
 	if (res < 0) {
 		WDS_LOGE("Failed to get local IP for interface %s(count=%d)", ifname, count++);
 		__WDS_LOG_FUNC_EXIT__;
 		return TRUE;
 	}
-	WDS_LOGD("Succeeded to get local(client) IP [" IPSTR "] for iface[%s]",
-				    IP2STR(local->ip_addr), ifname);
+	WDS_LOGD("Succeeded to get local(client) IP [" IPSECSTR "] for iface[%s]",
+				    IP2SECSTR(local->ip_addr), ifname);
 
 	res = wfd_util_dhcpc_get_server_ip(peer->ip_addr);
 	if (res < 0) {
@@ -635,11 +707,18 @@ static gboolean _polling_ip(gpointer user_data)
 		__WDS_LOG_FUNC_EXIT__;
 		return TRUE;
 	}
-	WDS_LOGD("Succeeded to get server IP [" IPSTR "]", IP2STR(peer->ip_addr));
+	WDS_LOGD("Succeeded to get server IP [" IPSECSTR "]", IP2SECSTR(peer->ip_addr));
 	count = 0;
+
+	g_snprintf(ip_str, IPSTR_LEN, IPSTR, IP2STR(peer->ip_addr));
+	_connect_remote_device(ip_str);
 
 	wfd_state_set(manager, WIFI_DIRECT_STATE_CONNECTED);
 	wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_CONNECTED);
+#ifdef CTRL_IFACE_DBUS
+	wfd_destroy_session(manager);
+#endif /* CTRL_IFACE_DBUS */
+
 	wifi_direct_client_noti_s noti;
 	memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
 	noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
@@ -667,6 +746,16 @@ int wfd_util_dhcps_start()
 		WDS_LOGE("Failed to start wifi-direct-dhcp.sh server");
 		return -1;
 	}
+
+	/*
+	 * As we are GO so IP should be updated
+	 * before sending Group Created Event
+	 */
+	vconf_set_str(VCONFKEY_IFNAME, GROUP_IFNAME	);
+	vconf_set_str(VCONFKEY_LOCAL_IP, "192.168.49.1");
+	vconf_set_str(VCONFKEY_SUBNET_MASK, "255.255.255.0");
+	vconf_set_str(VCONFKEY_GATEWAY, "192.168.49.1");
+
 	WDS_LOGD("Successfully started wifi-direct-dhcp.sh server");
 
 	__WDS_LOG_FUNC_EXIT__;
@@ -726,7 +815,6 @@ int wfd_util_dhcpc_start(wfd_device_s *peer)
 	}
 
 	rv = wfd_util_execute_file(path, args, envs);
-
 	if (rv != TRUE) {
 		WDS_LOGE("Failed to start wifi-direct-dhcp.sh client");
 		return -1;
@@ -785,8 +873,8 @@ int wfd_util_dhcpc_get_ip(char *ifname, unsigned char *ip_addr, int is_IPv6)
 	}
 
 	ifr.ifr_addr.sa_family = AF_INET;
-	memset(ifr.ifr_name, 0x00, 16);
-	strncpy(ifr.ifr_name, ifname, IFNAMSIZ-1);
+	memset(ifr.ifr_name, 0x00, IFNAMSIZ);
+	g_strlcpy(ifr.ifr_name, ifname, IFNAMSIZ);
 
 	errno = 0;
 	res = ioctl(sock, SIOCGIFADDR, &ifr);
@@ -801,7 +889,6 @@ int wfd_util_dhcpc_get_ip(char *ifname, unsigned char *ip_addr, int is_IPv6)
 	sin = (struct sockaddr_in*) &ifr.ifr_broadaddr;
 	ip_str = inet_ntoa(sin->sin_addr);
 	_txt_to_ip(ip_str, ip_addr);
-
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
 }
@@ -825,6 +912,13 @@ int wfd_util_dhcpc_get_server_ip(unsigned char* ip_addr)
 			__WDS_LOG_FUNC_EXIT__;
 			return -1;
 		}
+
+		if(strcmp(get_str, ZEROIP) == 0) {
+			WDS_LOGE("Failed to get vconf value[%s]", VCONFKEY_DHCPC_SERVER_IP);
+			__WDS_LOG_FUNC_EXIT__;
+			return -1;
+		}
+
 		WDS_LOGD("VCONFKEY_DHCPC_SERVER_IP(%s) : %s\n", VCONFKEY_DHCPC_SERVER_IP, get_str);
 		_txt_to_ip(get_str, ip_addr);
 		if (*ip_addr)
@@ -836,3 +930,39 @@ int wfd_util_dhcpc_get_server_ip(unsigned char* ip_addr)
 	return 0;
 }
 
+int wfd_util_get_local_ip(unsigned char* ip_addr)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	char* get_str = NULL;
+	int count = 0;
+
+	if (!ip_addr) {
+		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	while(count < 10) {
+		get_str = vconf_get_str(VCONFKEY_LOCAL_IP);
+		if (!get_str) {
+			WDS_LOGE("Failed to get vconf value[%s]", VCONFKEY_LOCAL_IP);
+			__WDS_LOG_FUNC_EXIT__;
+			return -1;
+		}
+
+		if(strcmp(get_str, ZEROIP) == 0) {
+			WDS_LOGE("Failed to get vconf value[%s]", VCONFKEY_LOCAL_IP);
+			__WDS_LOG_FUNC_EXIT__;
+			return -1;
+		}
+
+		WDS_LOGD("VCONFKEY_DHCPC_SERVER_IP(%s) : %s\n", VCONFKEY_LOCAL_IP, get_str);
+		_txt_to_ip(get_str, ip_addr);
+		if (*ip_addr)
+			break;
+		count++;
+	}
+
+	__WDS_LOG_FUNC_EXIT__;
+	return 0;
+}
