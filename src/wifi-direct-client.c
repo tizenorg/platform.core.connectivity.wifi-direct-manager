@@ -477,7 +477,7 @@ Ignore the check for now*/
 		GIOChannel *gio = NULL;
 		gio = g_io_channel_unix_new(sock);
 		client->gsource_id = g_io_add_watch(gio, G_IO_IN | G_IO_ERR | G_IO_HUP,
-							(GIOFunc) wfd_client_process_request, (gpointer) sock);
+							(GIOFunc) wfd_client_process_request, (gpointer) (void *)(intptr_t)sock);
 		g_io_channel_unref(gio);
 
 		manager->clients = g_list_prepend(manager->clients, (gpointer) client);
@@ -532,7 +532,7 @@ done:
 static gboolean _wfd_remove_event_source(gpointer data)
 {
 	__WDS_LOG_FUNC_ENTER__;
-	int source_id = (int) data;
+	int source_id = (intptr_t) data;
 	int res = 0;
 
 	if (source_id < 0) {
@@ -578,7 +578,7 @@ static int _wfd_deregister_client(void *data, int client_id)
 	if (client->ssock >= SOCK_FD_MIN)
 		close(client->ssock);
 	client->ssock = -1;
-	g_idle_add((GSourceFunc) _wfd_remove_event_source, (gpointer) client->gsource_id);
+	g_idle_add((GSourceFunc) _wfd_remove_event_source, (gpointer) (void *)(intptr_t)client->gsource_id);
 	client->gsource_id = 0;
 
 	g_free(client);
@@ -880,7 +880,7 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 									gpointer user_data)
 {
 	__WDS_LOG_FUNC_ENTER__;
-	int sock = (int) user_data;
+	int sock = (intptr_t) user_data;
 	wifi_direct_client_request_s req;
 	wifi_direct_client_response_s rsp;
 	char *extra_rsp = NULL;

@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <glib.h>
 #include <wifi-direct.h>
@@ -39,7 +40,7 @@ int wfd_service_add(GList **services, int type, char *info_str, int *service_id)
 	}
 
 	service->type = type;
-	service->id = (int) &service;
+	service->id = (intptr_t) &service;
 
 	info1 = g_strndup(info_str, strlen(info_str));
 	if(info1 == NULL) {
