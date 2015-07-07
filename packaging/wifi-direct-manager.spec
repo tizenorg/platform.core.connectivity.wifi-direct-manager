@@ -1,6 +1,6 @@
 Name:		wifi-direct-manager
 Summary:	Wi-Fi Direct manger
-Version:	1.2.82
+Version:	1.2.83
 Release:	1
 Group:      Network & Connectivity/Wireless
 License:    Apache-2.0
@@ -61,17 +61,18 @@ cmake . -DCMAKE_INSTALL_PREFIX=%{_prefix} -DARCHITECTURE=$ARCH \
 %if ! 0%{?model_build_feature_network_tethering_disable}
 	-DTIZEN_TETHERING_ENABLE=0 \
 %endif
-%if "%{?tizen_profile_name}" == "wearable"
+%if "%{profile}" == "wearable"
         -DTIZEN_FEATURE_SERVICE_DISCOVERY=0 \
         -DTIZEN_FEATURE_WIFI_DISPLAY=0 \
 %else
-%if "%{?tizen_profile_name}" == "mobile"
+%if "%{profile}" == "mobile"
         -DTIZEN_FEATURE_SERVICE_DISCOVERY=1 \
         -DTIZEN_FEATURE_WIFI_DISPLAY=1 \
         -DCTRL_IFACE_DBUS=1 \
 %else
-%if "%{?tizen_profile_name}" == "tv"
+%if "%{profile}" == "tv"
 	-DTIZEN_TV=1 \
+        -DCTRL_IFACE_DBUS=1 \
 %endif
 %endif
 %endif
@@ -127,7 +128,7 @@ chmod 666 /var/lib/misc/udhcpd.leases
 %{_bindir}/wfd-manager
 /usr/etc/wifi-direct/dhcpd.p2p.conf
 /usr/etc/wifi-direct/udhcp_script.non-autoip
-%if "%{?tizen_profile_name}" == "tv"
+%if "%{profile}" == "tv"
 /usr/etc/wifi-direct/p2p_supp_tv.conf
 /opt/etc/p2p_supp_tv.conf
 %else
