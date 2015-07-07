@@ -2257,7 +2257,7 @@ static int __ws_if_up(void)
 {
 	gboolean rv = FALSE;
 	const char *path = "/usr/sbin/ifconfig";
-	char *const args[] = { "/usr/sbin/ifconfig", "wlan0", "up", NULL };
+	char *const args[] = { "/usr/sbin/ifconfig", COMMON_IFACE_NAME, "up", NULL };
 	char *const envs[] = { NULL };
 
 	rv = _ws_util_execute_file(path, args, envs);
@@ -2275,7 +2275,7 @@ static int __ws_if_down(void)
 {
 	gboolean rv = FALSE;
 	const char *path = "/usr/sbin/ifconfig";
-	char *const args[] = { "/usr/sbin/ifconfig", "wlan0", "down", NULL };
+	char *const args[] = { "/usr/sbin/ifconfig", COMMON_IFACE_NAME, "down", NULL };
 	char *const envs[] = { NULL };
 
 	rv = _ws_util_execute_file(path, args, envs);
