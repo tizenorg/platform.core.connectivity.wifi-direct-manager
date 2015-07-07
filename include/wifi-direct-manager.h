@@ -33,9 +33,19 @@
 #define DEFAULT_IFNAME "p2p0"
 #define GROUP_IFNAME "p2p-wlan0-0"
 #endif
-#define DEFAULT_DEVICE_NAME "JWSCOM"
-#define DEFAULT_IFNAME "wlan0"
-#define GROUP_IFNAME "wlan0"
+
+#if defined TIZEN_TV
+	#define GROUP_IFNAME "p2p0"
+	#define DEFAULT_IFNAME "p2p0"
+	#define DEFAULT_DEVICE_NAME "TIZEN-TV-ODROID"
+
+#else
+	#define DEFAULT_IFNAME "wlan0"
+	#define GROUP_IFNAME "p2p-wlan0-0"
+	#define DEFAULT_DEVICE_NAME "JWSCOM"
+
+#endif
+
 
 #define WFD_MAX_CLIENT 16
 #define WFD_MAX_STATION 8

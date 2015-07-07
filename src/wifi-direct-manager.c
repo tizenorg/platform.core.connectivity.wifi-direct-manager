@@ -593,7 +593,7 @@ int wfd_manager_deactivate(wfd_manager_s *manager)
 		WDS_LOGE("Failed to initialize miracast");
 #endif /* TIZEN_FEATURE_WIFI_DISPLAY */
 
-	res = wfd_oem_destroy_group(manager->oem_ops, "p2p-wlan0-0");
+	res = wfd_oem_destroy_group(manager->oem_ops, GROUP_IFNAME);
 	if (res < 0)
 		WDS_LOGE("Failed to destroy group before deactivation");
 
