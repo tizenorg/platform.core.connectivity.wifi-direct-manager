@@ -53,7 +53,16 @@
 #include "wifi-direct-util.h"
 #include "wifi-direct-oem.h"
 #ifdef CTRL_IFACE_DBUS
+#include "wifi-direct-group.h"
 #include "wifi-direct-session.h"
+#endif /* CTRL_IFACE_DBUS */
+
+#ifdef CTRL_IFACE_DBUS
+#include <linux/unistd.h>
+#include <asm/types.h>
+#include <linux/netlink.h>
+#include <linux/rtnetlink.h>
+
 #endif /* CTRL_IFACE_DBUS */
 
 static int _txt_to_mac(char *txt, unsigned char *mac)
@@ -351,8 +360,8 @@ int wfd_util_check_wifi_state()
 	int wifi_state = 0;
 	int res = 0;
 
-	/* vconf key and value (vconf-keys.h)
-#define VCONFKEY_WIFI_STATE "memory/wifi/state"
+/* vconf key and value (vconf-keys.h)
+#define VCONFKEY_WIFI_STATE	"memory/wifi/state"
 enum {
         VCONFKEY_WIFI_OFF = 0x00,
         VCONFKEY_WIFI_UNCONNECTED,
@@ -360,8 +369,7 @@ enum {
         VCONFKEY_WIFI_TRANSFER,
         VCONFKEY_WIFI_STATE_MAX
 };
-	 */
-
+*/
 	res = vconf_get_int(VCONFKEY_WIFI_STATE, &wifi_state);
 	if (res < 0) {
 		WDS_LOGE("Failed to get vconf value [%s]", VCONFKEY_WIFI_STATE);
@@ -751,7 +759,7 @@ int wfd_util_dhcps_start()
 	 * As we are GO so IP should be updated
 	 * before sending Group Created Event
 	 */
-	vconf_set_str(VCONFKEY_IFNAME, GROUP_IFNAME	);
+	vconf_set_str(VCONFKEY_IFNAME, GROUP_IFNAME);
 	vconf_set_str(VCONFKEY_LOCAL_IP, "192.168.49.1");
 	vconf_set_str(VCONFKEY_SUBNET_MASK, "255.255.255.0");
 	vconf_set_str(VCONFKEY_GATEWAY, "192.168.49.1");
@@ -966,3 +974,379 @@ int wfd_util_get_local_ip(unsigned char* ip_addr)
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
 }
+
+#ifdef CTRL_IFACE_DBUS
+
+/*TODO: ODROID Image does not have support libnl-2.0 */
+#if 0
+static int _wfd_util_set_vconf_for_static_ip(const char *ifname, char *static_ip)
+{
+	__WDS_LOG_FUNC_ENTER__;
+
+	if (!ifname || !static_ip)
+		return -1;
+
+	vconf_set_str(VCONFKEY_IFNAME, ifname);
+	vconf_set_str(VCONFKEY_LOCAL_IP, static_ip);
+	vconf_set_str(VCONFKEY_SUBNET_MASK, "255.255.255.0");
+	vconf_set_str(VCONFKEY_GATEWAY, "192.168.49.1");
+
+	__WDS_LOG_FUNC_EXIT__;
+
+	return 0;
+}
+
+int _wfd_util_set_static_arp(const char *ifname, unsigned char *peer_ip, unsigned char *peer_mac)
+{
+	__WDS_LOG_FUNC_ENTER__;
+
+	struct nl_sock *sock;
+	struct rtnl_neigh *neigh;
+	struct nl_addr *ip_addr;
+	struct nl_addr *mac_addr;
+
+	char ip_str[IPSTR_LEN] = {0, };
+	char mac_str[MACSTR_LEN] = {0, };
+	int if_index = 0;
+	int res = 0;
+
+	if (!ifname || !peer_ip || !peer_mac) {
+		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
+	snprintf(ip_str, IPSTR_LEN, IPSTR, IP2STR(peer_ip));
+	snprintf(mac_str, MACSTR_LEN, MACSTR, MAC2STR(peer_mac));
+
+	WDS_LOGE("ifname : [%s] peer ip : [%s] peer mac : [%s]", ifname, ip_str, mac_str);
+
+	/* Get index of interface */
+	if_index = if_nametoindex(ifname);
+	if(if_index < 0) {
+		WDS_LOGE("Failed to get interface index.");
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	sock = nl_socket_alloc();
+	if (!sock) {
+		WDS_LOGE("Failed to create netlink socket.");
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	res = nl_connect(sock, NETLINK_ROUTE);
+	if (res < 0) {
+		WDS_LOGE("Failed to connect netlink socket. [%s]", nl_geterror(res));
+		nl_socket_free(sock);
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	neigh = rtnl_neigh_alloc();
+	if(!neigh) {
+		WDS_LOGE("Failed to create neigh. [%s]");
+		nl_socket_free(sock);
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	if(nl_addr_parse(ip_str, rtnl_neigh_get_family(neigh), &ip_addr) < 0) {
+		WDS_LOGE("Failed to parse ip addr.");
+		nl_socket_free(sock);
+		rtnl_neigh_put(neigh);
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	if(nl_addr_parse(mac_str, AF_UNSPEC, &mac_addr) < 0) {
+		WDS_LOGE("Failed to parse mac addr.");
+		nl_socket_free(sock);
+		rtnl_neigh_put(neigh);
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	rtnl_neigh_set_dst(neigh, ip_addr);
+	rtnl_neigh_set_lladdr(neigh, mac_addr);
+	rtnl_neigh_set_ifindex(neigh, if_index);
+	rtnl_neigh_set_state(neigh, rtnl_neigh_str2state("reachable"));
+
+	res = rtnl_neigh_add(sock, neigh, NLM_F_CREATE);
+	if(res < 0) {
+		WDS_LOGE("Failed to add neigh. [%s]\n", nl_geterror(res));
+	}
+
+	WDS_LOGE("Set static ARP as reachable success!");
+	nl_socket_free(sock);
+	rtnl_neigh_put(neigh);
+	__WDS_LOG_FUNC_EXIT__;
+	return res;
+}
+
+
+static int _wfd_util_static_ip_set(const char *ifname, unsigned char *static_ip)
+{
+	__WDS_LOG_FUNC_ENTER__;
+
+	int res = 0;
+	unsigned char ip_addr[IPADDR_LEN];
+	char ip_str[IPSTR_LEN] = {0, };
+
+	int if_index;
+	int nl_sock = -1;
+	struct sockaddr_nl dst_addr;
+
+	struct {
+		struct nlmsghdr     nh;
+		struct ifaddrmsg    ifa;
+		char            attrbuf[1024];
+	} req;
+	struct rtattr *rta;
+	struct iovec iov;
+	struct msghdr nl_msg;
+
+	if (!ifname || !static_ip) {
+		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	/* Get index of interface */
+	if_index = if_nametoindex(ifname);
+	if(if_index < 0) {
+		WDS_LOGE("Failed to get interface index. [%s]", strerror(errno));
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	WDS_LOGD("Creating a Netlink Socket");
+	nl_sock = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
+	if (nl_sock < 0) {
+		WDS_LOGE("Failed to create socket. [%s]", strerror(errno));
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	memset(&dst_addr, 0, sizeof(dst_addr));
+	dst_addr.nl_family =  AF_NETLINK;
+	dst_addr.nl_pid = 0;
+
+	memset(&req, 0, sizeof(req));
+	req.nh.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifaddrmsg));
+	req.nh.nlmsg_type = RTM_NEWADDR;
+	req.nh.nlmsg_flags = NLM_F_CREATE | NLM_F_EXCL | NLM_F_REQUEST;
+
+	req.ifa.ifa_family = AF_INET;
+	req.ifa.ifa_prefixlen = 24;
+	req.ifa.ifa_flags = IFA_F_PERMANENT;
+	req.ifa.ifa_scope = 0;
+	req.ifa.ifa_index = if_index;
+
+	rta = (struct rtattr *)(req.attrbuf);
+	rta->rta_type = IFA_LOCAL;
+	rta->rta_len = RTA_LENGTH(IPADDR_LEN);
+	memcpy(RTA_DATA(rta), static_ip, IPADDR_LEN);
+	req.nh.nlmsg_len = NLMSG_ALIGN(req.nh.nlmsg_len) + rta->rta_len;
+
+	rta = (struct rtattr *)(req.attrbuf + rta->rta_len);
+	rta->rta_type = IFA_BROADCAST;
+	rta->rta_len = RTA_LENGTH(IPADDR_LEN);
+	memcpy(ip_addr, static_ip, IPADDR_LEN);
+	ip_addr[3] =0xff;
+	memcpy(RTA_DATA(rta), ip_addr, IPADDR_LEN);
+	req.nh.nlmsg_len += rta->rta_len;
+
+	memset(&iov, 0, sizeof(iov));
+	iov.iov_base = &req;
+	iov.iov_len = req.nh.nlmsg_len;
+
+	memset(&nl_msg, 0, sizeof(nl_msg));
+	nl_msg.msg_name = (void *)&dst_addr;
+	nl_msg.msg_namelen = sizeof(dst_addr);
+	nl_msg.msg_iov = &iov;
+	nl_msg.msg_iovlen = 1;
+
+	res = sendmsg(nl_sock, &nl_msg, 0);
+	if (res < 0) {
+		WDS_LOGE("Failed to sendmsg. [%s]", strerror(errno));
+	} else {
+		WDS_LOGD("Succed to sendmsg. [%d]", res);
+	}
+
+	close(nl_sock);
+	WDS_LOGE("Succeeded to set local(client) IP [" IPSTR "] for iface[%s]",
+				IP2STR(static_ip), ifname);
+
+	snprintf(ip_str, IPSTR_LEN, IPSTR, IP2STR(static_ip));
+	_wfd_util_set_vconf_for_static_ip(ifname, ip_str);
+
+	__WDS_LOG_FUNC_EXIT__;
+	return res;
+}
+
+#ifdef TIZEN_VENDOR_ATH
+int wfd_util_static_ip_unset(const char *ifname)
+{
+	__WDS_LOG_FUNC_ENTER__;
+
+
+	int res = 0;
+	unsigned char ip_addr[IPADDR_LEN];
+	char error_buf[MAX_SIZE_ERROR_BUFFER] = {};
+
+	int if_index;
+	int nl_sock = -1;
+	struct sockaddr_nl dst_addr;
+
+	struct {
+		struct nlmsghdr     nh;
+		struct ifaddrmsg    ifa;
+		char            attrbuf[1024];
+	} req;
+	struct rtattr *rta;
+	struct iovec iov;
+	struct msghdr nl_msg;
+
+	if (!ifname) {
+		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	res = wfd_util_dhcpc_get_ip(ifname, ip_addr, 0);
+	if (res < 0) {
+		WDS_LOGE("Failed to get local IP for interface %s", ifname);
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
+	WDS_LOGE("Succeeded to get local(client) IP [" IPSTR "] for iface[%s]",
+			IP2STR(ip_addr), ifname);
+
+	if_index = if_nametoindex(ifname);
+	if(if_index < 0) {
+		strerror_r(errno, error_buf, MAX_SIZE_ERROR_BUFFER);
+		WDS_LOGE("Failed to get interface index. [%s]", error_buf);
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	WDS_LOGD("Creating a Netlink Socket");
+	nl_sock = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
+	if (nl_sock < 0) {
+		strerror_r(errno, error_buf, MAX_SIZE_ERROR_BUFFER);
+		WDS_LOGE("Failed to create socket. [%s]", error_buf);
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	WDS_LOGD("Set dst socket address to kernel");
+	memset(&dst_addr, 0, sizeof(dst_addr));
+	dst_addr.nl_family =  AF_NETLINK;
+	dst_addr.nl_pid = 0;
+
+	memset(&req, 0, sizeof(req));
+	req.nh.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifaddrmsg));
+	req.nh.nlmsg_type = RTM_DELADDR;
+	req.nh.nlmsg_flags = NLM_F_REQUEST;
+
+	req.ifa.ifa_family = AF_INET;
+	req.ifa.ifa_prefixlen = 32;
+	req.ifa.ifa_flags = IFA_F_PERMANENT;
+	req.ifa.ifa_scope = 0;
+	req.ifa.ifa_index = if_index;
+
+	rta = (struct rtattr *)(req.attrbuf);
+	rta->rta_type = IFA_LOCAL;
+	rta->rta_len = RTA_LENGTH(IPADDR_LEN);
+	memcpy(RTA_DATA(rta), ip_addr, IPADDR_LEN);
+	req.nh.nlmsg_len = NLMSG_ALIGN(req.nh.nlmsg_len) + rta->rta_len;
+
+	memset(&iov, 0, sizeof(iov));
+	iov.iov_base = &req;
+	iov.iov_len = req.nh.nlmsg_len;
+
+	memset(&nl_msg, 0, sizeof(nl_msg));
+	nl_msg.msg_name = (void *)&dst_addr;
+	nl_msg.msg_namelen = sizeof(dst_addr);
+	nl_msg.msg_iov = &iov;
+	nl_msg.msg_iovlen = 1;
+
+	res = sendmsg(nl_sock, &nl_msg, 0);
+	if (res < 0) {
+		strerror_r(errno, error_buf, MAX_SIZE_ERROR_BUFFER);
+		WDS_LOGE("Failed to sendmsg. [%s]", error_buf);
+	} else {
+		WDS_LOGD("Succeed to sendmsg. [%d]", res);
+	}
+
+	close(nl_sock);
+
+	__WDS_LOG_FUNC_EXIT__;
+	return res;
+}
+#endif /* TIZEN_VENDOR_ATH */
+
+
+int wfd_util_ip_over_eap_assign(wfd_device_s *peer, const char *ifname)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_manager_s *manager = wfd_get_manager();
+	char ip_str[IPSTR_LEN] = {0, };
+	if (!peer) {
+		WDS_LOGE("Invalid paramater");
+		return -1;
+	}
+
+	_wfd_util_static_ip_set(ifname, peer->client_ip_addr);
+	memcpy(peer->ip_addr, peer->go_ip_addr, IPADDR_LEN);
+	_wfd_util_set_static_arp(ifname, peer->ip_addr, peer->intf_addr);
+
+	wfd_destroy_session(manager);
+
+	g_snprintf(ip_str, IPSTR_LEN, IPSTR, IP2STR(peer->ip_addr));
+	_connect_remote_device(ip_str);
+
+	wfd_state_set(manager, WIFI_DIRECT_STATE_CONNECTED);
+	wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_CONNECTED);
+
+	wifi_direct_client_noti_s noti;
+	memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
+	noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
+	noti.error = WIFI_DIRECT_ERROR_NONE;
+	snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer->dev_addr));
+	wfd_client_send_event(manager, &noti);
+
+	__WDS_LOG_FUNC_EXIT__;
+	return 0;
+}
+
+int wfd_util_ip_over_eap_lease(wfd_device_s *peer)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_manager_s *manager = wfd_get_manager();
+	wfd_group_s *group = (wfd_group_s*)manager->group;
+
+	if (!peer || !group) {
+		WDS_LOGE("Invalid paramater");
+		return -1;
+	}
+
+	memcpy(peer->ip_addr, peer->client_ip_addr, IPADDR_LEN);
+	_wfd_util_set_static_arp(group->ifname, peer->ip_addr, peer->intf_addr);
+
+	wifi_direct_client_noti_s noti;
+	memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
+	noti.event = WIFI_DIRECT_CLI_EVENT_IP_LEASED_IND;
+	noti.error = WIFI_DIRECT_ERROR_NONE;
+	snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer->dev_addr));
+	snprintf(noti.param2, IPSTR_LEN, IPSTR, IP2STR(peer->ip_addr));
+	wfd_client_send_event(manager, &noti);
+
+	__WDS_LOG_FUNC_EXIT__;
+	return 0;
+}
+#endif
+
+
+#endif /* CTRL_IFACE_DBUS */

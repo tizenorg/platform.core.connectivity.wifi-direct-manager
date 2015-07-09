@@ -27,14 +27,12 @@
 
 #ifndef __WIFI_DIRECT_UTIL_H__
 #define __WIFI_DIRECT_UTIL_H__
-#if 0
+
 #if !defined TIZEN_TV
 #define DEFAULT_MAC_FILE_PATH "/opt/etc/.mac.info"
 #else
 #define DEFAULT_MAC_FILE_PATH "/sys/class/net/p2p0/address"
 #endif
-#endif
-#define DEFAULT_MAC_FILE_PATH "/sys/class/net/wlan0/address"
 #define MAC2STR(a) (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
 #define MACSTR "%02x:%02x:%02x:%02x:%02x:%02x"
 #define IP2STR(a) (a)[0], (a)[1], (a)[2], (a)[3]
@@ -120,4 +118,12 @@ int wfd_util_dhcpc_get_ip(char *ifname, unsigned char *ip_addr, int is_IPv6);
 int wfd_util_dhcpc_get_server_ip(unsigned char* ip_addr);
 int wfd_util_get_local_ip(unsigned char* ip_addr);
 
+#ifdef CTRL_IFACE_DBUS
+#ifdef TIZEN_VENDOR_ATH
+int wfd_util_static_ip_unset(const char *ifname);
+#endif /* TIZEN_VENDOR_ATH */
+/*TODO: ODROID Image does not have support libnl-2.0*/
+//int wfd_util_ip_over_eap_assign(wfd_device_s *peer, const char *ifname);
+//int wfd_util_ip_over_eap_lease(wfd_device_s *peer);
+#endif /* CTRL_IFACE_DBUS */
 #endif /* __WIFI_DIRECT_UTIL_H__ */

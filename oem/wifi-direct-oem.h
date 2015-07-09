@@ -179,8 +179,11 @@ typedef struct {
 } wfd_oem_conn_data_s;
 
 typedef struct {
+	unsigned char sa[OEM_MACADDR_LEN];
 	unsigned char go_dev_addr[OEM_MACADDR_LEN];
 	unsigned char bssid[OEM_MACADDR_LEN];
+	int persistent_id;
+	int oper_freq;
 	int listen;
 	int status;
 } wfd_oem_invite_data_s;
@@ -190,6 +193,9 @@ typedef struct {
 	int freq;
 	char pass[OEM_PASS_PHRASE_LEN+1];
 	unsigned char go_dev_addr[OEM_MACADDR_LEN];
+	unsigned char ip_addr[OEM_IPADDR_LEN];
+	unsigned char ip_addr_mask[OEM_IPADDR_LEN];
+	unsigned char ip_addr_go[OEM_IPADDR_LEN];
 } wfd_oem_group_data_s;
 
 #ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
@@ -215,6 +221,7 @@ typedef struct {
 	int event_id;
 	unsigned char dev_addr[OEM_MACADDR_LEN];	// device address
 	unsigned char intf_addr[OEM_MACADDR_LEN];
+	unsigned char ip_addr_peer[OEM_IPADDR_LEN];
 	int wps_mode;
 	char wps_pin[OEM_PINSTR_LEN+1];	// just for DISPLAY
 	char ifname[OEM_IFACE_NAME_LEN+1];

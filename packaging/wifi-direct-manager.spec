@@ -1,6 +1,6 @@
 Name:		wifi-direct-manager
 Summary:	Wi-Fi Direct manger
-Version:	1.2.84
+Version:	1.2.85
 Release:	1
 Group:      Network & Connectivity/Wireless
 License:    Apache-2.0
@@ -9,8 +9,9 @@ BuildRequires:	pkgconfig(capi-network-wifi-direct)
 BuildRequires:	pkgconfig(gio-2.0)
 BuildRequires:	pkgconfig(dlog)
 BuildRequires:	pkgconfig(vconf)
-#BuildRequires:	pkgconfig(dbus-1)
-#BuildRequires:	pkgconfig(security-server)
+#BuildRequires:  pkgconfig(libnl-1)
+BuildRequires:	pkgconfig(dbus-1)
+BuildRequires:	pkgconfig(security-server)
 BuildRequires:	pkgconfig(capi-appfw-application)
 BuildRequires:	cmake
 #BuildRequires:  model-build-features
@@ -71,14 +72,13 @@ cmake . -DCMAKE_INSTALL_PREFIX=%{_prefix} -DARCHITECTURE=$ARCH \
         -DCTRL_IFACE_DBUS=1 \
 %else
 %if "%{profile}" == "tv"
+	-DTIZEN_FEATURE_SERVICE_DISCOVERY=1 \
+	-DTIZEN_FEATURE_WIFI_DISPLAY=1 \
+	-DCTRL_IFACE_DBUS=1 \
 	-DTIZEN_TV=1 \
-        -DCTRL_IFACE_DBUS=1 \
 %endif
 %endif
 %endif
--DTIZEN_FEATURE_SERVICE_DISCOVERY=1 \
--DTIZEN_FEATURE_WIFI_DISPLAY=1 \
--DCTRL_IFACE_DBUS=1 \
 -DCMAKE_LIB_DIR=%{_libdir}
 
 make %{?_smp_mflags}
@@ -128,13 +128,8 @@ chmod 666 /var/lib/misc/udhcpd.leases
 %{_bindir}/wfd-manager
 /usr/etc/wifi-direct/dhcpd.p2p.conf
 /usr/etc/wifi-direct/udhcp_script.non-autoip
-%if "%{profile}" == "tv"
-/usr/etc/wifi-direct/p2p_supp_tv.conf
-/opt/etc/p2p_supp_tv.conf
-%else
 /usr/etc/wifi-direct/p2p_supp.conf
 /opt/etc/p2p_supp.conf
-%endif
 /usr/etc/wifi-direct/ccode.conf
 /opt/etc/persistent-peer
 %{_bindir}/dhcpd-notify.sh

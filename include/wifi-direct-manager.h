@@ -28,22 +28,12 @@
 #ifndef __WIFI_DIRECT_MANAGER_H__
 #define __WIFI_DIRECT_MANAGER_H__
 
-#if 0
 #define DEFAULT_DEVICE_NAME "Tizen_Device"
 #define DEFAULT_IFNAME "p2p0"
-#define GROUP_IFNAME "p2p-wlan0-0"
-#endif
-
 #if defined TIZEN_TV
-	#define GROUP_IFNAME "p2p0"
-	#define DEFAULT_IFNAME "p2p0"
-	#define DEFAULT_DEVICE_NAME "TIZEN-TV-ODROID"
-
+#	define GROUP_IFNAME "p2p0"
 #else
-	#define DEFAULT_IFNAME "wlan0"
-	#define GROUP_IFNAME "p2p-wlan0-0"
-	#define DEFAULT_DEVICE_NAME "JWSCOM"
-
+#	define GROUP_IFNAME "p2p-wlan0-0"
 #endif
 
 
@@ -56,7 +46,8 @@
 #define IPADDR_LEN 4
 #define IPSTR_LEN 16
 #define PINSTR_LEN 8
-#define PASSPHRASE_LEN 64
+#define PASSPHRASE_LEN_MAX 63
+#define PASSPHRASE_LEN_MIN 8
 
 #if 0
 typedef enum {
@@ -95,8 +86,8 @@ typedef enum {
 } wfd_peer_state_e;
 
 typedef enum {
-	WFD_IP_TYPE_DYNAMIC,
-	WFD_IP_TYPE_STATIC,
+	WFD_IP_TYPE_DYNAMIC = 0x0,
+	WFD_IP_TYPE_OVER_EAPOL = 0x1,
 } wfd_ip_type_e;
 
 #ifdef TIZEN_FEATURE_WIFI_DISPLAY
@@ -143,7 +134,7 @@ typedef struct {
 	int group_flags;
 	int wps_mode;
 
-	char passphrase[PASSPHRASE_LEN +1];
+	char passphrase[PASSPHRASE_LEN_MAX + 1];
 
 #ifdef TIZEN_FEATURE_WIFI_DISPLAY
 	wfd_display_s display;
@@ -155,6 +146,10 @@ typedef struct {
 #endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
 
 	unsigned char ip_addr[IPADDR_LEN];
+
+	int ip_type;
+	unsigned char client_ip_addr[IPADDR_LEN];
+	unsigned char go_ip_addr[IPADDR_LEN];
 } wfd_device_s;
 
 typedef struct {

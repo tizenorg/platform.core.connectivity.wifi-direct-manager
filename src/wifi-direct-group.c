@@ -49,9 +49,15 @@ wfd_group_s *wfd_create_group(void *data, wfd_oem_event_s *group_info)
 	__WDS_LOG_FUNC_ENTER__;
 	wfd_group_s *group = NULL;
 	wfd_manager_s *manager = (wfd_manager_s*) data;
+
+	if (!manager || !group_info) {
+		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
+		return NULL;
+	}
 	wfd_oem_group_data_s *edata = (wfd_oem_group_data_s *)group_info->edata;
 
-	if (!manager || !group_info || !edata) {
+	if (!edata) {
 		WDS_LOGE("Invalid parameter");
 		__WDS_LOG_FUNC_EXIT__;
 		return NULL;
@@ -79,8 +85,8 @@ wfd_group_s *wfd_create_group(void *data, wfd_oem_event_s *group_info)
 	group->pending = 0;
 
 	g_strlcpy(group->ssid, edata->ssid, DEV_NAME_LEN + 1);
-	g_strlcpy(group->passphrase, edata->pass, PASSPHRASE_LEN +1);
-	memset(manager->local->passphrase, 0x0, PASSPHRASE_LEN +1);
+	g_strlcpy(group->passphrase, edata->pass, PASSPHRASE_LEN_MAX + 1);
+	memset(manager->local->passphrase, 0x0, PASSPHRASE_LEN_MAX + 1);
 	group->freq = edata->freq;
 
 	manager->group = group;
@@ -132,12 +138,18 @@ int wfd_group_complete(void *data, wfd_oem_event_s *group_info)
 {
 	__WDS_LOG_FUNC_ENTER__;
 	wfd_manager_s *manager = (wfd_manager_s*) data;
-	wfd_oem_group_data_s *edata = (wfd_oem_group_data_s *)group_info->edata;
 	wfd_session_s *session = NULL;
 	wfd_group_s *group = NULL;
 	wfd_device_s *peer = NULL;
 
-	if (!manager || !group_info || !edata) {
+	if (!manager || !group_info) {
+		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
+	wfd_oem_group_data_s *edata = (wfd_oem_group_data_s *)group_info->edata;
+
+	if (!edata) {
 		WDS_LOGE("Invalid parameter");
 		__WDS_LOG_FUNC_EXIT__;
 		return -1;
@@ -161,8 +173,8 @@ int wfd_group_complete(void *data, wfd_oem_event_s *group_info)
 	group->pending = 0;
 
 	g_strlcpy(group->ssid, edata->ssid, DEV_NAME_LEN + 1);
-	g_strlcpy(group->passphrase, edata->pass, PASSPHRASE_LEN +1);
-	memset(manager->local->passphrase, 0x0, PASSPHRASE_LEN +1);
+	g_strlcpy(group->passphrase, edata->pass, PASSPHRASE_LEN_MAX + 1);
+	memset(manager->local->passphrase, 0x0, PASSPHRASE_LEN_MAX + 1);
 	group->freq = edata->freq;
 
 	manager->local->dev_role = group_info->dev_role;
@@ -181,11 +193,21 @@ int wfd_group_complete(void *data, wfd_oem_event_s *group_info)
 	} else {
 #ifdef CTRL_IFACE_DBUS
 		WDS_LOGD("Role is Group Client.complete session and add peer to member");
-		memcpy(peer->intf_addr, group->go_dev_addr, MACADDR_LEN);
-		wfd_group_add_member(group, peer->dev_addr);
-		session->state = SESSION_STATE_COMPLETED;
-		/* memcpy(peer->intf_addr, event->intf_addr, MACADDR_LEN); */
-		peer->state = WFD_PEER_STATE_CONNECTED;
+		if (peer) {
+			memcpy(peer->intf_addr, group->go_dev_addr, MACADDR_LEN);
+			wfd_group_add_member(group, peer->dev_addr);
+			session->state = SESSION_STATE_COMPLETED;
+			/* memcpy(peer->intf_addr, event->intf_addr, MACADDR_LEN); */
+			peer->state = WFD_PEER_STATE_CONNECTED;
+			if(edata->ip_addr[3] && edata->ip_addr_go[3]) {
+				peer->ip_type = WFD_IP_TYPE_OVER_EAPOL;
+				memcpy(peer->client_ip_addr, edata->ip_addr, IPADDR_LEN);
+				WDS_LOGE("Peer's client IP [" IPSTR "]", IP2STR((char*) &peer->client_ip_addr));
+				memcpy(peer->go_ip_addr, edata->ip_addr_go, IPADDR_LEN);
+				WDS_LOGE("Peer's GO IP [" IPSTR "]", IP2STR((char*) &peer->go_ip_addr));
+			}
+		}
+		if(peer->ip_type != WFD_IP_TYPE_OVER_EAPOL)
 #endif /* CTRL_IFACE_DBUS */
 		wfd_util_dhcpc_start(peer);
 	}
@@ -272,7 +294,7 @@ int wfd_group_is_autonomous(wfd_group_s *group)
 	}
 
 	__WDS_LOG_FUNC_EXIT__;
-	return group->flags & WFD_GROUP_FLAG_AUTONOMOUS;;
+	return ((group->flags & WFD_GROUP_FLAG_AUTONOMOUS) == WFD_GROUP_FLAG_AUTONOMOUS);
 }
 
 #if 0

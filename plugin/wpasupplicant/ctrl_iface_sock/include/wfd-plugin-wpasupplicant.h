@@ -299,6 +299,8 @@ typedef enum {
 	WS_INVITE_INFO_GO_DEV_ADDR,	// go_dev_addr=
 	WS_INVITE_INFO_BSSID,		// bssid=
 	WS_INVITE_INFO_LISTEN,	// listen=
+	WS_INVITE_INFO_FREQ,			// op_freq=
+	WS_INVITE_INFO_PERSISTENT_ID, // persistent_id=
 	WS_INVITE_INFO_STATUS,	// status=
 
 	WS_INVITE_INFO_LIMIT,

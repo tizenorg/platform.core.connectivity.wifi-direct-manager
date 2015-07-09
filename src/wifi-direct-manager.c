@@ -506,7 +506,6 @@ int wfd_manager_local_config_set(wfd_manager_s *manager)
 int wfd_manager_activate(wfd_manager_s *manager)
 {
 	__WDS_LOG_FUNC_ENTER__;
-	int concurrent = 0;
 	int prev_state = 0;
 	int res = 0;
 
@@ -522,21 +521,29 @@ int wfd_manager_activate(wfd_manager_s *manager)
 
 	wfd_state_get(manager, &prev_state);
 	wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATING);
-
-#if 0 /* No need to check wifi state. Net-config will check and proceed driver loading */
-	concurrent = wfd_util_check_wifi_state();
-	if (concurrent < 0) {
+#if defined(TIZEN_WLAN_CONCURRENT_ENABLE) && defined(TIZEN_MOBILE)
+	res = wfd_util_check_wifi_state();
+	if (res < 0) {
 		WDS_LOGE("Failed to get wifi state");
-		concurrent = 0;
-	}
-#endif
-
-	res = wfd_oem_activate(manager->oem_ops, concurrent);
+		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
+	} else if (res == 0) {
+#endif /* TIZEN_WLAN_CONCURRENT_ENABLE && TIZEN_MOBILE */
+	res = wfd_oem_activate(manager->oem_ops, 0);
 	if (res < 0) {
 		WDS_LOGE("Failed to activate");
 		wfd_state_set(manager, prev_state);
 		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
 	}
+#if defined(TIZEN_WLAN_CONCURRENT_ENABLE) && defined(TIZEN_MOBILE)
+	} else {
+		res = wfd_oem_activate(manager->oem_ops, res);
+		if (res < 0) {
+			WDS_LOGE("Failed to activate");
+			wfd_state_set(manager, prev_state);
+			return WIFI_DIRECT_ERROR_OPERATION_FAILED;
+		}
+	}
+#endif /* TIZEN_WLAN_CONCURRENT_ENABLE && TIZEN_MOBILE */
 	WDS_LOGE("Succeeded to activate");
 
 	wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
@@ -564,7 +571,6 @@ int wfd_manager_activate(wfd_manager_s *manager)
 int wfd_manager_deactivate(wfd_manager_s *manager)
 {
 	__WDS_LOG_FUNC_ENTER__;
-	int concurrent = 0;
 	int prev_state = 0;
 	int res = 0;
 
@@ -581,12 +587,6 @@ int wfd_manager_deactivate(wfd_manager_s *manager)
 	wfd_state_get(manager, &prev_state);
 	wfd_state_set(manager, WIFI_DIRECT_STATE_DEACTIVATING);
 
-	concurrent = wfd_util_check_wifi_state();
-	if (concurrent < 0) {
-		WDS_LOGE("Failed to get wifi state");
-		concurrent = 0;
-	}
-
 #ifdef TIZEN_FEATURE_WIFI_DISPLAY
 	res = wfd_oem_miracast_init(manager->oem_ops, false);
 	if (res < 0)
@@ -597,12 +597,31 @@ int wfd_manager_deactivate(wfd_manager_s *manager)
 	if (res < 0)
 		WDS_LOGE("Failed to destroy group before deactivation");
 
-	res = wfd_oem_deactivate(manager->oem_ops, concurrent);
+#if defined(TIZEN_WLAN_CONCURRENT_ENABLE) && defined(TIZEN_MOBILE)
+	res = wfd_util_check_wifi_state();
 	if (res < 0) {
-		WDS_LOGE("Failed to deactivate");
-		wfd_state_set(manager, prev_state);
+		WDS_LOGE("Failed to get wifi state");
 		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
+	} else if (res == 0) {
+#endif /* TIZEN_WLAN_CONCURRENT_ENABLE && TIZEN_MOBILE */
+		res = wfd_oem_deactivate(manager->oem_ops, 0);
+		if (res < 0) {
+			WDS_LOGE("Failed to deactivate");
+			wfd_state_set(manager, prev_state);
+			return WIFI_DIRECT_ERROR_OPERATION_FAILED;
+		}
+#if defined(TIZEN_WLAN_CONCURRENT_ENABLE) && defined(TIZEN_MOBILE)
+	} else {
+		// FIXME: We should do something to stop p2p feature of Driver
+		res = wfd_oem_deactivate(manager->oem_ops, res);
+		if (res < 0) {
+			WDS_LOGE("Failed to deactivate");
+			wfd_state_set(manager, prev_state);
+			return WIFI_DIRECT_ERROR_OPERATION_FAILED;
+		}
+		WDS_LOGE("Do not need to deactivate Wi-Fi");
 	}
+#endif /* TIZEN_WLAN_CONCURRENT_ENABLE && TIZEN_MOBILE */
 	WDS_LOGE("Succeeded to deactivate");
 
 	wfd_state_set(manager, WIFI_DIRECT_STATE_DEACTIVATED);
@@ -758,7 +777,7 @@ int wfd_manager_cancel_connection(wfd_manager_s *manager, unsigned char *peer_ad
 	group = (wfd_group_s*) manager->group;
 	if (group) {
 		wfd_group_remove_member(group, peer_addr);
-		if (!group->member_count) {
+		if ((wfd_group_is_autonomous(manager->group) != TRUE) && !group->member_count) {
 			wfd_oem_destroy_group(manager->oem_ops, group->ifname);
 			wfd_destroy_group(manager, group->ifname);
 		} else {

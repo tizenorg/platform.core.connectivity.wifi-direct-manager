@@ -201,7 +201,8 @@ int wfd_process_event(void *user_data, void *data)
 
 		res = _wfd_event_update_peer(manager, edata);
 		peer = wfd_peer_find_by_dev_addr(manager, event->dev_addr);
-		peer->state = WFD_PEER_STATE_CONNECTING;
+		if (peer)
+			peer->state = WFD_PEER_STATE_CONNECTING;
 #else /* CTRL_IFACE_DBUS */
 		peer = wfd_peer_find_by_dev_addr(manager, event->dev_addr);
 		if (!peer) {
@@ -443,8 +444,19 @@ int wfd_process_event(void *user_data, void *data)
 			wfd_client_send_event(manager, &noti);
 #ifdef CTRL_IFACE_DBUS
 			wfd_update_peer(manager, peer);
+			if (event->ip_addr_peer[3]) {
+				peer->ip_type = WFD_IP_TYPE_OVER_EAPOL;
+				memcpy(peer->client_ip_addr, event->ip_addr_peer, IPADDR_LEN);
+				WDS_LOGE("Peer's client IP [" IPSTR "]", IP2STR((char*) &peer->client_ip_addr));
+				memcpy(peer->go_ip_addr, manager->local->ip_addr, IPADDR_LEN);
+				WDS_LOGE("Peer's GO IP [" IPSTR "]", IP2STR((char*) &peer->go_ip_addr));
+			}
+			if(peer->ip_type == WFD_IP_TYPE_OVER_EAPOL) {
+				/*TODO: ODROID Image does not have support libnl-2.0*/
+				//wfd_util_ip_over_eap_lease(peer);
+			}
+			else
 #endif /* CTRL_IFACE_DBUS */
-
 			wfd_util_dhcps_wait_ip_leased(peer);
 			wfd_destroy_session(manager);
 		}
@@ -490,7 +502,12 @@ int wfd_process_event(void *user_data, void *data)
 			noti.error = WIFI_DIRECT_ERROR_NONE;
 			g_snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
 			/* If there is no member, GO should be destroyed */
+#ifdef TIZEN_TV
+			/* If GO is Auto GO, then it should not be removed when no member left */
+			if (!group->member_count && (wfd_group_is_autonomous(group) == FALSE)) {
+#else /* TIZEN_TV */
 			if (!group->member_count) {
+#endif /* TIZEN_TV */
 				wfd_oem_destroy_group(manager->oem_ops, group->ifname);
 				wfd_destroy_group(manager, group->ifname);
 			}
@@ -535,6 +552,7 @@ int wfd_process_event(void *user_data, void *data)
 	case WFD_OEM_EVENT_GROUP_CREATED:
 	{
 		wfd_group_s *group = (wfd_group_s*) manager->group;
+		wfd_session_s *session = (wfd_session_s*)manager->session;
 #ifdef CTRL_IFACE_DBUS
 		if(event->dev_role == WFD_DEV_ROLE_GC && !group) {
 
@@ -548,7 +566,7 @@ int wfd_process_event(void *user_data, void *data)
 #endif /* CTRL_IFACE_DBUS */
 
 		if (!group) {
-			if (!manager->session) {
+			if (!session) {
 				WDS_LOGE("Unexpected Event. Group should be removed(Client)");
 				wfd_oem_destroy_group(manager->oem_ops, event->ifname);
 				break;
@@ -560,7 +578,7 @@ int wfd_process_event(void *user_data, void *data)
 				break;
 			}
 		} else {
-			if (!manager->session && !(group->flags & WFD_GROUP_FLAG_AUTONOMOUS)) {
+			if (!session && !(group->flags & WFD_GROUP_FLAG_AUTONOMOUS)) {
 				WDS_LOGE("Unexpected Event. Group should be removed(Owner)");
 				wfd_oem_destroy_group(manager->oem_ops, group->ifname);
 				break;
@@ -577,7 +595,12 @@ int wfd_process_event(void *user_data, void *data)
 		wifi_direct_client_noti_s noti;
 		memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
 		if (group->role == WFD_DEV_ROLE_GC) {
-#ifndef CTRL_IFACE_DBUS
+#ifdef CTRL_IFACE_DBUS
+			if(session->peer->ip_type == WFD_IP_TYPE_OVER_EAPOL) {
+				/*TODO: ODROID Image does not have support libnl-2.0*/
+				//wfd_util_ip_over_eap_assign(session->peer, event->ifname);
+				}
+#else /* CTRL_IFACE_DBUS */
 			wfd_destroy_session(manager);
 #endif /* CTRL_IFACE_DBUS */
 			wfd_peer_clear_all(manager);
@@ -654,15 +677,12 @@ int wfd_process_event(void *user_data, void *data)
 		snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
 		wfd_client_send_event(manager, &noti);
 
-		if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
-			wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
-			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
-		} else {
-			wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
-			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
-		}
+		wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
+		wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
 
+		wfd_destroy_group(manager, GROUP_IFNAME);
 		wfd_destroy_session(manager);
+		manager->local->dev_role = WFD_DEV_ROLE_NONE;
 	}
 	break;
 	case WFD_OEM_EVENT_PROV_DISC_FAIL:
@@ -702,8 +722,16 @@ int wfd_process_event(void *user_data, void *data)
 		wfd_client_send_event(manager, &noti);
 
 		if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
-			wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
-			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
+			wfd_group_s *group = (wfd_group_s*) manager->group;
+			if (group && !group->member_count && (wfd_group_is_autonomous(group) == FALSE)) {
+				wfd_destroy_group(manager, GROUP_IFNAME);
+
+				wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
+				wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
+			} else {
+				wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
+				wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
+			}
 		} else {
 			wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
 			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);

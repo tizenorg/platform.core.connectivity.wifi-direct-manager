@@ -47,7 +47,7 @@ typedef struct {
 	int freq;		// MHz
 	GList *members;
 	int member_count;
-	char passphrase[PASSPHRASE_LEN +1];
+	char passphrase[PASSPHRASE_LEN_MAX + 1];
 } wfd_group_s;
 
 

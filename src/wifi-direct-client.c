@@ -168,8 +168,8 @@ char *wfd_server_print_cmd(wifi_direct_cmd_e cmd)
 		return "WIFI_DIRECT_CMD_ACTIVATE_PERSISTENT_GROUP";
 	case WIFI_DIRECT_CMD_DEACTIVATE_PERSISTENT_GROUP:
 		return "WIFI_DIRECT_CMD_DEACTIVATE_PERSISTENT_GROUP";
-	case WIFI_DIRECT_CMD_IS_PERSISTENT_GROUP:
-		return "WIFI_DIRECT_CMD_IS_PERSISTENT_GROUP";
+	case WIFI_DIRECT_CMD_IS_PERSISTENT_GROUP_ACTIVATED:
+		return "WIFI_DIRECT_CMD_IS_PERSISTENT_GROUP_ACTIVATED";
 	case WIFI_DIRECT_CMD_GET_PERSISTENT_GROUP_INFO:
 		return "WIFI_DIRECT_CMD_GET_PERSISTENT_GROUP_INFO";
 	case WIFI_DIRECT_CMD_REMOVE_PERSISTENT_GROUP:
@@ -477,7 +477,7 @@ Ignore the check for now*/
 		GIOChannel *gio = NULL;
 		gio = g_io_channel_unix_new(sock);
 		client->gsource_id = g_io_add_watch(gio, G_IO_IN | G_IO_ERR | G_IO_HUP,
-							(GIOFunc) wfd_client_process_request, (gpointer) (void *)(intptr_t)sock);
+							(GIOFunc) wfd_client_process_request, (gpointer)(void *)(intptr_t)sock);
 		g_io_channel_unref(gio);
 
 		manager->clients = g_list_prepend(manager->clients, (gpointer) client);
@@ -578,7 +578,7 @@ static int _wfd_deregister_client(void *data, int client_id)
 	if (client->ssock >= SOCK_FD_MIN)
 		close(client->ssock);
 	client->ssock = -1;
-	g_idle_add((GSourceFunc) _wfd_remove_event_source, (gpointer) (void *)(intptr_t)client->gsource_id);
+	g_idle_add((GSourceFunc) _wfd_remove_event_source, (gpointer)(void *)(intptr_t) client->gsource_id);
 	client->gsource_id = 0;
 
 	g_free(client);
@@ -779,6 +779,7 @@ static int _wfd_check_client_privilege(int client_sock, int cmd)
 	case WIFI_DIRECT_CMD_DESTROY_GROUP:
 	case WIFI_DIRECT_CMD_ACTIVATE_PERSISTENT_GROUP:
 	case WIFI_DIRECT_CMD_DEACTIVATE_PERSISTENT_GROUP:
+	case WIFI_DIRECT_CMD_IS_PERSISTENT_GROUP_ACTIVATED:
 	case WIFI_DIRECT_CMD_REMOVE_PERSISTENT_GROUP:
 	case WIFI_DIRECT_CMD_SET_GO_INTENT:
 	case WIFI_DIRECT_CMD_GENERATE_WPS_PIN:
@@ -839,7 +840,6 @@ static int _wfd_check_client_privilege(int client_sock, int cmd)
 	case WIFI_DIRECT_CMD_IS_GROUPOWNER:
 	case WIFI_DIRECT_CMD_IS_AUTONOMOUS_GROUP:
 	case WIFI_DIRECT_CMD_IS_AUTOCONNECTION_MODE:
-	case WIFI_DIRECT_CMD_IS_PERSISTENT_GROUP:
 	case WIFI_DIRECT_CMD_GET_PEER_INFO:
 	case WIFI_DIRECT_CMD_GET_PASSPHRASE:
 #ifdef TIZEN_FEATURE_WIFI_DISPLAY
@@ -1418,7 +1418,7 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 				rsp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 			}
 
-			memset(manager->local->passphrase, 0x0, PASSPHRASE_LEN);
+			memset(manager->local->passphrase, 0x0, PASSPHRASE_LEN_MAX + 1);
 		}
 		break;
 	case WIFI_DIRECT_CMD_DESTROY_GROUP:
@@ -1453,28 +1453,18 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 		{
 			wfd_device_s *local = manager->local;
 			rsp.param1 = local->dev_role == WFD_DEV_ROLE_GO;
+			WDS_LOGI("Is group owner : [%s]", rsp.param1 ? "Yes" : "No");
 		}
 		break;
 	case WIFI_DIRECT_CMD_IS_AUTONOMOUS_GROUP:
 		{
-			wfd_group_s *group = manager->group;
-			if (!group) {
-				WDS_LOGE("Group not exist");
+			if ((rsp.param1 = wfd_group_is_autonomous(manager->group)) < 0) {
+				rsp.param1 = FALSE;
 				rsp.result = WIFI_DIRECT_ERROR_NOT_PERMITTED;
 				break;
 			}
-			rsp.param1 = group->flags & WFD_GROUP_FLAG_AUTONOMOUS;
-		}
-		break;
-	case WIFI_DIRECT_CMD_IS_PERSISTENT_GROUP:
-		{
-			wfd_group_s *group = manager->group;
-			if (!group) {
-				WDS_LOGE("Group not exist");
-				rsp.result = WIFI_DIRECT_ERROR_NOT_PERMITTED;
-				break;
-			}
-			rsp.param1 = group->flags & WFD_GROUP_FLAG_PERSISTENT;
+
+			WDS_LOGI("Is autonomous group : [%s]", rsp.param1 ? "Yes" : "No");
 		}
 		break;
 	case WIFI_DIRECT_CMD_GET_OPERATING_CHANNEL:
@@ -1522,6 +1512,12 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 	case WIFI_DIRECT_CMD_DEACTIVATE_PERSISTENT_GROUP:
 		{
 			manager->local->group_flags &= ~(WFD_GROUP_FLAG_PERSISTENT);
+		}
+		break;
+	case WIFI_DIRECT_CMD_IS_PERSISTENT_GROUP_ACTIVATED:
+		{
+			rsp.param1 = ((manager->local->group_flags & WFD_GROUP_FLAG_PERSISTENT) == WFD_GROUP_FLAG_PERSISTENT);
+			WDS_LOGI("Is persistent group : [%s]", rsp.param1 ? "Yes" : "No");
 		}
 		break;
 	case WIFI_DIRECT_CMD_REMOVE_PERSISTENT_GROUP:	// group
@@ -1605,6 +1601,7 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 			rsp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 		}
 		g_snprintf(rsp.param2, IPSTR_LEN, IPSTR, IP2STR(ip_addr));
+		WDS_LOGI("IP addr : [%s]", rsp.param2);
 		break;
 	case WIFI_DIRECT_CMD_GET_GO_INTENT:	// manager (sync)
 		res = wfd_manager_get_go_intent(&rsp.param1);
@@ -1649,11 +1646,13 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 		}
 		break;
 	case WIFI_DIRECT_CMD_IS_DISCOVERABLE:
-		if (manager->state == WIFI_DIRECT_STATE_DISCOVERING
-				|| wfd_group_is_autonomous(manager->group) == 1)
+		if (manager->state == WIFI_DIRECT_STATE_DISCOVERING ||
+				wfd_group_is_autonomous(manager->group) == TRUE)
 			rsp.param1 = TRUE;
 		else
 			rsp.param1 = FALSE;
+
+		WDS_LOGI("Is discoverable : [%s]", rsp.param1 ? "Yes" : "No");
 		break;
 	case WIFI_DIRECT_CMD_GET_SUPPORTED_WPS_MODE:	// manager (sync)
 		res = wfd_local_get_supported_wps_mode(&rsp.param1);
@@ -1762,16 +1761,18 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 		break;
 	case WIFI_DIRECT_CMD_SET_PASSPHRASE:
 		{
-			char passphrase[PASSPHRASE_LEN + 1] = {0,};
+			char passphrase[PASSPHRASE_LEN_MAX + 1] = {0,};
+			int passphrase_len = 0;
 			wfd_group_s *group = manager->group;
+
 			if (group) {
 				WDS_LOGE("Group already exists");
 				rsp.result = WIFI_DIRECT_ERROR_NOT_PERMITTED;
-				_wfd_read_from_client(sock, passphrase, PASSPHRASE_LEN);
+				_wfd_read_from_client(sock, passphrase, PASSPHRASE_LEN_MAX + 1);
 				break;
 			}
 
-			res = _wfd_read_from_client(sock, manager->local->passphrase, PASSPHRASE_LEN);
+			res = _wfd_read_from_client(sock, passphrase, PASSPHRASE_LEN_MAX + 1);
 			if (res == -2) {
 				WDS_LOGE("Client socket Hanged up");
 				_wfd_deregister_client(manager, sock);
@@ -1780,8 +1781,17 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 				WDS_LOGE("Failed to read socket [%d]", sock);
 				return TRUE;
 			}
-			manager->local->passphrase[PASSPHRASE_LEN] = '\0';
-			WDS_LOGD("Passphrase string [%s]", manager->local->passphrase);
+			passphrase[PASSPHRASE_LEN_MAX] = '\0';
+			passphrase_len = strlen(passphrase);
+
+			if (passphrase_len < PASSPHRASE_LEN_MIN || passphrase_len > PASSPHRASE_LEN_MAX) {
+				WDS_LOGE("Passphrase length incorrect [%s]:[%d]", passphrase, passphrase_len);
+				rsp.result = WIFI_DIRECT_ERROR_NOT_PERMITTED;
+				break;
+			}
+
+			g_strlcpy(manager->local->passphrase, passphrase, PASSPHRASE_LEN_MAX + 1);
+			WDS_LOGI("Passphrase string [%s]", manager->local->passphrase);
 		}
 		break;
 	case WIFI_DIRECT_CMD_GET_PASSPHRASE:
@@ -1797,8 +1807,8 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 				rsp.result = WIFI_DIRECT_ERROR_NOT_PERMITTED;
 				break;
 			}
-			g_strlcpy(rsp.param2, group->passphrase, PASSPHRASE_LEN + 1);
-			WDS_LOGD("group->pass : [%s]", group->passphrase);
+			g_strlcpy(rsp.param2, group->passphrase, PASSPHRASE_LEN_MAX + 1);
+			WDS_LOGI("group->pass : [%s]", group->passphrase);
 		}
 		break;
 #ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
@@ -1915,7 +1925,8 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 
 			int miracast_enable = req.data.int1;
 			WDS_LOGD("Miracast enable [%d]", miracast_enable);
-
+/* TODO*/
+#if 0
 			res = wfd_oem_miracast_init(manager->oem_ops, miracast_enable);
 			if (res < 0) {
 				WDS_LOGE("Failed to initialize miracast");
@@ -1932,7 +1943,6 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 				} else {
 					memset(&(manager->local->display), 0x0, sizeof(wfd_display_type_e));
 				}
-#if 0
 				int screen_mirroring_status;
 				if (vconf_get_int(VCONFKEY_SCREEN_MIRRORING_STATE, &screen_mirroring_status) < 0)
 					WDS_LOGE("Failed to get vconf VCONFKEY_SCREEN_MIRRORING_STATE\n");
@@ -1966,8 +1976,9 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 							WDS_LOGE("Failed to get vconf VCONFKEY_SCREEN_MIRRORING_STATE\n");
 					}
 				}
-#endif
+
 			}
+	#endif
 		}
 		break;
 	case WIFI_DIRECT_CMD_INIT_DISPLAY:

@@ -35,27 +35,55 @@
 #define IPSTR "%d.%d.%d.%d"
 #define MAC2SECSTR(a) (a)[0], (a)[4], (a)[5]
 #define MACSECSTR "%02x:%02x:%02x"
+#define ISZEROMACADDR(a) !(a[0] | a[1] | a[2] | a[3] | a[4] | a[5])
 #define IP2SECSTR(a) (a)[0], (a)[3]
 #define IPSECSTR "%d..%d"
 #define OBJECT_PATH_MAX 150
 
 #if !defined TIZEN_TV
 #define DEFAULT_MAC_FILE_PATH "/opt/etc/.mac.info"
+#define CONF_FILE_PATH "/etc/wpa_supplicant/wpa_supplicant.conf"
 #else
 #define DEFAULT_MAC_FILE_PATH "/sys/class/net/p2p0/address"
+#define CONF_FILE_PATH "/opt/etc/p2p_supp.conf"
 #endif
-#define CONF_FILE_PATH "/usr/etc/wifi-direct/p2p_supp.conf"
+
 
 #if defined TIZEN_TV
 /*For TIZEN TV Platform*/
 #define COMMON_IFACE_NAME "p2p0"
 #define GROUP_IFACE_NAME "p2p0"
 #define GROUP_IFACE_PREFIX "p2p"
+#define PRIMARY_DEVICE_TYPE "\x00\x07\x00\x50\xf2\x04\x00\x01"
+#define DEFAULT_DEVICE_NAME "[TV]Tizen"
+#define DEFAULT_GO_INTENT 7
+#define DEFAULT_PERSISTENT_RECONNECT 1
+#define DEFAULT_LISTEN_REG_CLASS 81
+#define DEFAULT_LISTEN_CHANNEL 1
+#define DEFAULT_OPER_REG_CLASS 115
+#define DEFAULT_OPER_CHANNEL 48
+#define DEFAULT_CONFIG_METHOD "keypad virtual_push_button physical_display"
+#define DEFAULT_NO_GROUP_IFACE 1
 #else /*TIZEN_TV*/
 #define COMMON_IFACE_NAME "wlan0"
 #define GROUP_IFACE_NAME "p2p-wlan0-0"
 #define GROUP_IFACE_PREFIX "p2p-wlan0-"
+#define PRIMARY_DEVICE_TYPE "\x00\x0a\x00\x50\xf2\x04\x00\x05"
+#define DEFAULT_DEVICE_NAME "Tizen"
+#define DEFAULT_GO_INTENT 7
+#define DEFAULT_PERSISTENT_RECONNECT 1
+#define DEFAULT_LISTEN_REG_CLASS 81
+#define DEFAULT_LISTEN_CHANNEL 1
+#define DEFAULT_OPER_REG_CLASS 81
+#define DEFAULT_OPER_CHANNEL 1
+#define DEFAULT_CONFIG_METHOD "push_button"
+#define DEFAULT_NO_GROUP_IFACE 0
 #endif /*TIZEN_TV*/
+
+#define DEFAULT_IP_GO "\xc0\xa8\x31\x01"
+#define DEFAULT_IP_MASK "\xff\xff\xff\x00"
+#define DEFAULT_IP_START "\xc0\xa8\x31\x33"
+#define DEFAULT_IP_END "\xc0\xa8\x31\x64"
 
 #define WS_POLL_TIMEOUT 5000
 #define WS_CONN_RETRY_COUNT 10
