@@ -15,9 +15,9 @@ start()
 	fi
 	## For Hawk-P Platform, Hardware model is Samsung
 	if [ $HARDWARE_MODEL = "Samsung" ];then
-		/usr/sbin/wpa_supplicant -t -B -ddd -Dnl80211 -ip2p0 -c/opt/etc/p2p_supp.conf -g/var/run/wpa_global  -f/opt/usr/data/network/wpa_supplicant.log
+		/usr/sbin/wpa_supplicant -t -B -ddd -Dnl80211 -ip2p0 -c/opt/etc/p2p_supp.conf -g/var/run/wpa_global  -f/var/log/wpa_supplicant.log
 	 else
-		/usr/sbin/wpa_supplicant -t -B -C/var/run/wpa_supplicant -ddd -Dnl80211 -iwlan0 -c/opt/etc/p2p_supp.conf -f/opt/usr/data/network/wpa_supplicant.log
+		/usr/sbin/wpa_supplicant -t -B -C/var/run/wpa_supplicant -ddd -Dnl80211 -iwlan0 -c/opt/etc/p2p_supp.conf -f/var/log/wpa_supplicant.log
 	fi
  }
 
@@ -29,7 +29,7 @@ start_p2p0()
 		echo "File not exist. Reinstall: /opt/etc/p2p_supp.conf"
 		 /bin/cp /usr/etc/wifi-direct/p2p_supp.conf /opt/etc/
 	fi
-	/usr/sbin/wpa_supplicant -t -B -ddd -Dnl80211 -ip2p0 -c/opt/etc/p2p_supp.conf -f/opt/usr/data/network/wpa_supplicant.log
+	/usr/sbin/wpa_supplicant -t -B -ddd -Dnl80211 -ip2p0 -c/opt/etc/p2p_supp.conf -f/var/log/wpa_supplicant.log
 }
 
 start_dbus()
@@ -44,7 +44,7 @@ start_dbus()
 			echo "File not exist. Reinstall: /opt/etc/p2p_supp.conf"
 			 /bin/cp /usr/etc/wifi-direct/p2p_supp.conf /opt/etc/
 		fi
-		/usr/sbin/wpa_supplicant -t -B -u -ddd -K -f/opt/usr/data/network/wpa_supplicant.log
+		/usr/sbin/wpa_supplicant -t -B -u -ddd -K -f/var/log/wpa_supplicant.log
 	else
 		echo "${program} is already running"
 	fi
