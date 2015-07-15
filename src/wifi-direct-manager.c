@@ -1432,7 +1432,12 @@ static void *wfd_plugin_init(wfd_manager_s *manager)
 	WDS_LOGD("Node name [%s], HW ID [%s]", kernel_info.nodename, kernel_info.machine);
 
 	errno = 0;
-	handle = dlopen(SUPPL_PLUGIN_PATH, RTLD_NOW);
+
+	if(strncmp(kernel_info.machine, "aarch64", 7) == 0)
+		handle = dlopen(SUPPL_PLUGIN_64BIT_PATH, RTLD_NOW);
+	else
+		handle = dlopen(SUPPL_PLUGIN_PATH, RTLD_NOW);
+
 	if (!handle) {
 		WDS_LOGE("Failed to open shared object. [%s]", dlerror());
 		__WDS_LOG_FUNC_EXIT__;

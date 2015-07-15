@@ -29,6 +29,8 @@
 #define __WIFI_DIRECT_OEM_H__
 
 #define SUPPL_PLUGIN_PATH "/usr/lib/wifi-direct-plugin-wpasupplicant.so"
+#define SUPPL_PLUGIN_64BIT_PATH "/usr/lib64/wifi-direct-plugin-wpasupplicant.so"
+
 
 #define OEM_MACSTR_LEN 18
 #define OEM_MACADDR_LEN 6
