@@ -190,6 +190,24 @@ wfd_session_s *wfd_create_session(void *data, unsigned char *peer_addr, int wps_
 
 	manager->session = session;
 	manager->local->wps_mode = session->wps_mode;
+
+	if (peer->dev_role == WFD_DEV_ROLE_GO &&
+			manager->local->wps_mode == WFD_WPS_MODE_DISPLAY) {
+			char *generated_pin = NULL;
+			session->wps_mode = WFD_WPS_MODE_DISPLAY;
+			session->req_wps_mode = WFD_WPS_MODE_KEYPAD;
+
+			if (wfd_oem_generate_pin(manager->oem_ops, &generated_pin) != 0) {
+				WDS_LOGE("Failed to generate pin");
+				g_free(session);
+				__WDS_LOG_FUNC_EXIT__;
+				return NULL;
+			}
+
+			g_strlcpy(session->wps_pin, generated_pin, PINSTR_LEN + 1);
+			g_free(generated_pin);
+	}
+
 	if (peer->dev_role == WFD_DEV_ROLE_GO && manager->local->dev_role != WFD_DEV_ROLE_GO)
 		manager->local->dev_role = WFD_DEV_ROLE_GC;
 
@@ -690,6 +708,8 @@ int wfd_session_process_event(wfd_manager_s *manager, wfd_oem_event_s *event)
 				break;
 			}
 			WDS_LOGD("=====> session already exist. (invitation session)");
+			session->req_wps_mode = req_wps_mode;
+			session->wps_mode = event->wps_mode;
 		} else {
 			session = wfd_create_session(manager, event->dev_addr,
 								req_wps_mode, SESSION_DIRECTION_INCOMING);
@@ -721,6 +741,17 @@ int wfd_session_process_event(wfd_manager_s *manager, wfd_oem_event_s *event)
 
 		if (session->type == SESSION_TYPE_INVITE) {
 			WDS_LOGD("Start WPS corresponding to OEM event [%d]", event->event_id);
+			if (session->wps_mode != WFD_WPS_MODE_PBC) {
+				wifi_direct_client_noti_s noti;
+				memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
+				noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_WPS_REQ;
+				g_snprintf(noti.param1, sizeof(noti.param1), MACSTR, MAC2STR(event->dev_addr));
+				wfd_client_send_event(manager, &noti);
+				if (session->wps_mode == WFD_WPS_MODE_KEYPAD) {
+					/* We have to wait until user type PIN using Keypad */
+					break;
+				}
+			}
 			res = wfd_session_wps(session);
 			if (res < 0)
 				_wfd_notify_session_failed(manager, event->dev_addr);
@@ -744,6 +775,11 @@ int wfd_session_process_event(wfd_manager_s *manager, wfd_oem_event_s *event)
 
 		if (session->state > SESSION_STATE_STARTED) {
 			WDS_LOGE("Unexpected event. Session is already started");
+			break;
+		}
+
+		if (session->type == SESSION_TYPE_INVITE) {
+			WDS_LOGE("Session type is invite, ignore provision discovery response");
 			break;
 		}
 

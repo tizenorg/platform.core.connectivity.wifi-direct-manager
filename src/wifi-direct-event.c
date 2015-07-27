@@ -293,6 +293,12 @@ int wfd_process_event(void *user_data, void *data)
 
 		wfd_state_set(manager, WIFI_DIRECT_STATE_CONNECTING);
 
+		res = wfd_session_start(session);
+		if (res < 0) {
+			WDS_LOGE("Failed to start session");
+			return -1;
+		}
+
 		wifi_direct_client_noti_s noti;
 		memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
 		noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_REQ;
@@ -451,10 +457,8 @@ int wfd_process_event(void *user_data, void *data)
 				memcpy(peer->go_ip_addr, manager->local->ip_addr, IPADDR_LEN);
 				WDS_LOGE("Peer's GO IP [" IPSTR "]", IP2STR((char*) &peer->go_ip_addr));
 			}
-			if(peer->ip_type == WFD_IP_TYPE_OVER_EAPOL) {
-				/*TODO: ODROID Image does not have support libnl-2.0*/
-				//wfd_util_ip_over_eap_lease(peer);
-			}
+			if(peer->ip_type == WFD_IP_TYPE_OVER_EAPOL)
+				wfd_util_ip_over_eap_lease(peer);
 			else
 #endif /* CTRL_IFACE_DBUS */
 			wfd_util_dhcps_wait_ip_leased(peer);
@@ -594,12 +598,10 @@ int wfd_process_event(void *user_data, void *data)
 
 		wifi_direct_client_noti_s noti;
 		memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
-		if (group->role == WFD_DEV_ROLE_GC) {
+		if (group->role == WFD_DEV_ROLE_GC && session) {
 #ifdef CTRL_IFACE_DBUS
-			if(session->peer->ip_type == WFD_IP_TYPE_OVER_EAPOL) {
-				/*TODO: ODROID Image does not have support libnl-2.0*/
-				//wfd_util_ip_over_eap_assign(session->peer, event->ifname);
-				}
+			if(session->peer && session->peer->ip_type == WFD_IP_TYPE_OVER_EAPOL)
+				wfd_util_ip_over_eap_assign(session->peer, event->ifname);
 #else /* CTRL_IFACE_DBUS */
 			wfd_destroy_session(manager);
 #endif /* CTRL_IFACE_DBUS */

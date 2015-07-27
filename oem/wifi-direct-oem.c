@@ -193,7 +193,15 @@ int wfd_oem_set_pin(wfd_oem_ops_s *ops, char *pin)
 
 	return ops->set_pin(pin);
 }
-//int wfd_oem_generate_pin(char *pin)
+
+int wfd_oem_generate_pin(wfd_oem_ops_s *ops, char **pin)
+{
+	if (!ops || !ops->generate_pin) {
+		return -1;
+	}
+
+	return ops->generate_pin(pin);
+}
 int wfd_oem_get_supported_wps_mode(wfd_oem_ops_s *ops, int *wps_mode)
 {
 	if (!ops || !ops->get_supported_wps_mode) {

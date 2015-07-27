@@ -28,7 +28,7 @@ int dbus_set_method_param(dbus_method_param_s *params, char *method_name,
 }
 
 int dbus_method_call(dbus_method_param_s *params, char *interface_name,
-		dbus_result_function function, void *user_data)
+		handle_reply function, void *user_data)
 {
 	__WDP_LOG_FUNC_ENTER__;
 	GVariant *reply = NULL;

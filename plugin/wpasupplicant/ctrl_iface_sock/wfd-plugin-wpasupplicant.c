@@ -211,6 +211,7 @@ static wfd_oem_ops_s supplicant_ops = {
 	.get_connected_peers = ws_get_connected_peers,
 	.get_pin = ws_get_pin,
 	.set_pin = ws_set_pin,
+	.generate_pin = ws_generate_pin,
 	.get_supported_wps_mode = ws_get_supported_wps_mode,
 
 	.create_group = ws_create_group,
@@ -3352,6 +3353,44 @@ int ws_get_pin(char *pin)
 int ws_set_pin(char *pin)
 {
 	__WDP_LOG_FUNC_ENTER__;
+
+	__WDP_LOG_FUNC_EXIT__;
+	return 0;
+}
+
+int ws_generate_pin(char **pin)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	ws_sock_data_s *sock = g_pd->common;
+	char cmd[32] = {0, };
+	char reply[1024] = {0,};
+	int res = 0;
+	if (!pin) {
+		WDP_LOGE("Invalid parameter");
+		return -1;
+	}
+
+	if (!sock) {
+		WDP_LOGE("Socket is NULL");
+		return -1;
+	}
+
+	snprintf(cmd, sizeof(cmd), WS_CMD_WPS_PIN "get");
+	res = _ws_send_cmd(sock->ctrl_sock, cmd, reply, sizeof(reply));
+	if (res < 0) {
+		WDP_LOGE("Failed to send command to wpa_supplicant");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	if (strstr(reply, "FAIL")) {
+		WDP_LOGE("Failed to generate the pin");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+	WDP_LOGE("Succeeded to generate the pin [ %s ]", reply);
+
+	*pin = strndup(reply, OEM_PINSTR_LEN);
 
 	__WDP_LOG_FUNC_EXIT__;
 	return 0;

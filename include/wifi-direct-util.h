@@ -123,7 +123,7 @@ int wfd_util_get_local_ip(unsigned char* ip_addr);
 int wfd_util_static_ip_unset(const char *ifname);
 #endif /* TIZEN_VENDOR_ATH */
 /*TODO: ODROID Image does not have support libnl-2.0*/
-//int wfd_util_ip_over_eap_assign(wfd_device_s *peer, const char *ifname);
-//int wfd_util_ip_over_eap_lease(wfd_device_s *peer);
+int wfd_util_ip_over_eap_assign(wfd_device_s *peer, const char *ifname);
+int wfd_util_ip_over_eap_lease(wfd_device_s *peer);
 #endif /* CTRL_IFACE_DBUS */
 #endif /* __WIFI_DIRECT_UTIL_H__ */

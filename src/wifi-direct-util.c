@@ -63,6 +63,9 @@
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 
+#include <netlink/netlink.h>
+#include <netlink/socket.h>
+#include <netlink/route/neighbour.h>
 #endif /* CTRL_IFACE_DBUS */
 
 static int _txt_to_mac(char *txt, unsigned char *mac)
@@ -976,9 +979,6 @@ int wfd_util_get_local_ip(unsigned char* ip_addr)
 }
 
 #ifdef CTRL_IFACE_DBUS
-
-/*TODO: ODROID Image does not have support libnl-2.0 */
-#if 0
 static int _wfd_util_set_vconf_for_static_ip(const char *ifname, char *static_ip)
 {
 	__WDS_LOG_FUNC_ENTER__;
@@ -996,99 +996,10 @@ static int _wfd_util_set_vconf_for_static_ip(const char *ifname, char *static_ip
 	return 0;
 }
 
-int _wfd_util_set_static_arp(const char *ifname, unsigned char *peer_ip, unsigned char *peer_mac)
-{
-	__WDS_LOG_FUNC_ENTER__;
-
-	struct nl_sock *sock;
-	struct rtnl_neigh *neigh;
-	struct nl_addr *ip_addr;
-	struct nl_addr *mac_addr;
-
-	char ip_str[IPSTR_LEN] = {0, };
-	char mac_str[MACSTR_LEN] = {0, };
-	int if_index = 0;
-	int res = 0;
-
-	if (!ifname || !peer_ip || !peer_mac) {
-		WDS_LOGE("Invalid parameter");
-		__WDS_LOG_FUNC_EXIT__;
-		return -1;
-	}
-	snprintf(ip_str, IPSTR_LEN, IPSTR, IP2STR(peer_ip));
-	snprintf(mac_str, MACSTR_LEN, MACSTR, MAC2STR(peer_mac));
-
-	WDS_LOGE("ifname : [%s] peer ip : [%s] peer mac : [%s]", ifname, ip_str, mac_str);
-
-	/* Get index of interface */
-	if_index = if_nametoindex(ifname);
-	if(if_index < 0) {
-		WDS_LOGE("Failed to get interface index.");
-		__WDS_LOG_FUNC_EXIT__;
-		return -1;
-	}
-
-	sock = nl_socket_alloc();
-	if (!sock) {
-		WDS_LOGE("Failed to create netlink socket.");
-		__WDS_LOG_FUNC_EXIT__;
-		return -1;
-	}
-
-	res = nl_connect(sock, NETLINK_ROUTE);
-	if (res < 0) {
-		WDS_LOGE("Failed to connect netlink socket. [%s]", nl_geterror(res));
-		nl_socket_free(sock);
-		__WDS_LOG_FUNC_EXIT__;
-		return -1;
-	}
-
-	neigh = rtnl_neigh_alloc();
-	if(!neigh) {
-		WDS_LOGE("Failed to create neigh. [%s]");
-		nl_socket_free(sock);
-		__WDS_LOG_FUNC_EXIT__;
-		return -1;
-	}
-
-	if(nl_addr_parse(ip_str, rtnl_neigh_get_family(neigh), &ip_addr) < 0) {
-		WDS_LOGE("Failed to parse ip addr.");
-		nl_socket_free(sock);
-		rtnl_neigh_put(neigh);
-		__WDS_LOG_FUNC_EXIT__;
-		return -1;
-	}
-
-	if(nl_addr_parse(mac_str, AF_UNSPEC, &mac_addr) < 0) {
-		WDS_LOGE("Failed to parse mac addr.");
-		nl_socket_free(sock);
-		rtnl_neigh_put(neigh);
-		__WDS_LOG_FUNC_EXIT__;
-		return -1;
-	}
-
-	rtnl_neigh_set_dst(neigh, ip_addr);
-	rtnl_neigh_set_lladdr(neigh, mac_addr);
-	rtnl_neigh_set_ifindex(neigh, if_index);
-	rtnl_neigh_set_state(neigh, rtnl_neigh_str2state("reachable"));
-
-	res = rtnl_neigh_add(sock, neigh, NLM_F_CREATE);
-	if(res < 0) {
-		WDS_LOGE("Failed to add neigh. [%s]\n", nl_geterror(res));
-	}
-
-	WDS_LOGE("Set static ARP as reachable success!");
-	nl_socket_free(sock);
-	rtnl_neigh_put(neigh);
-	__WDS_LOG_FUNC_EXIT__;
-	return res;
-}
-
 
 static int _wfd_util_static_ip_set(const char *ifname, unsigned char *static_ip)
 {
 	__WDS_LOG_FUNC_ENTER__;
-
 	int res = 0;
 	unsigned char ip_addr[IPADDR_LEN];
 	char ip_str[IPSTR_LEN] = {0, };
@@ -1189,8 +1100,6 @@ static int _wfd_util_static_ip_set(const char *ifname, unsigned char *static_ip)
 int wfd_util_static_ip_unset(const char *ifname)
 {
 	__WDS_LOG_FUNC_ENTER__;
-
-
 	int res = 0;
 	unsigned char ip_addr[IPADDR_LEN];
 	char error_buf[MAX_SIZE_ERROR_BUFFER] = {};
@@ -1287,7 +1196,6 @@ int wfd_util_static_ip_unset(const char *ifname)
 }
 #endif /* TIZEN_VENDOR_ATH */
 
-
 int wfd_util_ip_over_eap_assign(wfd_device_s *peer, const char *ifname)
 {
 	__WDS_LOG_FUNC_ENTER__;
@@ -1300,7 +1208,6 @@ int wfd_util_ip_over_eap_assign(wfd_device_s *peer, const char *ifname)
 
 	_wfd_util_static_ip_set(ifname, peer->client_ip_addr);
 	memcpy(peer->ip_addr, peer->go_ip_addr, IPADDR_LEN);
-	_wfd_util_set_static_arp(ifname, peer->ip_addr, peer->intf_addr);
 
 	wfd_destroy_session(manager);
 
@@ -1333,7 +1240,6 @@ int wfd_util_ip_over_eap_lease(wfd_device_s *peer)
 	}
 
 	memcpy(peer->ip_addr, peer->client_ip_addr, IPADDR_LEN);
-	_wfd_util_set_static_arp(group->ifname, peer->ip_addr, peer->intf_addr);
 
 	wifi_direct_client_noti_s noti;
 	memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
@@ -1346,7 +1252,4 @@ int wfd_util_ip_over_eap_lease(wfd_device_s *peer)
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
 }
-#endif
-
-
 #endif /* CTRL_IFACE_DBUS */

@@ -77,6 +77,7 @@ static wfd_oem_ops_s supplicant_ops = {
 	.get_connected_peers = ws_get_connected_peers,
 	.get_pin = ws_get_pin,
 	.set_pin = ws_set_pin,
+	.generate_pin = ws_generate_pin,
 	.get_supported_wps_mode = ws_get_supported_wps_mode,
 
 	.create_group = ws_create_group,
@@ -593,7 +594,7 @@ static void __ws_get_peer_property(const char *key, GVariant *value, void *user_
 		if (__ws_unpack_ay(peer->dev_addr, value, WS_MACADDR_LEN))
 			WDP_LOGD("[" MACSTR "]", MAC2STR(peer->dev_addr));
 
-	} else if (g_strcmp0(key, "InterfacedAddress") == 0) {
+	} else if (g_strcmp0(key, "InterfaceAddress") == 0) {
 
 		if (__ws_unpack_ay(peer->intf_addr, value, WS_MACADDR_LEN))
 			WDP_LOGD("[" MACSTR "]", MAC2STR(peer->intf_addr));
@@ -686,7 +687,7 @@ static void __ws_peer_property(const char *key, GVariant *value, void *user_data
 		if (__ws_unpack_ay(peer->p2p_dev_addr, value, WS_MACADDR_LEN))
 			WDP_LOGD("[" MACSTR "]", MAC2STR(peer->p2p_dev_addr));
 
-	} else if (g_strcmp0(key, "InterfacedAddress") == 0) {
+	} else if (g_strcmp0(key, "InterfaceAddress") == 0) {
 
 		if (__ws_unpack_ay(peer->p2p_intf_addr, value, WS_MACADDR_LEN))
 			WDP_LOGD("[" MACSTR "]", MAC2STR(peer->p2p_intf_addr));
@@ -1980,7 +1981,7 @@ static void __register_p2pdevice_signal(GVariant *value, void *user_data)
 	__WDP_LOG_FUNC_EXIT__;
 }
 
-static int _ws_create_interface(const char *iface_name)
+static int _ws_create_interface(const char *iface_name, handle_reply function, void *user_data)
 {
 	__WDP_LOG_FUNC_ENTER__;
 	GDBusConnection *g_dbus = NULL;
@@ -2003,7 +2004,7 @@ static int _ws_create_interface(const char *iface_name)
 	g_variant_builder_add(builder, "{sv}", "ConfigFile", g_variant_new_string(CONF_FILE_PATH));
 	params.params = g_variant_new("(a{sv})", builder);
 	g_variant_builder_unref(builder);
-	res = dbus_method_call(&params, SUPPLICANT_INTERFACE, __register_p2pdevice_signal, NULL);
+	res = dbus_method_call(&params, SUPPLICANT_INTERFACE, function, user_data);
 	if (res < 0)
 		WDP_LOGE("Failed to send command to wpa_supplicant");
 	else
@@ -2013,7 +2014,7 @@ static int _ws_create_interface(const char *iface_name)
 	return 0;
 }
 
-static int _ws_get_interface(const char *iface_name)
+static int _ws_get_interface(const char *iface_name, handle_reply function, void *user_data)
 {
 	__WDP_LOG_FUNC_ENTER__;
 	GDBusConnection *g_dbus = NULL;
@@ -2033,7 +2034,7 @@ static int _ws_get_interface(const char *iface_name)
 	WDP_LOGE("param [%s]", g_variant_print(params.params,TRUE));
 
 	res = dbus_method_call(&params, SUPPLICANT_INTERFACE,
-				__register_p2pdevice_signal, g_pd);
+			function, user_data);
 
 	if (res < 0)
 		WDP_LOGE("Failed to send command to wpa_supplicant");
@@ -2045,25 +2046,25 @@ static int _ws_get_interface(const char *iface_name)
 }
 
 #if 0
-static int _ws_remove_interface(const char *iface_name)
+static void __ws_remove_interface(GVariant *value, void *user_data)
 {
 	__WDP_LOG_FUNC_ENTER__;
 	GDBusConnection *g_dbus = NULL;
 	dbus_method_param_s params;
+	const char *path = NULL;
 	static char interface_path[DBUS_OBJECT_PATH_MAX] = {'\0',};
 	int res = 0;
 
 	g_dbus = g_pd->g_dbus;
 	if (!g_dbus) {
 		WDP_LOGE("DBus connection is NULL");
-		return -1;
+		return;
 	}
 
-	res = _ws_get_interface(iface_name, interface_path);
-	if (res < 0) {
-		WDP_LOGE("Failed to get interface object");
-		return -1;
-	}
+	g_variant_get(value, "(o)", &path);
+	g_strlcpy(interface_path, path, DBUS_OBJECT_PATH_MAX);
+	WDP_LOGD("interface object path [%s]", interface_path);
+
 	memset(&params, 0x0, sizeof(dbus_method_param_s));
 
 	dbus_set_method_param(&params, "RemoveInterface", SUPPLICANT_PATH, g_dbus);
@@ -2076,7 +2077,7 @@ static int _ws_remove_interface(const char *iface_name)
 		WDP_LOGD("Succeeded to RemoveInterface");
 
 	__WDP_LOG_FUNC_EXIT__;
-	return 0;
+	return;
 }
 #endif
 
@@ -2113,8 +2114,8 @@ static int _ws_init_dbus_connection(void)
 		G_DBUS_SIGNAL_FLAGS_NONE,
 		_supplicant_signal_cb,
 		NULL, NULL);
-	if(_ws_get_interface(COMMON_IFACE_NAME) < 0)
-		res = _ws_create_interface(COMMON_IFACE_NAME);
+	if(_ws_get_interface(COMMON_IFACE_NAME, __register_p2pdevice_signal, NULL) < 0)
+		res = _ws_create_interface(COMMON_IFACE_NAME, __register_p2pdevice_signal, NULL);
 
 	if (res < 0)
 			WDP_LOGE("Failed to subscribe interface signal");
@@ -2205,7 +2206,7 @@ static int __ws_check_net_interface(char* if_name)
 
 	if (ioctl(fd, SIOCGIFFLAGS, &ifr) < 0) {
 		close(fd);
-		WDP_LOGE("ioctl error: SIOCGIFFLAGS: %s", strerror(errno)); /* interface is not found. */
+		WDP_LOGE("ioctl error: SIOCGIFFLAGS: %s [ %s ]", strerror(errno), if_name); /* interface is not found. */
 		return -3;
 	}
 
@@ -2769,7 +2770,6 @@ int ws_deactivate(int concurrent)
 	ws_stop_scan();
 
 	g_pd->concurrent = concurrent;
-
 	_ws_deinit_dbus_connection();
 
 	if(concurrent == 0) {
@@ -3261,6 +3261,47 @@ int ws_set_pin(char *pin)
 {
 	__WDP_LOG_FUNC_ENTER__;
 
+	__WDP_LOG_FUNC_EXIT__;
+	return 0;
+}
+
+static void __ws_get_pin(GVariant *value, void *user_data)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	const char *pin = NULL;
+
+	g_variant_get(value, "(s)", &pin);
+	g_strlcpy((char *)user_data, pin, OEM_PINSTR_LEN + 1);
+
+	__WDP_LOG_FUNC_EXIT__;
+	return;
+}
+
+int ws_generate_pin(char **pin)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	GDBusConnection *g_dbus = NULL;
+	dbus_method_param_s params;
+	char n_pin[9] = {0,};
+	int res = 0;
+
+	g_dbus = g_pd->g_dbus;
+	if (!g_dbus) {
+		WDP_LOGE("DBus connection is NULL");
+		return -1;
+	}
+	memset(&params, 0x0, sizeof(dbus_method_param_s));
+
+	dbus_set_method_param(&params, "GeneratePin", g_pd->iface_path ,g_dbus);
+	params.params = NULL;
+
+	res = dbus_method_call(&params, SUPPLICANT_WPS, __ws_get_pin, (void *)n_pin);
+	if (res < 0)
+		WDP_LOGE("Failed to send command to wpa_supplicant");
+	else
+		WDP_LOGD("Succeeded to generate_pin [ %s ]", n_pin);
+
+	*pin = strndup(n_pin, OEM_PINSTR_LEN);
 	__WDP_LOG_FUNC_EXIT__;
 	return 0;
 }

@@ -207,7 +207,7 @@ int wfd_group_complete(void *data, wfd_oem_event_s *group_info)
 				WDS_LOGE("Peer's GO IP [" IPSTR "]", IP2STR((char*) &peer->go_ip_addr));
 			}
 		}
-		if(peer->ip_type != WFD_IP_TYPE_OVER_EAPOL)
+		if(peer && peer->ip_type != WFD_IP_TYPE_OVER_EAPOL)
 #endif /* CTRL_IFACE_DBUS */
 		wfd_util_dhcpc_start(peer);
 	}

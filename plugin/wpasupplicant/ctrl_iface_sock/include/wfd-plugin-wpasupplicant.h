@@ -571,6 +571,7 @@ int ws_cancel_connection(unsigned char *peer_addr);
 int ws_get_connected_peers(GList **peers, int *peer_count);
 int ws_get_pin(char *pin);
 int ws_set_pin(char *pin);
+int ws_generate_pin(char **pin);
 int ws_get_supported_wps_mode();
 int ws_create_group(int persistent, int freq, const char *passphrase);
 int ws_destroy_group(const char *ifname);

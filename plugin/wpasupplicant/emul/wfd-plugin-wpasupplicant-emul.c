@@ -35,6 +35,7 @@ static wfd_oem_ops_s supplicant_ops = {
 	.get_connected_peers = ws_get_connected_peers,
 	.get_pin = ws_get_pin,
 	.set_pin = ws_set_pin,
+	.generate_pin = ws_generate_pin,
 	.get_supported_wps_mode = ws_get_supported_wps_mode,
 
 	.create_group = ws_create_group,
@@ -213,6 +214,14 @@ int ws_get_pin(char *pin)
 }
 
 int ws_set_pin(char *pin)
+{
+	__WDP_LOG_FUNC_ENTER__;
+
+	__WDP_LOG_FUNC_EXIT__;
+	return -1;
+}
+
+int ws_generate_pin(char **pin)
 {
 	__WDP_LOG_FUNC_ENTER__;
 

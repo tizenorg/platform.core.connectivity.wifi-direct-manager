@@ -51,7 +51,7 @@
 		WDP_LOGD("signal params type [%s]", g_variant_get_type_string(parameters));\
 	} while (0)
 
-typedef void (*dbus_result_function) (GVariant *value, void *user_data);
+typedef void (*handle_reply) (GVariant *value, void *user_data);
 
 typedef void (*dbus_property_function) (const char *key,
 		GVariant *value, void *user_data);
@@ -67,7 +67,7 @@ int dbus_set_method_param(dbus_method_param_s *params, char *method_name,
 		char *object_path, GDBusConnection *connection);
 
 int dbus_method_call(dbus_method_param_s *params, char *interface_name,
-		dbus_result_function function, void *user_data);
+		handle_reply function, void *user_data);
 
 int dbus_property_get_all(const char *path, GDBusConnection *connection,
 		const char *interface, dbus_property_function function,

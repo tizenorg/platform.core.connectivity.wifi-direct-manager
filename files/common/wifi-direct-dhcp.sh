@@ -36,10 +36,10 @@ echo "Target is ${TARGET} and interface ${INTERFACE_PREFIX}: ${interface}."
 
 start_dhcp_server()
 {
-        if [ "X${interface}" == "X" ]; then
-                echo "interface(${INTERFACE_PREFIX}) is not up"
+	if [ "X${interface}" == "X" ]; then
+		echo "interface(${INTERFACE_PREFIX}) is not up"
 		return 0
-        fi
+	fi
 
 	/usr/sbin/ip addr add ${DEFAULT_NET} brd ${DEFAULT_BRD} dev ${interface}
 	/usr/sbin/dhcpd /usr/etc/wifi-direct/dhcpd.${INTERFACE_PREFIX}.conf -f &
@@ -62,10 +62,10 @@ start_dhcp_server()
 
 start_dhcp_client()
 {
-        if [ "X${interface}" == "X" ]; then
-                echo "interface(${INTERFACE_PREFIX}) is not up"
+	if [ "X${interface}" == "X" ]; then
+		echo "interface(${INTERFACE_PREFIX}) is not up"
 		return 0
-        fi
+	fi
 	/usr/bin/dhcp -i $interface -s /usr/etc/wifi-direct/udhcp_script.non-autoip &
 }
 

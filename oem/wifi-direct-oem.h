@@ -399,7 +399,7 @@ typedef struct _wfd_oem_ops_s {
 	int (*wps_cancel) (void);
 	int (*get_pin) (char *pin);
 	int (*set_pin) (char *pin);
-//	int (*generate_pin) (char *pin);
+	int (*generate_pin) (char **pin);
 	int (*get_supported_wps_mode) (int *wps_mode);
 	int (*create_group) (int persistent, int freq, const char *passphrase);
 	int (*destroy_group) (const char *ifname);
@@ -459,7 +459,7 @@ int wfd_oem_enrollee_start(wfd_oem_ops_s *ops, unsigned char *peer_addr, int wps
 int wfd_oem_wps_cancel(wfd_oem_ops_s *ops);
 int wfd_oem_get_pin(wfd_oem_ops_s *ops, char *pin);
 int wfd_oem_set_pin(wfd_oem_ops_s *ops, char *pin);
-//int wfd_oem_generate_pin(wfd_oem_ops_s *ops, char *pin);
+int wfd_oem_generate_pin(wfd_oem_ops_s *ops, char **pin);
 int wfd_oem_get_supported_wps_mode(wfd_oem_ops_s *ops, int *wps_mode);
 int wfd_oem_create_group(wfd_oem_ops_s *ops, int persistent, int freq, const char *passphrase);
 int wfd_oem_destroy_group(wfd_oem_ops_s *ops, const char *ifname);
