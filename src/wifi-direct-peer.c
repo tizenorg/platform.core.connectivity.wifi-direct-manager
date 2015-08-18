@@ -57,7 +57,7 @@ wfd_device_s *wfd_add_peer(void *data, unsigned char *dev_addr, char *dev_name)
 	if (peer) {
 		WDS_LOGD("Peer already exist[" MACSECSTR "]", MAC2SECSTR(dev_addr));
 		__WDS_LOG_FUNC_EXIT__;
-		return NULL;
+		return peer;
 	}
 
 	peer = (wfd_device_s*) g_try_malloc0(sizeof(wfd_device_s));

@@ -392,8 +392,6 @@ static int __ws_segment_to_service(char *segment, wfd_oem_new_service_s **servic
 static void __ws_path_to_addr(char *peer_path,
 		unsigned char *dev_addr, GVariant *parameter)
 {
-	__WDP_LOG_FUNC_ENTER__;
-
 	static unsigned char peer_dev[WS_MACSTR_LEN] = {'\0',};
 	const char *path = NULL;
 	char *loc = NULL;
@@ -409,7 +407,6 @@ static void __ws_path_to_addr(char *peer_path,
 	WDP_LOGD("peer mac [" MACSTR "]", MAC2STR(dev_addr));
 
 	return;
-	__WDP_LOG_FUNC_EXIT__;
 }
 
 static int __ws_unpack_ay(unsigned char *dst, GVariant *src, int size)
@@ -482,7 +479,9 @@ static void _supplicant_signal_cb(GDBusConnection *connection,
 		const gchar *sender, const gchar *object_path, const gchar *interface,
 		const gchar *signal, GVariant *parameters, gpointer user_data)
 {
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
 	DEBUG_SIGNAL(sender, object_path, interface, signal, parameters);
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 
 	if (!g_strcmp0(signal,"InterfaceAdded")) {
 		WDP_LOGD("InterfaceAdded");
@@ -524,21 +523,21 @@ static void _supplicant_signal_cb(GDBusConnection *connection,
 
 static void __ws_get_peer_property(const char *key, GVariant *value, void *user_data)
 {
-	__WDP_LOG_FUNC_ENTER__;
-
 	wfd_oem_device_s *peer = (wfd_oem_device_s *)user_data;
 	if(!peer) {
 		__WDP_LOG_FUNC_EXIT__;
 		return;
 	}
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
 	CHECK_KEY_VALUE(key, value);
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 
 	if (g_strcmp0(key, "DeviceName") == 0) {
 		const char *name = NULL;
 
 		g_variant_get(value, "s", &name);
 		g_strlcpy(peer->dev_name, name, WS_SSID_LEN);
-		WDP_LOGD("[%s]", peer->dev_name);
+		WDP_LOGD("Device name [%s]", peer->dev_name);
 
 	} else if (g_strcmp0(key, "config_method") == 0) {
 		int config_methods = 0;
@@ -550,7 +549,7 @@ static void __ws_get_peer_property(const char *key, GVariant *value, void *user_
 			peer->config_methods |= WFD_OEM_WPS_MODE_PBC;
 		if (config_methods & WS_CONFIG_METHOD_KEYPAD)
 			peer->config_methods |= WFD_OEM_WPS_MODE_KEYPAD;
-		WDP_LOGD("[0x%x]", peer->config_methods);
+		WDP_LOGD("Config method [0x%x]", peer->config_methods);
 
 	} else if (g_strcmp0(key, "level") == 0) {
 
@@ -559,13 +558,13 @@ static void __ws_get_peer_property(const char *key, GVariant *value, void *user_
 
 		g_variant_get(value, "y", &devicecapability);
 		peer->dev_flags = (int)devicecapability;
-		WDP_LOGD("[0x%02x]", peer->dev_flags);
+		WDP_LOGD("Device Capa [0x%02x]", peer->dev_flags);
 
 	} else if (g_strcmp0(key, "groupcapability") == 0) {
 		unsigned char groupcapability = 0;
 
 		g_variant_get(value, "y", &groupcapability);
-		WDP_LOGD("[0x%02x]", groupcapability);
+		WDP_LOGD("Group Capa [0x%02x]", groupcapability);
 		if (groupcapability & WS_GROUP_CAP_GROUP_OWNER) {
 			peer->group_flags = WFD_OEM_GROUP_FLAG_GROUP_OWNER;
 			peer->dev_role = WFD_OEM_DEV_ROLE_GO;
@@ -592,17 +591,17 @@ static void __ws_get_peer_property(const char *key, GVariant *value, void *user_
 	} else if (g_strcmp0(key, "DeviceAddress") == 0) {
 
 		if (__ws_unpack_ay(peer->dev_addr, value, WS_MACADDR_LEN))
-			WDP_LOGD("[" MACSTR "]", MAC2STR(peer->dev_addr));
+			WDP_LOGD("Device address [" MACSTR "]", MAC2STR(peer->dev_addr));
 
 	} else if (g_strcmp0(key, "InterfaceAddress") == 0) {
 
 		if (__ws_unpack_ay(peer->intf_addr, value, WS_MACADDR_LEN))
-			WDP_LOGD("[" MACSTR "]", MAC2STR(peer->intf_addr));
+			WDP_LOGD("Interface address [" MACSTR "]", MAC2STR(peer->intf_addr));
 
 	} else if (g_strcmp0(key, "GODeviceAddress") == 0) {
 
 		if (__ws_unpack_ay(peer->go_dev_addr, value, WS_MACADDR_LEN))
-			WDP_LOGD("[" MACSTR "]", MAC2STR(peer->go_dev_addr));
+			WDP_LOGD("GODevice address [" MACSTR "]", MAC2STR(peer->go_dev_addr));
 
 		if(!ISZEROMACADDR(peer->go_dev_addr))
 			peer->dev_role = WFD_OEM_DEV_ROLE_GC;
@@ -610,27 +609,25 @@ static void __ws_get_peer_property(const char *key, GVariant *value, void *user_
 	} else {
 		WDP_LOGE("Unknown value");
 	}
-	__WDP_LOG_FUNC_EXIT__;
+	return;
 }
 
 static void __ws_peer_property(const char *key, GVariant *value, void *user_data)
 {
-	__WDP_LOG_FUNC_ENTER__;
 	if(!user_data) {
-		__WDP_LOG_FUNC_EXIT__;
 		return;
 	}
 
 	wfd_oem_dev_data_s *peer = (wfd_oem_dev_data_s *)user_data;
-
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
 	CHECK_KEY_VALUE(key, value);
-
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 	if (g_strcmp0(key, "DeviceName") == 0) {
 		const char *name = NULL;
 
 		g_variant_get(value, "s", &name);
 		g_strlcpy(peer->name, name, WS_SSID_LEN);
-		WDP_LOGD("[%s]", peer->name);
+		WDP_LOGD("Device Name [%s]", peer->name);
 
 	} else if (g_strcmp0(key, "config_method") == 0) {
 		int config_methods = 0;
@@ -643,7 +640,7 @@ static void __ws_peer_property(const char *key, GVariant *value, void *user_data
 			peer->config_methods |= WFD_OEM_WPS_MODE_PBC;
 		if (config_methods & WS_CONFIG_METHOD_KEYPAD)
 			peer->config_methods |= WFD_OEM_WPS_MODE_KEYPAD;
-		WDP_LOGD("[0x%x]", peer->config_methods);
+		WDP_LOGD("Config method [0x%x]", peer->config_methods);
 
 	} else if (g_strcmp0(key, "level") == 0) {
 
@@ -652,13 +649,13 @@ static void __ws_peer_property(const char *key, GVariant *value, void *user_data
 
 		g_variant_get(value, "y", &devicecapability);
 		peer->dev_flags = (int)devicecapability;
-		WDP_LOGD("[0x%02x]", peer->dev_flags);
+		WDP_LOGD("Device Capa [0x%02x]", peer->dev_flags);
 
 	} else if (g_strcmp0(key, "groupcapability") == 0) {
 		unsigned char groupcapability = 0;
 
 		g_variant_get(value, "y", &groupcapability);
-		WDP_LOGD("[0x%02x]", groupcapability);
+		WDP_LOGD("Group Capa [0x%02x]", groupcapability);
 		if (groupcapability & WS_GROUP_CAP_GROUP_OWNER) {
 			peer->group_flags = WFD_OEM_GROUP_FLAG_GROUP_OWNER;
 			peer->dev_role = WFD_OEM_DEV_ROLE_GO;
@@ -685,19 +682,18 @@ static void __ws_peer_property(const char *key, GVariant *value, void *user_data
 	} else if (g_strcmp0(key, "DeviceAddress") == 0) {
 
 		if (__ws_unpack_ay(peer->p2p_dev_addr, value, WS_MACADDR_LEN))
-			WDP_LOGD("[" MACSTR "]", MAC2STR(peer->p2p_dev_addr));
+			WDP_LOGD("Device address [" MACSTR "]", MAC2STR(peer->p2p_dev_addr));
 
 	} else if (g_strcmp0(key, "InterfaceAddress") == 0) {
 
 		if (__ws_unpack_ay(peer->p2p_intf_addr, value, WS_MACADDR_LEN))
-			WDP_LOGD("[" MACSTR "]", MAC2STR(peer->p2p_intf_addr));
+			WDP_LOGD("Interface Address [" MACSTR "]", MAC2STR(peer->p2p_intf_addr));
 
 	} else if (g_strcmp0(key, "GODeviceAddress") == 0) {
 
 		unsigned char go_dev_addr[OEM_MACADDR_LEN];
 		if (__ws_unpack_ay(go_dev_addr, value, WS_MACADDR_LEN))
 			WDP_LOGD("[" MACSTR "]", MAC2STR(go_dev_addr));
-		WDP_LOGD("[" MACSTR "]", MAC2STR(go_dev_addr));
 
 		if(!ISZEROMACADDR(go_dev_addr))
 			peer->dev_role = WFD_OEM_DEV_ROLE_GC;
@@ -705,18 +701,17 @@ static void __ws_peer_property(const char *key, GVariant *value, void *user_data
 	} else {
 		WDP_LOGE("Unknown value");
 	}
-	__WDP_LOG_FUNC_EXIT__;
+	return;
 }
 
 void __ws_interface_property(const char *key, GVariant *value, void *user_data)
 {
-	__WDP_LOG_FUNC_ENTER__;
 	wfd_oem_event_s *event = (wfd_oem_event_s *)user_data;
 	if(!event)
 		return;
-
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
 	CHECK_KEY_VALUE(key, value);
-
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 	if (g_strcmp0(key, "Ifname") == 0) {
 		const char *ifname = NULL;
 
@@ -725,26 +720,24 @@ void __ws_interface_property(const char *key, GVariant *value, void *user_data)
 		WDP_LOGD("Ifname [%s]", event->ifname);
 
 	}
-
-	__WDP_LOG_FUNC_EXIT__;
+	return;
 }
 
 void __ws_group_property(const char *key, GVariant *value, void *user_data)
 {
-	__WDP_LOG_FUNC_ENTER__;
 	wfd_oem_event_s *event = (wfd_oem_event_s *)user_data;
 	if(!event || !event->edata)
 		return;
 
 	wfd_oem_group_data_s *group = (wfd_oem_group_data_s *)event->edata;
-
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
 	CHECK_KEY_VALUE(key, value);
-
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 	if (g_strcmp0(key, "Role") == 0) {
 		const char *role = NULL;
 
 		g_variant_get(value, "s", &role);
-		WDP_LOGD("role [%s]", role);
+		WDP_LOGD("Role [%s]", role);
 
 		if (!strncmp(role, "GO", 2))
 			event->dev_role = WFD_OEM_DEV_ROLE_GO;
@@ -770,8 +763,8 @@ void __ws_group_property(const char *key, GVariant *value, void *user_data)
 		unsigned char ssid[WS_SSID_LEN +1] = {0,};
 
 		__ws_unpack_ay(ssid, value, WS_SSID_LEN);
-			memcpy(group->ssid, ssid, WS_SSID_LEN+1);
-			WDP_LOGD("ssid [%s]", group->ssid);
+		memcpy(group->ssid, ssid, WS_SSID_LEN+1);
+		WDP_LOGD("ssid [%s]", group->ssid);
 
 	} else if (g_strcmp0(key, "BSSID") == 0) {
 
@@ -781,31 +774,30 @@ void __ws_group_property(const char *key, GVariant *value, void *user_data)
 	} else {
 		WDP_LOGE("Unknown value");
 	}
-	__WDP_LOG_FUNC_EXIT__;
+	return;
 }
 
 void __ws_extract_invitation_details(const char *key, GVariant *value, void *user_data)
 {
-	__WDP_LOG_FUNC_ENTER__;
 	wfd_oem_event_s *event = (wfd_oem_event_s *)user_data;
 	if(!event || !event->edata)
 		return;
 
 	wfd_oem_invite_data_s *invitation = (wfd_oem_invite_data_s *)event->edata;
-
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
 	CHECK_KEY_VALUE(key, value);
-
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 	if (g_strcmp0(key, "sa") == 0) {
 		if (__ws_unpack_ay(invitation->sa, value, WS_MACADDR_LEN))
-			WDP_LOGD("[" MACSTR "]", MAC2STR(invitation->sa));
+			WDP_LOGD("SA [" MACSTR "]", MAC2STR(invitation->sa));
 
 	} else if (g_strcmp0(key, "go_dev_add") == 0) {
 		if (__ws_unpack_ay(invitation->go_dev_addr, value, WS_MACADDR_LEN))
-					WDP_LOGD("[" MACSTR "]", MAC2STR(invitation->go_dev_addr));
+					WDP_LOGD("GO device address [" MACSTR "]", MAC2STR(invitation->go_dev_addr));
 
 	} else if (g_strcmp0(key, "bssid") == 0) {
 		if (__ws_unpack_ay(invitation->bssid, value, WS_MACADDR_LEN))
-					WDP_LOGD("[" MACSTR "]", MAC2STR(invitation->bssid));
+					WDP_LOGD("BSSID [" MACSTR "]", MAC2STR(invitation->bssid));
 
 	} else if (g_strcmp0(key, "persistent_id") == 0) {
 		g_variant_get(value, "i", &(invitation->persistent_id));
@@ -817,21 +809,19 @@ void __ws_extract_invitation_details(const char *key, GVariant *value, void *use
 	} else {
 		WDP_LOGE("Unknown value");
 	}
-	__WDP_LOG_FUNC_EXIT__;
+	return;
 }
 
 void __ws_extract_group_details(const char *key, GVariant *value, void *user_data)
 {
-
-	__WDP_LOG_FUNC_ENTER__;
 	wfd_oem_event_s *event = (wfd_oem_event_s *)user_data;
 	if(!event || !event->edata)
 		return;
 
 	wfd_oem_group_data_s *group = (wfd_oem_group_data_s *)event->edata;
-
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
 	CHECK_KEY_VALUE(key, value);
-
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 	if (g_strcmp0(key, "interface_object") == 0) {
 		static char interface_path[DBUS_OBJECT_PATH_MAX] = {'\0',};
 		const char *i_path = NULL;
@@ -847,7 +837,7 @@ void __ws_extract_group_details(const char *key, GVariant *value, void *user_dat
 		const char *role = NULL;
 
 		g_variant_get(value, "s", &role);
-		WDP_LOGD("role [%s]", role);
+		WDP_LOGD("Role [%s]", role);
 
 		if (!strncmp(role, "GO", 2))
 			event->dev_role = WFD_OEM_DEV_ROLE_GO;
@@ -857,17 +847,17 @@ void __ws_extract_group_details(const char *key, GVariant *value, void *user_dat
 	} else if (g_strcmp0(key, "IpAddr") == 0) {
 
 		if (__ws_unpack_ay(group->ip_addr, value, OEM_IPADDR_LEN))
-			WDP_LOGD("[" IPSTR "]", IP2STR(group->ip_addr));
+			WDP_LOGD("IP address [" IPSTR "]", IP2STR(group->ip_addr));
 
 	} else if (g_strcmp0(key, "IpAddrMask") == 0) {
 
 		if (__ws_unpack_ay(group->ip_addr_mask, value, OEM_IPADDR_LEN))
-			WDP_LOGD("[" IPSTR "]", IP2STR(group->ip_addr_mask));
+			WDP_LOGD("IP mask [" IPSTR "]", IP2STR(group->ip_addr_mask));
 
 	} else if (g_strcmp0(key, "IpAddrGo") == 0) {
 
 		if (__ws_unpack_ay(group->ip_addr_go, value, OEM_IPADDR_LEN))
-			WDP_LOGD("[" IPSTR "]", IP2STR(group->ip_addr_go));
+			WDP_LOGD("GO IP address [" IPSTR "]", IP2STR(group->ip_addr_go));
 
 	} else if (g_strcmp0(key, "group_object") == 0) {
 		static char group_path[DBUS_OBJECT_PATH_MAX] = {'\0',};
@@ -891,20 +881,19 @@ void __ws_extract_group_details(const char *key, GVariant *value, void *user_dat
 				_group_signal_cb,
 				NULL, NULL);
 	}
-	__WDP_LOG_FUNC_EXIT__;
+	return;
 }
 
 void __ws_extract_gonegfailaure_details(const char *key, GVariant *value, void *user_data)
 {
-	__WDP_LOG_FUNC_ENTER__;
 	wfd_oem_event_s *event = (wfd_oem_event_s *)user_data;
 	if(!event || !event->edata)
 		return;
 
 	wfd_oem_conn_data_s *conn = (wfd_oem_conn_data_s *)event->edata;
-
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
 	CHECK_KEY_VALUE(key, value);
-
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 	if (g_strcmp0(key, "peer_object") == 0) {
 		static char peer_path[DBUS_OBJECT_PATH_MAX] = {'\0',};
 		const char *path;
@@ -920,20 +909,19 @@ void __ws_extract_gonegfailaure_details(const char *key, GVariant *value, void *
 		WDP_LOGD("Retrive status [%d]", status);
 		conn->status = status;
 	}
-	__WDP_LOG_FUNC_EXIT__;
+	return;
 }
 
 void __ws_extract_gonegsuccess_details(const char *key, GVariant *value, void *user_data)
 {
-	__WDP_LOG_FUNC_ENTER__;
 	wfd_oem_event_s *event = (wfd_oem_event_s *)user_data;
 	if(!event || !event->edata)
 		return;
 
 	wfd_oem_conn_data_s *edata = (wfd_oem_conn_data_s *)event->edata;
-
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
 	CHECK_KEY_VALUE(key, value);
-
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 	if (g_strcmp0(key, "peer_object") == 0) {
 
 	} else if (g_strcmp0(key, "status") == 0) {
@@ -960,12 +948,12 @@ void __ws_extract_gonegsuccess_details(const char *key, GVariant *value, void *u
 	} else if (g_strcmp0(key, "peer_device_addr") == 0) {
 
 		if(__ws_unpack_ay(edata->peer_device_addr, value, WS_MACADDR_LEN))
-			WDP_LOGD("[" MACSTR "]", MAC2STR(edata->peer_device_addr));
+			WDP_LOGD("Device address[" MACSTR "]", MAC2STR(edata->peer_device_addr));
 
 	} else if(g_strcmp0(key, "peer_interface_addr") == 0) {
 
 		if(__ws_unpack_ay(edata->peer_intf_addr, value, WS_MACADDR_LEN))
-			WDP_LOGD("[" MACSTR "]", MAC2STR(edata->peer_intf_addr));
+			WDP_LOGD("Interface address [" MACSTR "]", MAC2STR(edata->peer_intf_addr));
 
 	} else if (g_strcmp0(key, "wps_method") == 0) {
 
@@ -979,7 +967,7 @@ void __ws_extract_gonegsuccess_details(const char *key, GVariant *value, void *u
 	} else if (g_strcmp0(key, "peer_config_timeout") == 0) {
 
 	}
-	__WDP_LOG_FUNC_EXIT__;
+	return;
 }
 
 #ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
@@ -1024,9 +1012,9 @@ void __ws_extract_servicediscoveryresponse_details(const char *key, GVariant *va
 
 	if(!event)
 		return;
-
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
 	CHECK_KEY_VALUE(key, value);
-
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 	if (g_strcmp0(key, "peer_object") == 0) {
 		static char peer_path[DBUS_OBJECT_PATH_MAX] = {'\0',};
 		__ws_path_to_addr(peer_path, event->dev_addr, value);
@@ -1638,7 +1626,7 @@ static void _ws_process_service_discovery_response(GDBusConnection *connection,
 	event.event_id = WFD_OEM_EVENT_SERV_DISC_RESP;
 
 	if(parameters != NULL) {
-		g_variant_get(parameters, "(a{sv}", &iter);
+		g_variant_get(parameters, "(a{sv})", &iter);
 		if(iter != NULL) {
 			dbus_property_foreach(iter, __ws_extract_servicediscoveryresponse_details, &event);
 			event.edata_type = WFD_OEM_EDATA_TYPE_NEW_SERVICE;
@@ -1704,7 +1692,9 @@ static void _ws_process_wps_failed(GDBusConnection *connection,
 		GVariant *value = NULL;
 
 		while (g_variant_iter_loop(iter, "{sv}", &key, &value)) {
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
 			CHECK_KEY_VALUE(key, value);
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 		}
 		g_variant_iter_free(iter);
 	}
@@ -1860,7 +1850,9 @@ static void _p2pdevice_signal_cb(GDBusConnection *connection,
 		const gchar *signal, GVariant *parameters, gpointer user_data)
 {
 	int i = 0;
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
 	DEBUG_SIGNAL(sender, object_path, interface, signal, parameters);
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 
 	for (i = 0; ws_p2pdevice_signal_map[i].member != NULL; i++) {
 		if (!g_strcmp0(signal, ws_p2pdevice_signal_map[i].member) &&
@@ -1905,7 +1897,9 @@ static void _group_signal_cb(GDBusConnection *connection,
 		const gchar *sender, const gchar *object_path, const gchar *interface,
 		const gchar *signal, GVariant *parameters, gpointer user_data)
 {
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
 	DEBUG_SIGNAL(sender, object_path, interface, signal, parameters);
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 
 	if(!g_strcmp0(signal,"PeerJoined")){
 
@@ -2031,7 +2025,9 @@ static int _ws_get_interface(const char *iface_name, handle_reply function, void
 			SUPPLICANT_PATH, g_pd->g_dbus);
 
 	params.params = g_variant_new("(s)", iface_name);
-	WDP_LOGE("param [%s]", g_variant_print(params.params,TRUE));
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
+	WDP_LOGE("param [%s]", g_variant_print(params.params, TRUE));
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 
 	res = dbus_method_call(&params, SUPPLICANT_INTERFACE,
 			function, user_data);
@@ -2639,13 +2635,13 @@ int __ws_init_p2pdevice()
 	g_variant_builder_unref (builder);
 
 	param = g_variant_new("(ssv)", SUPPLICANT_P2PDEVICE, "P2PDeviceConfig", value);
-	WDP_LOGD("init param [%s]", g_variant_print(param,TRUE));
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
+	WDP_LOGD("init param [%s]", g_variant_print(param, TRUE));
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 
 	params.params = param;
 
 	res = dbus_method_call(&params, DBUS_PROPERTIES_INTERFACE, NULL, NULL);
-	g_variant_unref(value);
-	g_variant_unref(param);
 	if (res < 0)
 		WDP_LOGE("Failed to send command to wpa_supplicant");
 	else
@@ -2681,8 +2677,6 @@ int __ws_set_config_methods()
 	params.params = param;
 
 	res = dbus_method_call(&params, DBUS_PROPERTIES_INTERFACE, NULL, NULL);
-	g_variant_unref(value);
-	g_variant_unref(param);
 	if (res < 0)
 		WDP_LOGE("Failed to send command to wpa_supplicant");
 	else
@@ -2893,10 +2887,10 @@ int ws_start_scan(wfd_oem_scan_param_s *param)
 	}
 
 	params.params = value;
-
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
 	WDP_LOGD("params [%s]", g_variant_print(value, TRUE));
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 	res = dbus_method_call(&params, SUPPLICANT_P2PDEVICE, NULL, NULL);
-	g_variant_unref(value);
 	if (res < 0)
 		WDP_LOGE("Failed to send command to wpa_supplicant");
 	else
@@ -2932,10 +2926,10 @@ int ws_restart_scan(int freq)
 	g_variant_builder_unref (builder);
 
 	params.params = value;
-
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
 	WDP_LOGD("params [%s]", g_variant_print(value, TRUE));
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 	res = dbus_method_call(&params, SUPPLICANT_P2PDEVICE, NULL, NULL);
-	g_variant_unref(value);
 	if (res < 0)
 		WDP_LOGE("Failed to send command to wpa_supplicant");
 	else
@@ -3070,12 +3064,13 @@ int ws_prov_disc_req(unsigned char *peer_addr, wfd_oem_wps_mode_e wps_mode, int 
 	WDP_LOGD("get peer path [%s]", peer_path);
 
 	value = g_variant_new ("(os)", peer_path, __ws_wps_to_txt(wps_mode));
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
 	WDP_LOGD("params [%s]", g_variant_print(value, TRUE));
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 
 	params.params = value;
 
 	res = dbus_method_call(&params, SUPPLICANT_P2PDEVICE, NULL, NULL);
-	g_variant_unref(value);
 	if (res < 0)
 		WDP_LOGE("Failed to send command to wpa_supplicant");
 	else
@@ -3131,13 +3126,13 @@ int ws_connect(unsigned char *peer_addr, wfd_oem_conn_param_s *param)
 
 	value = g_variant_new ("(a{sv})", builder);
 	g_variant_builder_unref (builder);
-
-	WDP_LOGE("params [%s]", g_variant_print(value, TRUE));
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
+	WDP_LOGD("params [%s]", g_variant_print(value, TRUE));
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 
 	params.params = value;
 
 	res = dbus_method_call(&params, SUPPLICANT_P2PDEVICE, NULL, NULL);
-	g_variant_unref(value);
 	if (res < 0)
 		WDP_LOGE("Failed to send command to wpa_supplicant");
 	else
@@ -3174,12 +3169,13 @@ int ws_disconnect(unsigned char *peer_addr)
 	WDP_LOGE("get peer path [%s]", peer_path);
 
 	value = g_variant_new ("(oi)", peer_path, 0);
-	WDP_LOGE("params [%s]", g_variant_print(value, TRUE));
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
+	WDP_LOGD("params [%s]", g_variant_print(value, TRUE));
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 
 	params.params = value;
 
 	res = dbus_method_call(&params, SUPPLICANT_P2PDEVICE, NULL, NULL);
-	g_variant_unref(value);
 	if (res < 0)
 		WDP_LOGE("Failed to send command to wpa_supplicant");
 	else
@@ -3216,12 +3212,13 @@ int ws_reject_connection(unsigned char *peer_addr)
 	WDP_LOGE("get peer path [%s]", peer_path);
 
 	value = g_variant_new ("(o)", peer_path);
-	WDP_LOGE("params [%s]", g_variant_print(value, TRUE));
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
+	WDP_LOGD("params [%s]", g_variant_print(value, TRUE));
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 
 	params.params = value;
 
 	res = dbus_method_call(&params, SUPPLICANT_P2PDEVICE, NULL, NULL);
-	g_variant_unref(value);
 	if (res < 0)
 		WDP_LOGE("Failed to send command to wpa_supplicant");
 	else
@@ -3365,14 +3362,13 @@ int ws_create_group(int persistent, int freq, const char *passphrase)
 
 	value = g_variant_new ("(a{sv})", builder);
 	g_variant_builder_unref (builder);
-
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
 	WDP_LOGD("params [%s]", g_variant_print(value, TRUE));
-
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 	params.params = value;
 
 	res = dbus_method_call(&params, SUPPLICANT_P2PDEVICE,
 			__store_group_iface_path, g_pd);
-	g_variant_unref(value);
 	if (res < 0)
 		WDP_LOGE("Failed to send command to wpa_supplicant");
 	else
@@ -3454,13 +3450,12 @@ int ws_invite(unsigned char *peer_addr, wfd_oem_invite_param_s *param)
 		g_variant_builder_add (builder, "{sv}", "peer", g_variant_new_object_path(peer_path));
 		value = g_variant_new ("(a{sv})", builder);
 		g_variant_builder_unref (builder);
-
-		WDP_LOGE("params [%s]", g_variant_print(value, TRUE));
-
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
+		WDP_LOGD("params [%s]", g_variant_print(value, TRUE));
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 		params.params = value;
 
 		res = dbus_method_call(&params, SUPPLICANT_P2PDEVICE, NULL, NULL);
-		g_variant_unref(value);
 		if (res < 0)
 			WDP_LOGE("Failed to send command to wpa_supplicant");
 		else
@@ -3515,16 +3510,12 @@ int ws_wps_start(unsigned char *peer_addr, int wps_mode, const char *pin)
 
 	value = g_variant_new ("(a{sv})", builder);
 	g_variant_builder_unref (builder);
-
-	WDP_LOGE("params [%s]", g_variant_print(value, TRUE));
-
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
+	WDP_LOGD("params [%s]", g_variant_print(value, TRUE));
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 	params.params = value;
 
 	res = dbus_method_call(&params, SUPPLICANT_WPS, NULL, NULL);
-	g_variant_unref(params.params);
-
-	if (peer_addr != NULL)
-		g_variant_unref(dev_addr);
 	if (res < 0)
 		WDP_LOGE("Failed to send command to wpa_supplicant");
 	else
@@ -3614,13 +3605,13 @@ int ws_set_dev_name(char *dev_name)
 
 	param = g_variant_new("(ssv)", SUPPLICANT_P2PDEVICE,
 				"P2PDeviceConfig", value);
-	WDP_LOGE("param [%s]", g_variant_print(param,TRUE));
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
+	WDP_LOGD("params [%s]", g_variant_print(param, TRUE));
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 
 	params.params = param;
 
 	res = dbus_method_call(&params, DBUS_PROPERTIES_INTERFACE, NULL, NULL);
-	g_variant_unref(value);
-	g_variant_unref(param);
 	if (res < 0)
 		WDP_LOGE("Failed to send command to wpa_supplicant");
 	else
@@ -3675,12 +3666,14 @@ int ws_get_go_intent(int *go_intent)
 	}
 
 	param = g_variant_new("(ss)", SUPPLICANT_P2PDEVICE, "P2PDeviceConfig");
-	WDP_LOGE("param [%s]", g_variant_print(param,TRUE));
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
+	WDP_LOGD("params [%s]", g_variant_print(param, TRUE));
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 
 	reply = g_dbus_connection_call_sync (
 			g_dbus,
 			SUPPLICANT_SERVICE, /* bus name */
-			SUPPLICANT_INTERFACE, /* object path */
+			g_pd->iface_path, /* object path */
 			DBUS_PROPERTIES_INTERFACE, /* interface name */
 			DBUS_PROPERTIES_METHOD_GET, /* method name */
 			param, /* GVariant *params */
@@ -3699,8 +3692,6 @@ int ws_get_go_intent(int *go_intent)
 		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
-	g_variant_unref(param);
-
 
 	if(reply != NULL){
 		g_variant_get(reply, "(a{sv})", &iter);
@@ -3711,7 +3702,9 @@ int ws_get_go_intent(int *go_intent)
 			GVariant *value = NULL;
 
 			while(g_variant_iter_loop(iter, "{sv}", &key, &value)) {
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
 				CHECK_KEY_VALUE(key, value);
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 				if(g_strcmp0(key, "GOIntent") == 0)
 					g_variant_get(value, "u", go_intent);
 			}
@@ -3751,13 +3744,13 @@ int ws_set_go_intent(int go_intent)
 	g_variant_builder_unref (builder);
 
 	param = g_variant_new("(ssv)", SUPPLICANT_P2PDEVICE, "P2PDeviceConfig", value);
-	WDP_LOGE("param [%s]", g_variant_print(param,TRUE));
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
+	WDP_LOGD("param [%s]", g_variant_print(param, TRUE));
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 
 	params.params = param;
 
 	res = dbus_method_call(&params, DBUS_PROPERTIES_INTERFACE, NULL, NULL);
-	g_variant_unref(value);
-	g_variant_unref(param);
 	if (res < 0)
 		WDP_LOGE("Failed to send command to wpa_supplicant");
 	else
@@ -3791,13 +3784,13 @@ int ws_set_country(char *ccode)
 	value = g_variant_new_string(ccode);
 
 	param = g_variant_new("(ssv)", SUPPLICANT_IFACE, "Country", value);
-	WDP_LOGE("param [%s]", g_variant_print(param,TRUE));
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
+	WDP_LOGD("param [%s]", g_variant_print(param, TRUE));
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 
 	params.params = param;
 
 	res = dbus_method_call(&params, DBUS_PROPERTIES_INTERFACE, NULL, NULL);
-	g_variant_unref(value);
-	g_variant_unref(param);
 	if (res < 0)
 		WDP_LOGE("Failed to send command to wpa_supplicant");
 	else
@@ -3824,9 +3817,9 @@ void __parsing_networks (const char *key, GVariant *value, void *user_data)
 	}
 
 	ws_network_info_s *network = (ws_network_info_s *)user_data;
-
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
 	CHECK_KEY_VALUE(key, value);
-
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 	if (g_strcmp0(key, "ssid") == 0) {
 		const char *ssid = NULL;
 		g_variant_get(value, "s", &ssid);
@@ -3850,9 +3843,9 @@ void __ws_extract_p2pdevice_details(const char *key, GVariant *value, void *user
 {
 
 	__WDP_LOG_FUNC_ENTER__;
-
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
 	CHECK_KEY_VALUE(key, value);
-
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 	if (g_strcmp0(key, "PersistentGroups") == 0) {
 		GVariantIter *iter = NULL;
 		const char *path = NULL;
@@ -4042,8 +4035,6 @@ int ws_set_persistent_reconnect(unsigned char *bssid, int reconnect)
 	params.params = param;
 
 	res = dbus_method_call(&params, DBUS_PROPERTIES_INTERFACE, NULL, NULL);
-	g_variant_unref(value);
-	g_variant_unref(param);
 	if (res < 0)
 		WDP_LOGE("Failed to send command to wpa_supplicant");
 	else
@@ -4339,7 +4330,9 @@ int ws_start_service_discovery(unsigned char *mac_addr, int service_type)
 	value = g_variant_new ("(a{sv})", builder);
 	g_variant_builder_unref (builder);
 
-	WDP_LOGE("params [%s]", g_variant_print(value, TRUE));
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
+	WDP_LOGD("params [%s]", g_variant_print(value, TRUE));
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 
 	params.params = value;
 
@@ -4468,8 +4461,9 @@ int ws_serv_add(wfd_oem_new_service_s *service)
 
 	value = g_variant_new ("(a{sv})", builder);
 	g_variant_builder_unref (builder);
-
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
 	WDP_LOGE("params [%s]", g_variant_print(value, TRUE));
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 
 	params.params = value;
 
@@ -4524,9 +4518,9 @@ int ws_serv_del(wfd_oem_new_service_s *service)
 
 	value = g_variant_new ("(a{sv})", builder);
 	g_variant_builder_unref (builder);
-
-	WDP_LOGE("params [%s]", g_variant_print(value, TRUE));
-
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
+	WDP_LOGD("params [%s]", g_variant_print(value, TRUE));
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 	params.params = value;
 
 	res = dbus_method_call(&params, SUPPLICANT_P2PDEVICE, NULL, NULL);
@@ -4567,13 +4561,12 @@ int _ws_disable_display()
 	g_variant_builder_unref (builder);
 
 	param = g_variant_new("(ssv)", SUPPLICANT_INTERFACE, "WFDIEs", value);
-	WDP_LOGE("param [%s]", g_variant_print(param,TRUE));
-
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
+	WDP_LOGD("param [%s]", g_variant_print(param,TRUE));
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 	params.params = param;
 
 	res = dbus_method_call(&params, DBUS_PROPERTIES_INTERFACE, NULL, NULL);
-	g_variant_unref(value);
-	g_variant_unref(param);
 	if (res < 0)
 		WDP_LOGE("Failed to send command to wpa_supplicant");
 	else
@@ -4655,17 +4648,15 @@ int ws_set_display(wfd_oem_display_s *wifi_display)
 		g_variant_builder_add(builder, "y", ies[i]);
 	value = g_variant_new ("ay", builder);
 	g_variant_builder_unref (builder);
-
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
 	WDP_LOGD("value [%s]", g_variant_print(value,TRUE));
-
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 	param = g_variant_new("(ssv)", SUPPLICANT_INTERFACE, "WFDIEs", value);
 	WDP_LOGE("param [%s]", g_variant_print(param,TRUE));
 
 	params.params = param;
 
 	res = dbus_method_call(&params, DBUS_PROPERTIES_INTERFACE, NULL, NULL);
-	g_variant_unref(value);
-	g_variant_unref(param);
 	if (res < 0)
 		WDP_LOGE("Failed to send command to wpa_supplicant");
 	else

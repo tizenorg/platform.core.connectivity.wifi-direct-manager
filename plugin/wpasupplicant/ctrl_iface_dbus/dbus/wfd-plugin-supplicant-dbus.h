@@ -31,6 +31,7 @@
 
 #define SIGNAL_PROPERTIES_CHANGED "PropertiesChanged"
 
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
 #define CHECK_KEY_VALUE(key, value)\
 	do {\
 		if (key)\
@@ -50,6 +51,7 @@
 		WDP_LOGD("signal params [%s]", g_variant_print(parameters, TRUE));\
 		WDP_LOGD("signal params type [%s]", g_variant_get_type_string(parameters));\
 	} while (0)
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 
 typedef void (*handle_reply) (GVariant *value, void *user_data);
 

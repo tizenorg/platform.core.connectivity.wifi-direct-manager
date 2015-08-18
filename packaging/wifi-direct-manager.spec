@@ -1,6 +1,6 @@
 Name:		wifi-direct-manager
 Summary:	Wi-Fi Direct manger
-Version:	1.2.88
+Version:	1.2.89
 Release:	1
 Group:      Network & Connectivity/Wireless
 License:    Apache-2.0
@@ -68,8 +68,10 @@ cmake . -DCMAKE_INSTALL_PREFIX=%{_prefix} -DARCHITECTURE=$ARCH \
 %else
 %if "%{profile}" == "mobile"
         -DTIZEN_FEATURE_SERVICE_DISCOVERY=1 \
+        -DTIZEN_WLAN_CONCURRENT_ENABLE=1 \
         -DTIZEN_FEATURE_WIFI_DISPLAY=1 \
         -DCTRL_IFACE_DBUS=1 \
+        -DTIZEN_MOBILE=1 \
 %else
 %if "%{profile}" == "tv"
 	-DTIZEN_FEATURE_SERVICE_DISCOVERY=1 \
@@ -112,12 +114,21 @@ vconftool set -t string memory/private/wifi_direct_manager/p2p_subnet_mask 0.0.0
 vconftool set -t string memory/private/wifi_direct_manager/p2p_gateway 0.0.0.0 -u 5000 -i
 vconftool set -t string memory/private/wifi_direct_manager/p2p_ifname 0.0.0.0 -u 5000 -i
 
-if [ ! -d /var/lib/misc ]; then
-        mkdir -p /var/lib/misc
-fi
+%if "%{?tizen_profile_name}" == "tv"
+	if [ ! -d /opt/var/lib/misc ]; then
+		mkdir -p /opt/var/lib/misc
+	fi
 
-touch /var/lib/misc/udhcpd.leases
-chmod 666 /var/lib/misc/udhcpd.leases
+	touch /opt/var/lib/misc/dhcpd.leases
+	chmod 666 /opt/var/lib/misc/dhcpd.leases
+%else
+	if [ ! -d /var/lib/misc ]; then
+		mkdir -p /var/lib/misc
+	fi
+
+	touch /var/lib/misc/dhcpd.leases
+	chmod 666 /var/lib/misc/dhcpd.leases
+%endif
 
 %postun
 

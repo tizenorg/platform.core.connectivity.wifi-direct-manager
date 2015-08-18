@@ -76,9 +76,10 @@ stop_dhcp()
 	/usr/bin/vconftool set -t string memory/private/wifi_direct_manager/p2p_subnet_mask "" -f
 	/usr/bin/vconftool set -t string memory/private/wifi_direct_manager/p2p_gateway "" -f
 	/usr/bin/vconftool set -t string memory/private/wifi_direct_manager/p2p_local_ip "" -f
+	/usr/bin/vconftool set -t string memory/private/wifi_direct_manager/dhcpc_server_ip "0.0.0.0" -f
 
-	/usr/bin/killall /usr/bin/dhcp
-	/usr/bin/killall /usr/sbin/dhcpd
+	/usr/bin/pkill -x dhcp
+	/usr/bin/pkill -x dhcpd
 #	/sbin/ifconfig ${interface} 0.0.0.0
 }
 

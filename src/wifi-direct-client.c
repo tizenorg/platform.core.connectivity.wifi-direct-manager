@@ -529,28 +529,6 @@ done:
 	return 0;
 }
 
-static gboolean _wfd_remove_event_source(gpointer data)
-{
-	__WDS_LOG_FUNC_ENTER__;
-	int source_id = (intptr_t) data;
-	int res = 0;
-
-	if (source_id < 0) {
-		WDS_LOGE("Invalid source ID [%d]", source_id);
-		return FALSE;
-	}
-
-	res = g_source_remove(source_id);
-	if (!res) {
-		WDS_LOGE("Failed to remove GSource");
-		return FALSE;
-	}
-	WDS_LOGD("Succeeded to remove GSource");
-
-	__WDS_LOG_FUNC_EXIT__;
-	return FALSE;
-}
-
 static int _wfd_deregister_client(void *data, int client_id)
 {
 	__WDS_LOG_FUNC_ENTER__;
@@ -578,7 +556,7 @@ static int _wfd_deregister_client(void *data, int client_id)
 	if (client->ssock >= SOCK_FD_MIN)
 		close(client->ssock);
 	client->ssock = -1;
-	g_idle_add((GSourceFunc) _wfd_remove_event_source, (gpointer)(void *)(intptr_t) client->gsource_id);
+	g_source_remove(client->gsource_id);
 	client->gsource_id = 0;
 
 	g_free(client);

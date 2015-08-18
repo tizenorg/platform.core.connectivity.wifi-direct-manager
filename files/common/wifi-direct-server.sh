@@ -20,7 +20,7 @@ stop_wifi_direct()
 		echo "${program} is not running"
 	else
 		echo "${program} is running.. Killing it"
-		/usr/bin/killall ${program}
+		/usr/bin/pkill -x ${program}
 	fi
 }
 

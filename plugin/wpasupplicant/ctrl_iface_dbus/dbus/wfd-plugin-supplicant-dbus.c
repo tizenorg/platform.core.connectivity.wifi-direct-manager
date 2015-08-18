@@ -65,7 +65,9 @@ int dbus_method_call(dbus_method_param_s *params, char *interface_name,
 	}
 
 	if(reply != NULL) {
-		WDP_LOGE("reply [%s]", g_variant_print(reply,TRUE));
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
+		WDP_LOGD("reply [%s]", g_variant_print(reply,TRUE));
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 		if(function)
 			function(reply, user_data);
 		g_variant_unref(reply);
@@ -127,7 +129,9 @@ int dbus_property_get_all(const char *path, GDBusConnection *connection,
 	}
 
 	param = g_variant_new("(s)", interface);
-	WDP_LOGE("param [%s]", g_variant_print(param,TRUE));
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
+	WDP_LOGD("param [%s]", g_variant_print(param,TRUE));
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
 
 	reply = g_dbus_connection_call_sync (
 			connection,

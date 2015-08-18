@@ -205,8 +205,7 @@ int wfd_local_set_dev_name(char *dev_name)
 	if (g_manager->state >= WIFI_DIRECT_STATE_ACTIVATED) {
 		wfd_oem_set_dev_name(g_manager->oem_ops, dev_name);
 		WDS_LOGD("Device name changed.");
-	}
-	else {
+	} else {
 		WDS_LOGE("Device name can't changed: state is %d",g_manager->state);
 	}
 

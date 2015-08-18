@@ -48,9 +48,7 @@
 #define CONF_FILE_PATH "/opt/etc/p2p_supp.conf"
 #endif
 
-
-#if defined TIZEN_TV
-/*For TIZEN TV Platform*/
+#if defined TIZEN_TV /*For TIZEN TV Platform*/
 #define COMMON_IFACE_NAME "p2p0"
 #define GROUP_IFACE_NAME "p2p0"
 #define GROUP_IFACE_PREFIX "p2p"
