@@ -1,6 +1,6 @@
 Name:		wifi-direct-manager
 Summary:	Wi-Fi Direct manger
-Version:	1.2.89
+Version:	1.2.90
 Release:	1
 Group:      Network & Connectivity/Wireless
 License:    Apache-2.0
@@ -80,6 +80,9 @@ cmake . -DCMAKE_INSTALL_PREFIX=%{_prefix} -DARCHITECTURE=$ARCH \
 	-DTIZEN_TV=1 \
 %endif
 %endif
+%endif
+%if "%{?_lib}" == "lib64"
+	-DTIZEN_ARCH_64=1 \
 %endif
 -DCMAKE_LIB_DIR=%{_libdir}
 

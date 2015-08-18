@@ -1432,11 +1432,11 @@ static void *wfd_plugin_init(wfd_manager_s *manager)
 
 	errno = 0;
 
-	if(strncmp(kernel_info.machine, "aarch64", 7) == 0)
+#if defined(TIZEN_ARCH_64)
 		handle = dlopen(SUPPL_PLUGIN_64BIT_PATH, RTLD_NOW);
-	else
+#else
 		handle = dlopen(SUPPL_PLUGIN_PATH, RTLD_NOW);
-
+#endif
 	if (!handle) {
 		WDS_LOGE("Failed to open shared object. [%s]", dlerror());
 		__WDS_LOG_FUNC_EXIT__;
