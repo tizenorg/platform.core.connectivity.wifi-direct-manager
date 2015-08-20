@@ -1,6 +1,6 @@
 Name:		wifi-direct-manager
 Summary:	Wi-Fi Direct manger
-Version:	1.2.90
+Version:	1.2.91
 Release:	1
 Group:      Network & Connectivity/Wireless
 License:    Apache-2.0
@@ -18,8 +18,8 @@ BuildRequires:	cmake
 Requires:	net-tools
 #Requires:	sys-assert
 #Requires:	tizen-coreutils
-#Requires: toybox-symlinks-dhcpd
-#Requires: toybox-symlinks-dhcp
+Requires: toybox-symlinks-dhcpd
+Requires: toybox-symlinks-dhcp
 Requires(post):	/usr/bin/vconftool
 
 %description

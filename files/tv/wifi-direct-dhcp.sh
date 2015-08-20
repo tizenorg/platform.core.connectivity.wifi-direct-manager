@@ -3,8 +3,8 @@ INTERFACE_NAME="p2p0"
 INTERFACE_PREFIX="p2p"
 TARGET="TIZEN_TV"
 DEFAULT_IP="192.168.49.1"
-DEFAULT_NET="192.168.49.1/24"
-DEFAULT_BRD="192.168.49.255"
+#DEFAULT_NET="192.168.49.1/24"
+#DEFAULT_BRD="192.168.49.255"
 
 interface=`/sbin/ifconfig|/bin/grep ^${INTERFACE_NAME}|/usr/bin/cut -d" " -f1`
 echo "Target is ${TARGET} and interface ${INTERFACE_PREFIX}: ${interface}."
@@ -16,8 +16,11 @@ start_dhcp_server()
 		return 0
 	fi
 
-	/usr/sbin/ip addr add ${DEFAULT_NET} brd ${DEFAULT_BRD} dev ${interface}
-	/usr/bin/udhcpd /usr/etc/wifi-direct/dhcpd.${INTERFACE_PREFIX}.conf -f &
+	/bin/rm /var/lib/misc/udhcpd.leases
+	/bin/touch /var/lib/misc/udhcpd.leases
+	/sbin/ifconfig ${INTERFACE_NAME} ${DEFAULT_IP} up
+#	/usr/sbin/ip addr add ${DEFAULT_NET} brd ${DEFAULT_BRD} dev ${INTERFACE_NAME}
+	/usr/sbin/dhcpd /usr/etc/wifi-direct/dhcpd.${INTERFACE_PREFIX}.conf -f &
 
 	route=`/bin/cat /usr/etc/wifi-direct/dhcpd.${INTERFACE_PREFIX}.conf | /bin/grep router | /bin/awk '{print $3}'`
 	if [ -z $route ]; then
@@ -42,21 +45,24 @@ start_dhcp_client()
 		return 0
 	fi
 
-	/usr/bin/vconftool set -t string memory/private/wifi_direct_manager/dhcpc_server_ip 0.0.0.0 -f
-	/usr/bin/udhcpc -i $interface -s /usr/etc/wifi-direct/udhcp_script.non-autoip &
+	/usr/bin/vconftool set -t string memory/private/wifi_direct_manager/dhcpc_server_ip "0.0.0.0" -f
+	/usr/bin/dhcp -i $interface -s /usr/etc/wifi-direct/udhcp_script.non-autoip &
 }
 
 
-stop_dhcp()
+clean_vconfs()
 {
 	/usr/bin/vconftool set -t string memory/private/wifi_direct_manager/p2p_ifname "" -f
 	/usr/bin/vconftool set -t string memory/private/wifi_direct_manager/p2p_subnet_mask "" -f
 	/usr/bin/vconftool set -t string memory/private/wifi_direct_manager/p2p_gateway "" -f
 	/usr/bin/vconftool set -t string memory/private/wifi_direct_manager/p2p_local_ip "" -f
 	/usr/bin/vconftool set -t string memory/private/wifi_direct_manager/dhcpc_server_ip "0.0.0.0" -f
+}
 
-	/usr/bin/pkill -x udhcpc
-	/usr/bin/pkill -x udhcpd
+stop_dhcp()
+{
+	/usr/bin/pkill -x dhcp
+	/usr/bin/pkill -x dhcpd
 #	/sbin/ifconfig ${interface} 0.0.0.0
 }
 
@@ -73,8 +79,8 @@ is_running()
 
 status_dhcp()
 {
-	is_running /usr/bin/udhcpc
-	is_running /usr/bin/udhcpd
+	is_running /usr/bin/dhcp
+	is_running /usr/sbin/dhcpd
 }
 
 
@@ -84,10 +90,12 @@ stop_dhcp
 start_dhcp_server
 ;;
 "client")
+clean_vconfs
 stop_dhcp
 start_dhcp_client
 ;;
 "stop")
+clean_vconfs
 stop_dhcp
 ;;
 "status")
