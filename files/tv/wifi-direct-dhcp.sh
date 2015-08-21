@@ -46,7 +46,7 @@ start_dhcp_client()
 	fi
 
 	/usr/bin/vconftool set -t string memory/private/wifi_direct_manager/dhcpc_server_ip "0.0.0.0" -f
-	/usr/bin/dhcp -i $interface -s /usr/etc/wifi-direct/udhcp_script.non-autoip &
+	/usr/bin/dhcp -i ${INTERFACE_NAME} -s /usr/etc/wifi-direct/udhcp_script.non-autoip &
 }
 
 
