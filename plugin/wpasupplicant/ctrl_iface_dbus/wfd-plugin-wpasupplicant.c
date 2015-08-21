@@ -593,7 +593,7 @@ static void __ws_get_peer_property(const char *key, GVariant *value, void *user_
 		if (__ws_unpack_ay(peer->dev_addr, value, WS_MACADDR_LEN))
 			WDP_LOGD("Device address [" MACSTR "]", MAC2STR(peer->dev_addr));
 
-	} else if (g_strcmp0(key, "InterfaceAddress") == 0) {
+	} else if (g_strcmp0(key, "IntendedAddress") == 0) {
 
 		if (__ws_unpack_ay(peer->intf_addr, value, WS_MACADDR_LEN))
 			WDP_LOGD("Interface address [" MACSTR "]", MAC2STR(peer->intf_addr));
@@ -684,7 +684,7 @@ static void __ws_peer_property(const char *key, GVariant *value, void *user_data
 		if (__ws_unpack_ay(peer->p2p_dev_addr, value, WS_MACADDR_LEN))
 			WDP_LOGD("Device address [" MACSTR "]", MAC2STR(peer->p2p_dev_addr));
 
-	} else if (g_strcmp0(key, "InterfaceAddress") == 0) {
+	} else if (g_strcmp0(key, "IntendedAddress") == 0) {
 
 		if (__ws_unpack_ay(peer->p2p_intf_addr, value, WS_MACADDR_LEN))
 			WDP_LOGD("Interface Address [" MACSTR "]", MAC2STR(peer->p2p_intf_addr));
