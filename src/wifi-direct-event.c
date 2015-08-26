@@ -195,7 +195,8 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	wfd_remove_peer(manager, event->dev_addr);
 
 	memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
-	noti.event = WIFI_DIRECT_CLI_EVENT_DISCOVER_FOUND_PEERS;
+	snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(event->dev_addr));
+	noti.event = WIFI_DIRECT_CLI_EVENT_DISCOVER_LOST_PEERS;
 	noti.error = WIFI_DIRECT_ERROR_NONE;
 	wfd_client_send_event(manager, &noti);
 
