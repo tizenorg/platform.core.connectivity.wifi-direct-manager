@@ -1352,8 +1352,8 @@ wfd_device_s *wfd_manager_get_peer_by_addr(wfd_manager_s *manager, unsigned char
 
 	peer = wfd_peer_find_by_addr(manager, peer_addr);
 
-	return peer;
 	__WDS_LOG_FUNC_EXIT__;
+	return peer;
 }
 
 static wfd_manager_s *wfd_manager_init()

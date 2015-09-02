@@ -1888,8 +1888,8 @@ static void __ws_parse_peer_joined(char *peer_path,
 
 	WDP_LOGD("peer ip [" IPSTR "]", IP2STR(ip_addr));
 
-	return;
 	__WDP_LOG_FUNC_EXIT__;
+	return;
 }
 
 
@@ -2117,8 +2117,9 @@ static int _ws_init_dbus_connection(void)
 			WDP_LOGE("Failed to subscribe interface signal");
 	else
 		WDP_LOGI("Successfully register signal filters");
-	return res;
+
 	__WDP_LOG_FUNC_EXIT__;
+	return res;
 }
 
 static int _ws_deinit_dbus_connection(void)
