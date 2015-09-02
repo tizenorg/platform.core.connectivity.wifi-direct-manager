@@ -645,7 +645,7 @@ static void _dhcps_ip_leased_cb(keynode_t *key, void* data)
 
 	while(fgets(buf, MAX_DHCP_DUMP_SIZE, fp) != NULL) {
 		WDS_LOGD("Read line [%s]", buf);
-		n = sscanf(buf,"%s %s", intf_str, ip_str);
+		n = sscanf(buf,"%17s %15s", intf_str, ip_str);
 		WDS_LOGD("ip=[%s], mac=[%s]",ip_str, intf_str);
 		if (n != 2) {
 			continue;

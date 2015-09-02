@@ -2288,11 +2288,11 @@ int wfd_plugin_load(wfd_oem_ops_s **ops)
 	return 0;
 }
 
-static int _ws_reset_plugin(ws_dbus_plugin_data_s *g_pd)
+static int _ws_reset_plugin(ws_dbus_plugin_data_s *f_pd)
 {
 	__WDP_LOG_FUNC_ENTER__;
 
-	if (!g_pd) {
+	if (!f_pd) {
 		WDP_LOGE("Invalid parameter");
 		__WDP_LOG_FUNC_EXIT__;
 		return -1;
@@ -2300,11 +2300,10 @@ static int _ws_reset_plugin(ws_dbus_plugin_data_s *g_pd)
 
 	_ws_deinit_dbus_connection();
 
-	if (g_pd->activated)
-		ws_deactivate(g_pd->concurrent);
+	if (f_pd->activated)
+		ws_deactivate(f_pd->concurrent);
 
-	g_free(g_pd);
-	g_pd = NULL;
+	g_free(f_pd);
 
 	__WDP_LOG_FUNC_EXIT__;
 	return 0;
@@ -2537,7 +2536,7 @@ static int __ws_p2p_firmware_stop(void)
 
 static int __ws_p2p_supplicant_start(void)
 {
-	gboolean rv = FALSE;
+	gboolean rv;
 	const char *path = "/usr/sbin/p2p_supp.sh";
 	char *const args[] = { "/usr/sbin/p2p_supp.sh", "start_dbus", NULL };
 	char *const envs[] = { NULL };
@@ -2556,7 +2555,7 @@ static int __ws_p2p_supplicant_start(void)
 
 static int __ws_p2p_supplicant_stop(void)
 {
-	gboolean rv = FALSE;
+	gboolean rv;
 	const char *path = "/usr/sbin/p2p_supp.sh";
 	char *const args[] = { "/usr/sbin/p2p_supp.sh", "stop", NULL };
 	char *const envs[] = { NULL };
