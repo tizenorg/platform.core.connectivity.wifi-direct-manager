@@ -134,6 +134,11 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 
 	wifi_direct_client_noti_s noti;
 
+	if (event == NULL || manager == NULL) {
+		WDS_LOGE("Invalid parameter");
+		return;
+	}
+
 	memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
 	noti.event = WIFI_DIRECT_CLI_EVENT_DEACTIVATION;
 	noti.error = WIFI_DIRECT_ERROR_NONE;
@@ -159,6 +164,11 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	wfd_oem_dev_data_s *edata = NULL;
 	wifi_direct_client_noti_s noti;
 	int res = 0;
+
+	if (event == NULL || manager == NULL) {
+		WDS_LOGE("Invalid parameter");
+		return;
+	}
 
 	edata = (wfd_oem_dev_data_s*) event->edata;
 	if (!edata || event->edata_type != WFD_OEM_EDATA_TYPE_DEVICE) {
@@ -192,6 +202,11 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 
  	wifi_direct_client_noti_s noti;
 
+	if (event == NULL || manager == NULL) {
+		WDS_LOGE("Invalid parameter");
+		return;
+	}
+
 	wfd_remove_peer(manager, event->dev_addr);
 
 	memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
@@ -209,6 +224,11 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
  	__WDS_LOG_FUNC_ENTER__;
 
  	wifi_direct_client_noti_s noti;
+
+	if (event == NULL || manager == NULL) {
+		WDS_LOGE("Invalid parameter");
+		return;
+	}
 
 	if (manager->state != WIFI_DIRECT_STATE_DISCOVERING &&
 			manager->state != WIFI_DIRECT_STATE_ACTIVATED) {
@@ -245,6 +265,11 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 
  	wfd_device_s *peer = NULL;
  	int res = 0;
+
+	if (event == NULL || manager == NULL) {
+		WDS_LOGE("Invalid parameter");
+		return;
+	}
 
 #ifdef CTRL_IFACE_DBUS
 	wfd_oem_dev_data_s *edata = NULL;
@@ -289,6 +314,11 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	wfd_device_s *peer = NULL;
 	int res = 0;
 
+	if (event == NULL || manager == NULL) {
+		WDS_LOGE("Invalid parameter");
+		return;
+	}
+
 #ifdef CTRL_IFACE_DBUS
 	wfd_oem_dev_data_s *edata = NULL;
 
@@ -332,6 +362,11 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	wfd_session_s *session = NULL;
 	wifi_direct_client_noti_s noti;
 	unsigned char *peer_addr = NULL;
+
+	if (event == NULL || manager == NULL) {
+		WDS_LOGE("Invalid parameter");
+		return;
+	}
 
 	session = (wfd_session_s*) manager->session;
 	if (!session) {
@@ -390,6 +425,11 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 
 	wfd_session_s *session = NULL;
 	wifi_direct_client_noti_s noti;
+
+	if (event == NULL || manager == NULL) {
+		WDS_LOGE("Invalid parameter");
+		return;
+	}
 
 #ifdef CTRL_IFACE_DBUS
 	wfd_oem_dev_data_s *edata = NULL;
@@ -466,6 +506,11 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	wifi_direct_client_noti_s noti;
 	unsigned char *peer_addr = NULL;
 
+	if (event == NULL || manager == NULL) {
+		WDS_LOGE("Invalid parameter");
+		return;
+	}
+
 	session = (wfd_session_s*) manager->session;
 	if (!session) {
 		WDS_LOGE("Unexpected event. Session not exist");
@@ -515,8 +560,13 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	wfd_oem_conn_data_s *edata = NULL;
 	wfd_device_s *peer = NULL;
 
+	if (event == NULL || manager == NULL) {
+		WDS_LOGE("Invalid parameter");
+		return;
+	}
+
 	edata = (wfd_oem_conn_data_s*) event->edata;
-	if (event == NULL || edata == NULL) {
+	if (edata == NULL) {
 		WDS_LOGE("Invalid event data");
 		return;
 	}
@@ -540,6 +590,11 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	wfd_session_s *session = NULL;
 	wifi_direct_client_noti_s noti;
 	unsigned char *peer_addr = NULL;
+
+	if (event == NULL || manager == NULL) {
+		WDS_LOGE("Invalid parameter");
+		return;
+	}
 
 	session = (wfd_session_s*) manager->session;
 	if (!session) {
@@ -609,6 +664,11 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	wfd_session_s *session = NULL;
 	wifi_direct_client_noti_s noti;
 	unsigned char *peer_addr = NULL;
+
+	if (event == NULL || manager == NULL) {
+		WDS_LOGE("Invalid parameter");
+		return;
+	}
 
 	session = (wfd_session_s*) manager->session;
 	if (!session) {
@@ -693,6 +753,11 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	wfd_session_s *session = NULL;
 	wifi_direct_client_noti_s noti;
 
+	if (event == NULL || manager == NULL) {
+		WDS_LOGE("Invalid parameter");
+		return;
+	}
+
 	group = (wfd_group_s*) manager->group;
 	session = (wfd_session_s*)manager->session;
 #ifdef CTRL_IFACE_DBUS
@@ -761,6 +826,11 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 
 	wifi_direct_client_noti_s noti;
 
+	if (event == NULL || manager == NULL) {
+		WDS_LOGE("Invalid parameter");
+		return;
+	}
+
 	memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
 	if (manager->state == WIFI_DIRECT_STATE_DISCONNECTING) {
 		noti.event = WIFI_DIRECT_CLI_EVENT_DISCONNECTION_RSP;
@@ -799,6 +869,11 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	wfd_oem_invite_data_s *edata = NULL;
 	wifi_direct_client_noti_s noti;
 	int res = 0;
+
+	if (event == NULL || manager == NULL) {
+		WDS_LOGE("Invalid parameter");
+		return;
+	}
 
 	peer = wfd_peer_find_by_dev_addr(manager, event->dev_addr);
 	if (!peer) {
@@ -858,6 +933,11 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
  	wfd_device_s *peer = NULL;
  	wfd_group_s *group = NULL;
  	wifi_direct_client_noti_s noti;
+
+	if (event == NULL || manager == NULL) {
+		WDS_LOGE("Invalid parameter");
+		return;
+	}
 
 	// FIXME: Move this code to plugin
 	if (!memcmp(event->intf_addr, manager->local->intf_addr, MACADDR_LEN)) {
@@ -935,6 +1015,11 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	wfd_device_s *peer = NULL;
 	wifi_direct_client_noti_s noti;
 	unsigned char peer_addr[MACADDR_LEN] = {0, };
+
+	if (event == NULL || manager == NULL) {
+		WDS_LOGE("Invalid parameter");
+		return;
+	}
 
 	group = (wfd_group_s*) manager->group;
 	if (!group) {
@@ -1020,6 +1105,11 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
  	wfd_device_s *peer = NULL;
  	wfd_group_s *group = NULL;
 
+	if (event == NULL || manager == NULL) {
+		WDS_LOGE("Invalid parameter");
+		return;
+	}
+
 	// FIXME: Move this code to plugin
 	if (!memcmp(event->intf_addr, manager->local->intf_addr, MACADDR_LEN)) {
 		WDS_LOGD("Ignore this event");
@@ -1072,6 +1162,11 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	wfd_device_s *peer = NULL;
 	wifi_direct_client_noti_s noti;
 	unsigned char peer_addr[MACADDR_LEN] = {0, };
+
+	if (event == NULL || manager == NULL) {
+		WDS_LOGE("Invalid parameter");
+		return;
+	}
 
 	group = (wfd_group_s*) manager->group;
 	if (!group) {
@@ -1164,6 +1259,11 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 
 	wifi_direct_client_noti_s noti;
 	wfd_update_peer_time(manager, event->dev_addr);
+
+	if (event == NULL || manager == NULL) {
+		WDS_LOGE("Invalid parameter");
+		return;
+	}
 
 	if (event->edata_type == WFD_OEM_EDATA_TYPE_NEW_SERVICE) {
 		wfd_oem_new_service_s *service = NULL;;
