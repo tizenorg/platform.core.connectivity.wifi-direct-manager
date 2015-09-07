@@ -36,6 +36,8 @@
 #define SOCK_FD_MIN 3
 #define WFD_POLL_TIMEOUT 2000
 
+#define WFD_PRIVILEGE "http://tizen.org/privilege/wifidirect"
+
 typedef struct {
 	int ssock;
 	int asock;
