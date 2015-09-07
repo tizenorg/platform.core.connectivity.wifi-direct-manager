@@ -40,7 +40,9 @@
 #include <vconf.h>
 
 #include <wifi-direct.h>
-//#include <security-server/security-server.h>
+#include <cynara-client.h>
+#include <cynara-creds-socket.h>
+
 
 #include "wifi-direct-ipc.h"
 #include "wifi-direct-manager.h"
@@ -61,11 +63,9 @@ static int _wfd_deregister_client(void *data, int client_id);
 static gboolean wfd_client_process_request(GIOChannel *source,
 									GIOCondition condition,
 									gpointer user_data);
-#if 0
-#if !defined TIZEN_TV
+
 static int _wfd_check_client_privilege(int client_sock, int cmd);
-#endif
-#endif
+
 char *wfd_server_print_cmd(wifi_direct_cmd_e cmd)
 {
 	switch (cmd)
@@ -455,16 +455,12 @@ static int _wfd_register_client(void *data, int sock)
 			res = WIFI_DIRECT_ERROR_NOT_PERMITTED; // WIFI_DIRECT_ERROR_ALREADY_EXIST
 			goto send_response;
 		}
-/*FixMe: Tizen TV Plardorm return the "ACCESS DENIED" error
-Ignore the check for now*/
-#if 0
-#if !defined TIZEN_TV
+
 		if (_wfd_check_client_privilege(sock, req.cmd) != WIFI_DIRECT_ERROR_NONE) {
 			rsp.result = WIFI_DIRECT_ERROR_AUTH_FAILED;
 			goto done;
 		}
-#endif
-#endif
+
 		client = (wfd_client_s*) g_try_malloc0(sizeof(wfd_client_s));
 		if (!client) {
 			WDS_LOGE("Failed to allocate memory");
@@ -494,16 +490,11 @@ Ignore the check for now*/
 			goto done;
 		}
 
-	/*FixMe: Tizen TV Plardorm return the "ACCESS DENIED" error
-	Ignore the check for now*/
-#if 0
-#if !defined TIZEN_TV
 		if (_wfd_check_client_privilege(sock, req.cmd) != WIFI_DIRECT_ERROR_NONE) {
 			res = WIFI_DIRECT_ERROR_AUTH_FAILED;
 			goto done;
 		}
-#endif
-#endif
+
 		client->asock = sock;
 		WDS_LOGD("Async socket[%d] for New client[%d] added.", sock, client->client_id);
 		goto done;
@@ -735,12 +726,56 @@ int wfd_client_handler_deinit(wfd_manager_s *manager)
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
 }
-#if 0
-#if !defined TIZEN_TV
+
+static int __wfd_cynara_check(int client_sock, const char *privilege)
+{
+	__WDS_LOG_FUNC_ENTER__;
+
+	cynara *p_cynara;
+	char *client_session = "";
+	char *clientSmack;
+	char *uid;
+	int ret = CYNARA_API_SUCCESS;
+
+	ret = cynara_initialize(&p_cynara, NULL);
+	if (ret == CYNARA_API_SUCCESS) {
+		WDS_LOGD("cynara handle is successfully initialized.");
+	} else {
+		WDS_LOGE("Failed to initialize cynara handle");
+		return ret;
+	}
+
+	ret =  cynara_creds_socket_get_client(client_sock, CLIENT_METHOD_SMACK, &clientSmack);
+	if (ret == CYNARA_API_SUCCESS) {
+		WDS_LOGE("cynara cred is successfully initialized.");
+	} else {
+		WDS_LOGE("Failed to initialize cynara cred");
+		cynara_finish(p_cynara);
+		return ret;
+	}
+
+	ret =  cynara_creds_socket_get_user(client_sock, USER_METHOD_UID, &uid);
+	if (ret == CYNARA_API_SUCCESS) {
+		WDS_LOGE("cynara UID is successfully initialized.");
+	} else {
+		WDS_LOGE("Failed to initialize cynara UID");
+		free(clientSmack);
+		cynara_finish(p_cynara);
+		return ret;
+	}
+
+	ret = cynara_check(p_cynara, clientSmack, client_session, uid, privilege);
+	free(uid);
+	free(clientSmack);
+	cynara_finish(p_cynara);
+
+	return ret;
+}
+
 static int _wfd_check_client_privilege(int client_sock, int cmd)
 {
 	__WDS_LOG_FUNC_ENTER__;
-	int ret = SECURITY_SERVER_API_ERROR_ACCESS_DENIED;
+	int ret = 0;
 
 	switch (cmd) {
 	case WIFI_DIRECT_CMD_ACTIVATE:
@@ -783,8 +818,7 @@ static int _wfd_check_client_privilege(int client_sock, int cmd)
 	case WIFI_DIRECT_CMD_REGISTER_SERVICE:
 	case WIFI_DIRECT_CMD_DEREGISTER_SERVICE:
 #endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
-		ret = security_server_check_privilege_by_sockfd(client_sock, "wifi-direct::admin", "rw");
-		break;
+
 	case WIFI_DIRECT_CMD_START_DISCOVERY:
 	case WIFI_DIRECT_CMD_START_DISCOVERY_SPECIFIC_CHANNEL:
 	case WIFI_DIRECT_CMD_CANCEL_DISCOVERY:
@@ -793,8 +827,7 @@ static int _wfd_check_client_privilege(int client_sock, int cmd)
 	case WIFI_DIRECT_CMD_START_SERVICE_DISCOVERY:
 	case WIFI_DIRECT_CMD_CANCEL_SERVICE_DISCOVERY:
 #endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
-		ret = security_server_check_privilege_by_sockfd(client_sock, "wifi-direct::discover", "w");
-		break;
+
 	case WIFI_DIRECT_CMD_REGISTER:
 	case WIFI_DIRECT_CMD_DEREGISTER:
 	case WIFI_DIRECT_CMD_INIT_ASYNC_SOCKET:
@@ -820,6 +853,7 @@ static int _wfd_check_client_privilege(int client_sock, int cmd)
 	case WIFI_DIRECT_CMD_IS_AUTOCONNECTION_MODE:
 	case WIFI_DIRECT_CMD_GET_PEER_INFO:
 	case WIFI_DIRECT_CMD_GET_PASSPHRASE:
+
 #ifdef TIZEN_FEATURE_WIFI_DISPLAY
 	case WIFI_DIRECT_CMD_GET_PEER_DISPLAY_TYPE:
 	case WIFI_DIRECT_CMD_GET_PEER_DISPLAY_AVAILABILITY:
@@ -827,23 +861,20 @@ static int _wfd_check_client_privilege(int client_sock, int cmd)
 	case WIFI_DIRECT_CMD_GET_PEER_DISPLAY_PORT:
 	case WIFI_DIRECT_CMD_GET_PEER_DISPLAY_THROUGHPUT:
 #endif /* TIZEN_FEATURE_WIFI_DISPLAY */
-        ret = security_server_check_privilege_by_sockfd(client_sock, "wifi-direct::info", "r");
-		break;
+
 	case WIFI_DIRECT_CMD_SET_REQ_WPS_MODE:
-        ret = security_server_check_privilege_by_sockfd(client_sock, "wifi-direct::info", "rw");
-		break;
 	case WIFI_DIRECT_CMD_SET_AUTOCONNECTION_MODE:
-        ret = security_server_check_privilege_by_sockfd(client_sock, "wifi-direct::native", "rw");
+        ret = __wfd_cynara_check(client_sock, "http://tizen.org/privilege/wifidirect");
 		break;
 	default:
 		WDS_LOGE("Unknown command[%d]", cmd);
 		break;
 	}
 
-	if(ret == SECURITY_SERVER_API_SUCCESS) {
+	if(ret == CYNARA_API_ACCESS_ALLOWED) {
 		WDS_LOGD("Security Server: API Access Validation Success");
 		return WIFI_DIRECT_ERROR_NONE;
-	} else if(ret == SECURITY_SERVER_API_ERROR_ACCESS_DENIED) {
+	} else if(ret == CYNARA_API_ACCESS_DENIED) {
 		WDS_LOGE("Access denied to client id [%d]", client_sock);
 		return WIFI_DIRECT_ERROR_PERMISSION_DENIED;
 	} else {
@@ -851,8 +882,7 @@ static int _wfd_check_client_privilege(int client_sock, int cmd)
 		return WIFI_DIRECT_ERROR_AUTH_FAILED;
 	}
 }
-#endif
-#endif
+
 static gboolean wfd_client_process_request(GIOChannel *source,
 									GIOCondition condition,
 									gpointer user_data)
@@ -890,16 +920,12 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 	rsp.cmd = req.cmd;
 	rsp.client_id = req.client_id;
 	rsp.result = WIFI_DIRECT_ERROR_NONE;
-#if 0
-#if !defined TIZEN_TV
-	/*FixMe: Tizen TV Plardorm return the "ACCESS DENIED" error
-	Ignore the check for now*/
+
 	if (_wfd_check_client_privilege(sock, req.cmd) != WIFI_DIRECT_ERROR_NONE) {
 		rsp.result = WIFI_DIRECT_ERROR_AUTH_FAILED;
 		goto send_response;
 	}
-#endif
-#endif
+
 	switch (req.cmd) {
 	case WIFI_DIRECT_CMD_DEREGISTER:	// manager
 		_wfd_send_to_client(sock, (char*) &rsp, sizeof(rsp));
