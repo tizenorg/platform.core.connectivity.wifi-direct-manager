@@ -29,13 +29,21 @@
 #define __WIFI_DIRECT_MANAGER_H__
 
 #define DEFAULT_DEVICE_NAME "Tizen_Device"
-#define DEFAULT_IFNAME "p2p0"
-#if defined TIZEN_TV
-#	define GROUP_IFNAME "p2p0"
-#else
-#	define GROUP_IFNAME "p2p-wlan0-0"
+
+#if defined TIZEN_MOBILE
+#define DEFAULT_IFNAME "wlan0"
+#define GROUP_IFNAME "p2p-wlan0-0"
 #endif
 
+#if defined TIZEN_WIFI_MODULE_BUNDLE
+#define DEFAULT_IFNAME "wlan0"
+#define GROUP_IFNAME "wlan0"
+#endif
+
+#if 0
+#define DEFAULT_IFNAME "p2p0"
+#define GROUP_IFNAME "p2p0"
+#endif
 
 #define WFD_MAX_CLIENT 16
 #define WFD_MAX_STATION 8

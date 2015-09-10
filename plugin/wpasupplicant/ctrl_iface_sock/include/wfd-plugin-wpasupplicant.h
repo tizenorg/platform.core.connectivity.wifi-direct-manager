@@ -74,28 +74,43 @@
 #define IP2SECSTR(a) (a)[0], (a)[3]
 #define IPSECSTR "%d..%d"
 
-#if !defined TIZEN_TV
-#define DEFAULT_MAC_FILE_PATH "/opt/etc/.mac.info"
-#else
-#define DEFAULT_MAC_FILE_PATH "/sys/class/net/p2p0/address"
-#endif
-
 #define SOCK_FD_MIN 3
 #define GLOBAL_INTF_PATH "/tmp/wpa_ctrl_global"
 #define SUPPL_GLOBAL_INTF_PATH "/var/run/wpa_global"
 #define SUPPL_IFACE_PATH "/var/run/wpa_supplicant/"
 #define SUPPL_GROUP_IFACE_PATH "/var/run/wpa_supplicant/"
 
-#if defined TIZEN_TV
-/*For TIZEN TV Platform*/
-#define COMMON_IFACE_NAME "p2p0"
-#define GROUP_IFACE_NAME "p2p0"
-#define GROUP_IFACE_PREFIX "p2p"
-#else /*TIZEN_TV*/
+#if defined TIZEN_MOBILE
+#define DEFAULT_MAC_FILE_PATH "/opt/etc/.mac.info"
+#endif
+
+#if defined TIZEN_WIFI_MODULE_BUNDLE
+#define DEFAULT_MAC_FILE_PATH "/sys/class/net/wlan0/address"
+#endif
+
+#if 0
+#define DEFAULT_MAC_FILE_PATH "/sys/class/net/p2p0/address"
+#endif
+
+#if defined TIZEN_MOBILE
 #define COMMON_IFACE_NAME "wlan0"
 #define GROUP_IFACE_NAME "p2p-wlan0-0"
 #define GROUP_IFACE_PREFIX "p2p-wlan0-"
-#endif /*TIZEN_TV*/
+#endif
+
+#if defined TIZEN_WIFI_MODULE_BUNDLE
+#define COMMON_IFACE_NAME "wlan0"
+#define GROUP_IFACE_NAME "wlan0"
+#define GROUP_IFACE_PREFIX "wlan"
+#endif
+
+#if 0
+#define COMMON_IFACE_NAME "p2p0"
+#define DEFAULT_CONFIG_METHOD "push_button"
+#define DEFAULT_NO_GROUP_IFACE 0
+#define GROUP_IFACE_NAME "p2p0"
+#define GROUP_IFACE_PREFIX "p2p"
+#endif
 
 #define WS_POLL_TIMEOUT 5000
 #define WS_CONN_RETRY_COUNT 10

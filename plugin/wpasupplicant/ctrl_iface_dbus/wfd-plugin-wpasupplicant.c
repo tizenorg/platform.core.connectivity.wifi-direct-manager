@@ -2309,7 +2309,7 @@ static int _ws_reset_plugin(ws_dbus_plugin_data_s *f_pd)
 	return 0;
 }
 
-
+#if 0
 static int __ws_check_net_interface(char* if_name)
 {
 	struct ifreq ifr;
@@ -2347,7 +2347,7 @@ static int __ws_check_net_interface(char* if_name)
 	}
 	return 0;
 }
-
+#endif
 int ws_init(wfd_oem_event_cb callback, void *user_data)
 {
 	__WDP_LOG_FUNC_ENTER__;
@@ -2424,7 +2424,7 @@ gboolean _ws_util_execute_file(const char *file_path,
 	WDP_LOGE("failed to fork (%s)", strerror(errno));
 	return FALSE;
 }
-
+#if 0
 static int __ws_p2p_firmware_start(void)
 {
 	GError *error = NULL;
@@ -2532,7 +2532,7 @@ static int __ws_p2p_firmware_stop(void)
 	g_object_unref(connection);
 	return 0;
 }
-
+#endif
 
 static int __ws_p2p_supplicant_start(void)
 {
@@ -2844,7 +2844,7 @@ int ws_activate(int concurrent)
 		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
-
+#if 0
 	while (retry_count < WS_CONN_RETRY_COUNT) {
 		/* load wlan driver */
 		if(concurrent == 0)
@@ -2864,7 +2864,7 @@ int ws_activate(int concurrent)
 			break;
 		}
 	}
-
+#endif
 	if (retry_count >= WS_CONN_RETRY_COUNT) {
 		WDP_LOGE("Driver loading is failed", res);
 		__WDP_LOG_FUNC_EXIT__;
@@ -2882,8 +2882,10 @@ int ws_activate(int concurrent)
 	if (res < 0) {
 		res = __ws_p2p_supplicant_stop();
 		WDP_LOGI("[/usr/sbin/p2p_supp.sh stop] returns %d", res);
+#if 0
 		res = __ws_p2p_firmware_stop();
 		WDP_LOGI("P2P firmware stopped with error %d", res);
+#endif
 		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
@@ -2919,9 +2921,10 @@ int ws_deactivate(int concurrent)
 	if(concurrent == 0) {
 		res = __ws_p2p_supplicant_stop();
 		WDP_LOGI("[/usr/sbin/p2p_supp.sh stop] returns %d", res);
-
+#if 0
 		res = __ws_p2p_firmware_stop();
 		WDP_LOGI("P2P firmware stopped with error %d", res);
+#endif
 	}
 	g_pd->activated = FALSE;
 

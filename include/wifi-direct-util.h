@@ -28,11 +28,18 @@
 #ifndef __WIFI_DIRECT_UTIL_H__
 #define __WIFI_DIRECT_UTIL_H__
 
-#if !defined TIZEN_TV
+#if defined TIZEN_MOBILE
 #define DEFAULT_MAC_FILE_PATH "/opt/etc/.mac.info"
-#else
+#endif
+
+#if defined TIZEN_WIFI_MODULE_BUNDLE
+#define DEFAULT_MAC_FILE_PATH "/sys/class/net/wlan0/address"
+#endif
+
+#if 0
 #define DEFAULT_MAC_FILE_PATH "/sys/class/net/p2p0/address"
 #endif
+
 #define MAC2STR(a) (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
 #define MACSTR "%02x:%02x:%02x:%02x:%02x:%02x"
 #define IP2STR(a) (a)[0], (a)[1], (a)[2], (a)[3]

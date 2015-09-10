@@ -40,29 +40,22 @@
 #define IPSECSTR "%d..%d"
 #define OBJECT_PATH_MAX 150
 
-#if !defined TIZEN_TV
+#if defined TIZEN_MOBILE
 #define DEFAULT_MAC_FILE_PATH "/opt/etc/.mac.info"
 #define CONF_FILE_PATH "/etc/wpa_supplicant/wpa_supplicant.conf"
-#else
+#endif
+
+#if defined TIZEN_WIFI_MODULE_BUNDLE
+#define DEFAULT_MAC_FILE_PATH "/sys/class/net/wlan0/address"
+#define CONF_FILE_PATH "/etc/wpa_supplicant/wpa_supplicant.conf"
+#endif
+
+#if 0
 #define DEFAULT_MAC_FILE_PATH "/sys/class/net/p2p0/address"
 #define CONF_FILE_PATH "/opt/etc/p2p_supp.conf"
 #endif
 
-#if defined TIZEN_TV /*For TIZEN TV Platform*/
-#define COMMON_IFACE_NAME "p2p0"
-#define GROUP_IFACE_NAME "p2p0"
-#define GROUP_IFACE_PREFIX "p2p"
-#define PRIMARY_DEVICE_TYPE "\x00\x07\x00\x50\xf2\x04\x00\x01"
-#define DEFAULT_DEVICE_NAME "[TV]Tizen"
-#define DEFAULT_GO_INTENT 7
-#define DEFAULT_PERSISTENT_RECONNECT 1
-#define DEFAULT_LISTEN_REG_CLASS 81
-#define DEFAULT_LISTEN_CHANNEL 1
-#define DEFAULT_OPER_REG_CLASS 115
-#define DEFAULT_OPER_CHANNEL 48
-#define DEFAULT_CONFIG_METHOD "keypad virtual_push_button physical_display"
-#define DEFAULT_NO_GROUP_IFACE 1
-#else /*TIZEN_TV*/
+#if defined TIZEN_MOBILE
 #define COMMON_IFACE_NAME "wlan0"
 #define GROUP_IFACE_NAME "p2p-wlan0-0"
 #define GROUP_IFACE_PREFIX "p2p-wlan0-"
@@ -76,7 +69,44 @@
 #define DEFAULT_OPER_CHANNEL 1
 #define DEFAULT_CONFIG_METHOD "push_button"
 #define DEFAULT_NO_GROUP_IFACE 0
-#endif /*TIZEN_TV*/
+#endif
+
+#if defined TIZEN_WIFI_MODULE_BUNDLE
+#define COMMON_IFACE_NAME "wlan0"
+#define GROUP_IFACE_NAME "wlan0"
+#define GROUP_IFACE_PREFIX "wlan"
+#endif
+
+#if defined TIZEN_TV
+#define PRIMARY_DEVICE_TYPE "\x00\x07\x00\x50\xf2\x04\x00\x01"
+#define DEFAULT_DEVICE_NAME "[TV]Tizen"
+#define DEFAULT_GO_INTENT 7
+#define DEFAULT_PERSISTENT_RECONNECT 1
+#define DEFAULT_LISTEN_REG_CLASS 81
+#define DEFAULT_LISTEN_CHANNEL 1
+#define DEFAULT_OPER_REG_CLASS 81
+#define DEFAULT_OPER_CHANNEL 1
+#define DEFAULT_CONFIG_METHOD "keypad virtual_push_button physical_display"
+#define DEFAULT_NO_GROUP_IFACE 1
+#endif
+
+#if 0
+#define COMMON_IFACE_NAME "p2p0"
+#define DEFAULT_CONFIG_METHOD "push_button"
+#define DEFAULT_NO_GROUP_IFACE 0
+#define GROUP_IFACE_NAME "p2p0"
+#define GROUP_IFACE_PREFIX "p2p"
+#define PRIMARY_DEVICE_TYPE "\x00\x07\x00\x50\xf2\x04\x00\x01"
+#define DEFAULT_DEVICE_NAME "[TV]Tizen"
+#define DEFAULT_GO_INTENT 7
+#define DEFAULT_PERSISTENT_RECONNECT 1
+#define DEFAULT_LISTEN_REG_CLASS 81
+#define DEFAULT_LISTEN_CHANNEL 1
+#define DEFAULT_OPER_REG_CLASS 115
+#define DEFAULT_OPER_CHANNEL 48
+#define DEFAULT_CONFIG_METHOD "keypad virtual_push_button physical_display"
+#define DEFAULT_NO_GROUP_IFACE 1
+#endif
 
 #define DEFAULT_IP_GO "\xc0\xa8\x31\x01"
 #define DEFAULT_IP_MASK "\xff\xff\xff\x00"
