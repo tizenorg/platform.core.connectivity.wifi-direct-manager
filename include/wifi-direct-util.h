@@ -36,7 +36,7 @@
 #define DEFAULT_MAC_FILE_PATH "/sys/class/net/wlan0/address"
 #endif
 
-#if 0
+#ifndef DEFAULT_MAC_FILE_PATH
 #define DEFAULT_MAC_FILE_PATH "/sys/class/net/p2p0/address"
 #endif
 

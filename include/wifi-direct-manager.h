@@ -40,8 +40,11 @@
 #define GROUP_IFNAME "wlan0"
 #endif
 
-#if 0
+#ifndef DEFAULT_IFNAME
 #define DEFAULT_IFNAME "p2p0"
+#endif
+
+#ifndef GROUP_IFNAME
 #define GROUP_IFNAME "p2p0"
 #endif
 

@@ -88,7 +88,7 @@
 #define DEFAULT_MAC_FILE_PATH "/sys/class/net/wlan0/address"
 #endif
 
-#if 0
+#ifndef DEFAULT_MAC_FILE_PATH
 #define DEFAULT_MAC_FILE_PATH "/sys/class/net/p2p0/address"
 #endif
 
@@ -104,11 +104,15 @@
 #define GROUP_IFACE_PREFIX "wlan"
 #endif
 
-#if 0
+#ifndef COMMON_IFACE_NAME
 #define COMMON_IFACE_NAME "p2p0"
-#define DEFAULT_CONFIG_METHOD "push_button"
-#define DEFAULT_NO_GROUP_IFACE 0
+#endif
+
+#ifndef GROUP_IFACE_NAME
 #define GROUP_IFACE_NAME "p2p0"
+#endif
+
+#ifndef GROUP_IFACE_PREFIX
 #define GROUP_IFACE_PREFIX "p2p"
 #endif
 
