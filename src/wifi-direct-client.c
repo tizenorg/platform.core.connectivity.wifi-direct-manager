@@ -1960,7 +1960,7 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 				if(miracast_enable) {
 					manager->local->display.type = WIFI_DISPLAY_DEFAULT_TYPE;
 					manager->local->display.port = WIFI_DISPLAY_DEFAULT_PORT;
-					manager->local->display.availablity = WIFI_DISPLAY_DEFAULT_AVAIL;
+					manager->local->display.availability = WIFI_DISPLAY_DEFAULT_AVAIL;
 					manager->local->display.hdcp_support = WIFI_DISPLAY_DEFAULT_HDCP;
 					manager->local->display.max_tput = WIFI_DISPLAY_DEFAULT_TPUT;
 				} else {
@@ -2020,7 +2020,7 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 			} else {
 				device->display.type = WIFI_DISPLAY_DEFAULT_TYPE;
 				device->display.port = WIFI_DISPLAY_DEFAULT_PORT;
-				device->display.availablity = WIFI_DISPLAY_DEFAULT_AVAIL;
+				device->display.availability = WIFI_DISPLAY_DEFAULT_AVAIL;
 				device->display.hdcp_support = WIFI_DISPLAY_DEFAULT_HDCP;
 				device->display.max_tput = WIFI_DISPLAY_DEFAULT_TPUT;
 			}
@@ -2106,7 +2106,7 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 
 		peer = wfd_manager_get_peer_by_addr(manager, req.data.mac_addr);
 		if(peer) {
-			rsp.param1 = peer->display.availablity;
+			rsp.param1 = peer->display.availability;
 		} else {
 			WDS_LOGE("Failed to get peer");
 			rsp.result = WIFI_DIRECT_ERROR_INVALID_PARAMETER;

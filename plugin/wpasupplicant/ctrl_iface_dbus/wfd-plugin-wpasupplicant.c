@@ -460,14 +460,14 @@ static int __parsing_wfd_info(unsigned char *wfd_dev_info,
 	if (wfd_info & WS_WFD_INFO_SECONDARY_SINK)
 		display->type |= WS_WFD_INFO_SECONDARY_SINK;
 
-	display->availablity = (wfd_info & WS_WFD_INFO_AVAILABLITY) >> 4;
+	display->availability = (wfd_info & WS_WFD_INFO_AVAILABILITY) >> 4;
 	display->hdcp_support = (wfd_info & WS_WFD_INFO_HDCP_SUPPORT) >> 8;
 
 	display->port = (wfd_dev_info[5]<<8 | wfd_dev_info[6]);
 	display->max_tput = (wfd_dev_info[7]<<8 | wfd_dev_info[8]);
 
-	WDP_LOGD("type [%d],availablity [%d],hdcp_support [%d],ctrl_port [%d] "
-			"max_tput[%d]", display->type, display->availablity,
+	WDP_LOGD("type [%d],availability [%d],hdcp_support [%d],ctrl_port [%d] "
+			"max_tput[%d]", display->type, display->availability,
 			display->hdcp_support, display->port,display->max_tput);
 
 	__WDP_LOG_FUNC_EXIT__;
@@ -4887,7 +4887,7 @@ int ws_miracast_init(int enable)
 
 	memset(&wifi_display, 0x0, sizeof(wfd_oem_display_s));
 
-	wifi_display.availablity = enable;
+	wifi_display.availability = enable;
 	wifi_display.hdcp_support = 1;
 	wifi_display.port = 0x07E6;
 	wifi_display.max_tput = 0x0028;
@@ -4940,7 +4940,7 @@ int ws_set_display(wfd_oem_display_s *wifi_display)
 
 	ies[2] = WFD_SUBELEM_LEN_DEV_INFO;
 	ies[3] = wifi_display->hdcp_support;
-	ies[4] = (wifi_display->type) | (wifi_display->availablity<<4);
+	ies[4] = (wifi_display->type) | (wifi_display->availability<<4);
 	ies[5] = wifi_display->port>>8;
 	ies[6] = wifi_display->port&0xff;
 	ies[7] = wifi_display->max_tput>>8;

@@ -839,7 +839,7 @@ int wfd_session_process_event(wfd_manager_s *manager, wfd_oem_event_s *event)
 				res = wfd_session_connect(session);
 			} else {
 				/* In autoconnection mode, MT should not send GO Nego Req
-				   before receving the GO Nego Req from peer (MO). */
+				   before receiving the GO Nego Req from peer (MO). */
 				if (manager->autoconnection == TRUE)
 					res  = wfd_session_connect(session);
 			}
