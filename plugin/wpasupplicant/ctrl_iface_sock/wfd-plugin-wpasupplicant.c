@@ -247,7 +247,12 @@ static wfd_oem_ops_s supplicant_ops = {
 #endif /* TIZEN_FEATURE_WIFI_DISPLAY */
 
 	.refresh = ws_refresh,
-
+#if defined(TIZEN_FEATURE_ASP)
+	.asp_serv_add = ws_asp_serv_add,
+	.asp_serv_del = ws_asp_serv_del,
+	.asp_serv_seek = ws_asp_serv_seek,
+	.asp_serv_seek_cancel = ws_asp_serv_seek_cancel,
+#endif /* TIZEN_FEATURE_ASP */
 	};
 
 static ws_plugin_data_s *g_pd;
@@ -1745,30 +1750,8 @@ static int _ws_segment_to_service(char *segment, wfd_oem_new_service_s **service
 		WDP_LOGD("RData: %s", serv_tmp->data.bonjour.rdata);
 	} else if (serv_tmp->protocol == WFD_OEM_SERVICE_TYPE_VENDOR) {
 		WDP_LOGD("===== Vendor specific service =====");
-		if (!strncmp(ptr, "0000f00b", 8)) {
-			WDP_LOGD("\tSAMSUNG_BT_ADDR");
-			ptr += 16;
-			serv_tmp->protocol = WFD_OEM_SERVICE_TYPE_BT_ADDR;
-			serv_tmp->data.vendor.data1 = (char*) g_try_malloc0(9);
-			if (!serv_tmp->data.vendor.data1) {
-				WDP_LOGE("Failed to allocate memory for data.vendor.data1");
-				g_free(serv_tmp);
-				return -1;
-			}
-			g_strlcpy(serv_tmp->data.vendor.data1, "0000f00b", 9);
-			serv_tmp->data.vendor.data2 = (char*) g_try_malloc0(18);
-			if (!serv_tmp->data.vendor.data2) {
-				WDP_LOGE("Failed to allocate memory for data.vendor.data2");
-				g_free(serv_tmp->data.vendor.data1);
-				g_free(serv_tmp);
-				return -1;
-			}
-			_ws_hex_to_txt(ptr, 0, serv_tmp->data.vendor.data2);
-		}
-		WDP_LOGD("Info1: %s", serv_tmp->data.vendor.data1);
-		WDP_LOGD("Info2: %s", serv_tmp->data.vendor.data2);
 	} else {
-		WDP_LOGE("Not supported yet. Only bonjour and samsung vendor service supproted [%d]",
+		WDP_LOGE("Not supported yet. Only bonjour service supproted [%d]",
 					serv_tmp->protocol);
 		g_free(serv_tmp);
 		return -1;
@@ -4171,16 +4154,6 @@ int ws_start_service_discovery(unsigned char *mac_addr, int service_type)
 			g_snprintf(cmd, sizeof(cmd), WS_CMD_SERV_DISC_REQ " %s %s", mac_str, SERV_DISC_REQ_UPNP);
 			g_strlcpy(service->service_type, SERV_DISC_REQ_UPNP, OEM_SERVICE_TYPE_LEN + 1);
 		break;
-		case WFD_OEM_SERVICE_TYPE_BT_ADDR:
-			strncat(query, SERVICE_TYPE_BT_ADDR, OEM_SERVICE_TYPE_LEN);
-			g_snprintf(cmd, sizeof(cmd), WS_CMD_SERV_DISC_REQ " %s %s", mac_str, query);
-			g_strlcpy(service->service_type, SERVICE_TYPE_BT_ADDR, OEM_SERVICE_TYPE_LEN + 1);
-			break;
-		case WFD_OEM_SERVICE_TYPE_CONTACT_INFO:
-			strncat(query, SERVICE_TYPE_CONTACT_INFO, OEM_SERVICE_TYPE_LEN);
-			g_snprintf(cmd, sizeof(cmd), WS_CMD_SERV_DISC_REQ " %s %s", mac_str, query);
-			g_strlcpy(service->service_type, SERVICE_TYPE_CONTACT_INFO, OEM_SERVICE_TYPE_LEN + 1);
-			break;
 		default:
 			WDP_LOGE("Invalid Service type");
 			__WDP_LOG_FUNC_EXIT__;
@@ -4255,12 +4228,6 @@ int ws_cancel_service_discovery(unsigned char *mac_addr, int service_type)
 		case WFD_OEM_SERVICE_TYPE_UPNP:
 			g_strlcpy(s_type, SERV_DISC_REQ_UPNP, OEM_SERVICE_TYPE_LEN + 1);
 		break;
-		case WFD_OEM_SERVICE_TYPE_BT_ADDR:
-			g_strlcpy(s_type, SERVICE_TYPE_BT_ADDR, OEM_SERVICE_TYPE_LEN + 1);
-			break;
-		case WFD_OEM_SERVICE_TYPE_CONTACT_INFO:
-			g_strlcpy(s_type, SERVICE_TYPE_CONTACT_INFO, OEM_SERVICE_TYPE_LEN + 1);
-			break;
 		default:
 			__WDP_LOG_FUNC_EXIT__;
 			WDP_LOGE("Invalid Service type");
@@ -4691,3 +4658,36 @@ int ws_refresh()
 	__WDP_LOG_FUNC_EXIT__;
 	return 0;
 }
+#if defined(TIZEN_FEATURE_ASP)
+int ws_asp_serv_add(wfd_oem_asp_service *service)
+{
+	__WDP_LOG_FUNC_ENTER__;
+
+	__WDP_LOG_FUNC_EXIT__;
+	return -1;
+}
+
+int ws_asp_serv_del(wfd_oem_asp_service *service)
+{
+	__WDP_LOG_FUNC_ENTER__;
+
+	__WDP_LOG_FUNC_EXIT__;
+	return -1;
+}
+
+int ws_asp_serv_seek(wfd_oem_asp_service *service)
+{
+	__WDP_LOG_FUNC_ENTER__;
+
+	__WDP_LOG_FUNC_EXIT__;
+	return -1;
+}
+
+int ws_asp_serv_seek_cancel(wfd_oem_asp_service *service)
+{
+	__WDP_LOG_FUNC_ENTER__;
+
+	__WDP_LOG_FUNC_EXIT__;
+	return -1;
+}
+#endif /* TIZEN_FEATURE_ASP */
