@@ -67,7 +67,7 @@
 #define DEFAULT_LISTEN_CHANNEL 1
 #define DEFAULT_OPER_REG_CLASS 81
 #define DEFAULT_OPER_CHANNEL 1
-#define DEFAULT_CONFIG_METHOD "push_button"
+#define DEFAULT_CONFIG_METHOD "display push_button keypad p2ps"
 #define DEFAULT_NO_GROUP_IFACE 0
 #endif
 
@@ -86,7 +86,7 @@
 #define DEFAULT_LISTEN_CHANNEL 1
 #define DEFAULT_OPER_REG_CLASS 81
 #define DEFAULT_OPER_CHANNEL 1
-#define DEFAULT_CONFIG_METHOD "keypad virtual_push_button physical_display"
+#define DEFAULT_CONFIG_METHOD "display push_button keypad p2ps"
 #define DEFAULT_NO_GROUP_IFACE 1
 #endif
 
@@ -104,7 +104,7 @@
 #define DEFAULT_LISTEN_CHANNEL 1
 #define DEFAULT_OPER_REG_CLASS 115
 #define DEFAULT_OPER_CHANNEL 48
-#define DEFAULT_CONFIG_METHOD "keypad virtual_push_button physical_display"
+#define DEFAULT_CONFIG_METHOD "display push_button keypad p2ps"
 #define DEFAULT_NO_GROUP_IFACE 1
 #endif
 
@@ -132,9 +132,7 @@
 #define WS_MAX_SERVICE_LEN 1024
 #define SERVICE_QUERY_LEN 4
 
-#define SERVICE_TYPE_BT_ADDR "0000f00b"
 #define SERVICE_TYPE_ALL "0000f00c"
-#define SERVICE_TYPE_CONTACT_INFO "0000f00d"
 #define SERV_BROADCAST_ADDRESS "00:00:00:00:00:00"
 
 #define WS_QTYPE_PTR 0x0c
@@ -153,6 +151,9 @@
 #define WS_DBUS_STR_PBC "pbc"
 #define WS_DBUS_STR_DISPLAY "display"
 #define WS_DBUS_STR_KEYPAD "keypad"
+#if defined(TIZEN_FEATURE_ASP)
+#define WS_DBUS_STR_P2PS "p2ps"
+#endif /* TIZEN_FEATURE_ASP */
 #define WS_DBUS_STR_JOIN "join"
 #define WS_DBUS_STR_AUTH "auth"
 #define WS_DBUS_STR_PERSISTENT "persistent"
@@ -431,5 +432,12 @@ int ws_set_display(wfd_oem_display_s *wifi_display);
 #endif /* TIZEN_FEATURE_WIFI_DISPLAY */
 
 int ws_refresh();
+
+#if defined(TIZEN_FEATURE_ASP)
+int ws_asp_serv_add(wfd_oem_asp_service *service);
+int ws_asp_serv_del(wfd_oem_asp_service *service);
+int ws_asp_serv_seek(wfd_oem_asp_service *service);
+int ws_asp_serv_seek_cancel(wfd_oem_asp_service *service);
+#endif /* TIZEN_FEATURE_ASP */
 
 #endif /* __WFD_PLUGIN_WPASUPPLICANT_H__ */

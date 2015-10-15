@@ -450,3 +450,41 @@ int wfd_oem_refresh(wfd_oem_ops_s *ops)
 
 	return ops->refresh();
 }
+#if defined(TIZEN_FEATURE_ASP)
+int wfd_oem_asp_serv_add(wfd_oem_ops_s *ops, wfd_oem_asp_service *service)
+{
+	if (!ops || !ops->asp_serv_add) {
+		return -1;
+	}
+
+	return ops->asp_serv_add(service);
+}
+
+int wfd_oem_asp_serv_del(wfd_oem_ops_s *ops, wfd_oem_asp_service *service)
+{
+	if (!ops || !ops->asp_serv_del) {
+		return -1;
+	}
+
+	return ops->asp_serv_del(service);
+}
+
+
+int wfd_oem_seek_service(wfd_oem_ops_s *ops, wfd_oem_asp_service *service)
+{
+	if (!ops || !ops->asp_serv_seek) {
+		return -1;
+	}
+
+	return ops->asp_serv_seek(service);
+}
+
+int wfd_oem_cancel_seek_service(wfd_oem_ops_s *ops, wfd_oem_asp_service *service)
+{
+	if (!ops || !ops->asp_serv_seek_cancel) {
+		return -1;
+	}
+
+	return ops->asp_serv_seek_cancel(service);
+}
+#endif /* TIZEN_FEATURE_ASP */

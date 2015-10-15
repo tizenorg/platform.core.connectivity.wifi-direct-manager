@@ -131,4 +131,11 @@ int ws_set_display(wfd_oem_display_s *wifi_display);
 
 int ws_refresh();
 
+#if defined(TIZEN_FEATURE_ASP)
+int ws_asp_serv_add(wfd_oem_asp_service *service);
+int ws_asp_serv_del(wfd_oem_asp_service *service);
+int ws_asp_serv_seek(wfd_oem_asp_service *service);
+int ws_asp_serv_seek_cancel(wfd_oem_asp_service *service);
+#endif /* TIZEN_FEATURE_ASP */
+
 #endif /* __WFD_PLUGIN_WPASUPPLICANT_H__ */

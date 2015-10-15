@@ -1285,11 +1285,6 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 				g_snprintf(noti.param2, 256, "%s|%s", service->data.bonjour.query, service->data.bonjour.rdata);
 				WDS_LOGD("Found service: [%d: %s] - [" MACSECSTR "]", service->protocol,
 							service->data.bonjour.query, MAC2SECSTR(event->dev_addr));
-			} else if (service->protocol == WFD_OEM_SERVICE_TYPE_BT_ADDR) {
-				g_snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(event->dev_addr));
-				g_snprintf(noti.param2, MACSTR_LEN, "%s", service->data.vendor.data2);
-				WDS_LOGD("Found service: [%d: %s] - [" MACSECSTR "]", service->protocol,
-							service->data.vendor.data2, MAC2SECSTR(event->dev_addr));
 			} else {
 				WDS_LOGD("Found service is not supported");
 				goto next;
@@ -1310,16 +1305,7 @@ next:
 		} else {
 			noti.type = edata->type;
 			g_snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(event->dev_addr));
-			switch(edata->type) {
-				case WFD_OEM_SERVICE_TYPE_BT_ADDR:
-					g_snprintf(noti.param2, MACSTR_LEN, MACSTR, MAC2STR(edata->data));
-					return;
-				case WFD_OEM_SERVICE_TYPE_CONTACT_INFO:
-					g_snprintf(noti.param2, MACSTR_LEN, "%s", edata->value);
-					return;
-				default:
-					WDS_LOGE("Unknown type [type ID: %d]", edata->type);
-			}
+			WDS_LOGE("Unknown type [type ID: %d]", edata->type);
 		}
 		wfd_client_send_event(manager, &noti);
 	}

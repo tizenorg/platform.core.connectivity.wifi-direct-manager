@@ -129,20 +129,13 @@
 #define WS_SCAN_RETRY_COUNT 10
 
 #ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
-#define BT_ADDR_PATH "/csa/bluetooth/.bd_addr"
 
 #define SERV_DISC_REQ_ALL "02000001"
 #define SERV_DISC_REQ_BONJOUR "02000101"
 #define SERV_DISC_REQ_UPNP "02000201"
 
-#define SAMSUNG_VENDOR_OUI "0000f0"
-#define SAMSUNG_SERVICE_BT "0b"
-#define SAMSUNG_SERVICE_CONTACT "0d"
 #define SAMSUNG_SERVICE_ALL "0c"
 
-#define SERVICE_TYPE_BT_ADDR "0000f00b"
-#define SERVICE_TYPE_ALL "0000f00c"
-#define SERVICE_TYPE_CONTACT_INFO "0000f00d"
 #define SERVICE_TYPE_LEN 8
 #define SERV_BROADCAST_ADDRESS "00:00:00:00:00:00"
 #endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
@@ -625,5 +618,12 @@ int ws_set_display(wfd_oem_display_s *wifi_display);
 #endif /* TIZEN_FEATURE_WIFI_DISPLAY */
 
 int ws_refresh();
+
+#if defined(TIZEN_FEATURE_ASP)
+int ws_asp_serv_add(wfd_oem_asp_service *service);
+int ws_asp_serv_del(wfd_oem_asp_service *service);
+int ws_asp_serv_seek(wfd_oem_asp_service *service);
+int ws_asp_serv_seek_cancel(wfd_oem_asp_service *service);
+#endif /* TIZEN_FEATURE_ASP */
 
 #endif /* __WFD_PLUGIN_WPASUPPLICANT_H__ */
