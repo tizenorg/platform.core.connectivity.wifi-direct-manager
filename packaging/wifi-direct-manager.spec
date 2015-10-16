@@ -1,6 +1,6 @@
 Name:		wifi-direct-manager
 Summary:	Wi-Fi Direct manger
-Version:	1.2.101
+Version:	1.2.102
 Release:	1
 Group:      Network & Connectivity/Wireless
 License:    Apache-2.0
@@ -107,7 +107,12 @@ cp %{_builddir}/%{buildsubdir}/LICENSE.APLv2 %{buildroot}%{_datadir}/license/%{n
 cp %{_builddir}/%{buildsubdir}/LICENSE.APLv2 %{buildroot}%{_datadir}/license/wifi-direct-plugin-wpasupplicant
 
 %post
+#TV profile uses default XU3 device which creates wlan interface only
+%if "%{profile}" == "tv"
+chmod 644 /usr/etc/wifi-direct/dhcpd.wlan.conf
+%else
 chmod 644 /usr/etc/wifi-direct/dhcpd.p2p.conf
+%endif
 chmod 755 /usr/bin/dhcpd-notify.sh
 chmod 755 /usr/etc/wifi-direct/udhcp_script.non-autoip
 chmod 755 /usr/bin/wifi-direct-server.sh
@@ -145,7 +150,12 @@ vconftool set -t string memory/private/wifi_direct_manager/p2p_ifname 0.0.0.0 -u
 %manifest wifi-direct-manager.manifest
 %defattr(-,root,root,-)
 %{_bindir}/wfd-manager
+#TV profile uses default XU3 device which creates wlan interface only
+%if "%{profile}" == "tv"
+/usr/etc/wifi-direct/dhcpd.wlan.conf
+%else
 /usr/etc/wifi-direct/dhcpd.p2p.conf
+%endif
 /usr/etc/wifi-direct/udhcp_script.non-autoip
 /usr/etc/wifi-direct/p2p_supp.conf
 /opt/etc/p2p_supp.conf
