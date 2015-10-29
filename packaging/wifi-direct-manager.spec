@@ -1,6 +1,6 @@
 Name:		wifi-direct-manager
 Summary:	Wi-Fi Direct manger
-Version:	1.2.101
+Version:	1.2.102
 Release:	1
 Group:      Network & Connectivity/Wireless
 License:    Apache-2.0
@@ -23,7 +23,6 @@ Requires:	net-tools
 #Requires:	tizen-coreutils
 Requires: toybox-symlinks-dhcpd
 Requires: toybox-symlinks-dhcp
-Requires(post):	/usr/bin/vconftool
 
 %description
 Wi-Fi Direct manager
@@ -113,14 +112,6 @@ chmod 755 /usr/etc/wifi-direct/udhcp_script.non-autoip
 chmod 755 /usr/bin/wifi-direct-server.sh
 chmod 755 /usr/bin/wifi-direct-dhcp.sh
 chmod 755 /usr/sbin/p2p_supp.sh
-
-vconftool set -t int memory/wifi_direct/state 0 -u 5000 -i -s system::vconf_network
-vconftool set -t int memory/private/wifi_direct_manager/dhcp_ip_lease 0 -i -s wifi_direct_manager
-vconftool set -t string memory/private/wifi_direct_manager/dhcpc_server_ip 0.0.0.0 -u 5000 -i
-vconftool set -t string memory/private/wifi_direct_manager/p2p_local_ip 0.0.0.0 -u 5000 -i
-vconftool set -t string memory/private/wifi_direct_manager/p2p_subnet_mask 0.0.0.0 -u 5000 -i
-vconftool set -t string memory/private/wifi_direct_manager/p2p_gateway 0.0.0.0 -u 5000 -i
-vconftool set -t string memory/private/wifi_direct_manager/p2p_ifname 0.0.0.0 -u 5000 -i
 
 %if "%{profile}" == "tv"
 	if [ ! -d /opt/var/lib/misc ]; then
