@@ -112,7 +112,7 @@ typedef enum {
 
 typedef struct {
 	int type;
-	int availablity;
+	int availability;
 	int wsd_support;
 	int tdls_support;
 	int hdcp_support;

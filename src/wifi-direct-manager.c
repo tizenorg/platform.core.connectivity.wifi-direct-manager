@@ -1052,7 +1052,7 @@ int wfd_manager_get_peer_info(wfd_manager_s *manager, unsigned char *addr, wfd_d
 	peer_info->subcategory = peer_dev->sec_dev_type;
 
 #ifdef TIZEN_FEATURE_WIFI_DISPLAY
-	if (peer_dev->display.availablity && peer_dev->display.port)
+	if (peer_dev->display.availability && peer_dev->display.port)
 		peer_info->is_wfd_device = 1;
 #endif /* TIZEN_FEATURE_WIFI_DISPLAY */
 
@@ -1137,7 +1137,7 @@ int wfd_manager_get_peers(wfd_manager_s *manager, wfd_discovery_entry_s **peers_
 		peers[count].subcategory = peer->sec_dev_type;
 
 #ifdef TIZEN_FEATURE_WIFI_DISPLAY
-		if (peer->display.availablity && peer->display.port)
+		if (peer->display.availability && peer->display.port)
 			peers[count].is_wfd_device = 1;
 #endif /* TIZEN_FEATURE_WIFI_DISPLAY */
 		count++;
@@ -1206,7 +1206,7 @@ int wfd_manager_get_connected_peers(wfd_manager_s *manager, wfd_connected_peer_i
 #endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
 
 #ifdef TIZEN_FEATURE_WIFI_DISPLAY
-			if (peer->display.availablity && peer->display.port)
+			if (peer->display.availability && peer->display.port)
 				peers[count].is_wfd_device = 1;
 
 #endif /* TIZEN_FEATURE_WIFI_DISPLAY */
@@ -1285,7 +1285,7 @@ int wfd_manager_set_display_device(int type, int port, int hdcp)
 	display.port = port;
 	display.hdcp_support = hdcp;
 
-	display.availablity = device->display.availablity;
+	display.availability = device->display.availability;
 	display.max_tput = device->display.max_tput;
 
 	res = wfd_oem_set_display(g_manager->oem_ops, (wfd_oem_display_s*)&display);
@@ -1317,7 +1317,7 @@ int wfd_manager_set_session_availability(int availability)
 
 	memset(&display, 0x0, sizeof(wfd_oem_display_s));
 
-	display.availablity = availability;
+	display.availability = availability;
 
 	display.type = device->display.type;
 	display.hdcp_support = device->display.hdcp_support;
@@ -1330,7 +1330,7 @@ int wfd_manager_set_session_availability(int availability)
 		return -1;
 	}
 
-	device->display.availablity = availability;
+	device->display.availability = availability;
 
 	__WDS_LOG_FUNC_EXIT__;
 	return res;

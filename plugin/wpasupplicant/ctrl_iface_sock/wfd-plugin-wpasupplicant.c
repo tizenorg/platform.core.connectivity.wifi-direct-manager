@@ -1168,7 +1168,7 @@ static int _parsing_wfd_info(char *msg, wfd_oem_display_s *display )
 	if (wfd_info & WS_WFD_INFO_SECONDARY_SINK)
 		display->type |= WS_WFD_INFO_SECONDARY_SINK;
 
-	display->availablity = (wfd_info & WS_WFD_INFO_AVAILABLITY) >> 4;
+	display->availability = (wfd_info & WS_WFD_INFO_AVAILABILITY) >> 4;
 	display->hdcp_support = (wfd_info & WS_WFD_INFO_HDCP_SUPPORT) >> 8;
 
 	strncpy(ctrl_port_msg, msg+4, 4);
@@ -1176,8 +1176,8 @@ static int _parsing_wfd_info(char *msg, wfd_oem_display_s *display )
 	strncpy(max_tput_msg, msg+8, 4);
 	display->max_tput =  strtoul(max_tput_msg, NULL, 16);
 
-	WDP_LOGE("type [%d],availablity [%d],hdcp_support [%d],ctrl_port [%d] max_tput[%d]",
-			display->type,display->availablity,display->hdcp_support,
+	WDP_LOGE("type [%d],availability [%d],hdcp_support [%d],ctrl_port [%d] max_tput[%d]",
+			display->type,display->availability,display->hdcp_support,
 			display->port,display->max_tput);
 
 	__WDP_LOG_FUNC_EXIT__;
@@ -4648,14 +4648,14 @@ int ws_set_display(wfd_oem_display_s *wifi_display)
 	}
 
 	WDP_LOGD("Wi-Fi Display type: [%d]", wifi_display->type);
-	WDP_LOGD("Wi-Fi Display avai: [%d]", wifi_display->availablity);
+	WDP_LOGD("Wi-Fi Display avai: [%d]", wifi_display->availability);
 	WDP_LOGD("Wi-Fi Display hdcp: [%d]", wifi_display->hdcp_support);
 	WDP_LOGD("Wi-Fi Display hdcp: [%d]", wifi_display->port);
 	WDP_LOGD("Wi-Fi Display sync: [%d]", wifi_display->max_tput);
 
 	device_info = wifi_display->type;
 	device_info+= (wifi_display->hdcp_support)<<8;
-	device_info+= (wifi_display->availablity)<<4;						//for availability bit
+	device_info+= (wifi_display->availability)<<4;						//for availability bit
 
 	g_snprintf(cmd, sizeof(cmd), WS_CMD_SUBELEM_SET "%d %04x%04x%04x%04x",
 							WFD_SUBELM_ID_DEV_INFO, WFD_SUBELEM_LEN_DEV_INFO,
