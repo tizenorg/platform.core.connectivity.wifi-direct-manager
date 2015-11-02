@@ -89,7 +89,7 @@ INSTALL(FILES ${CMAKE_SOURCE_DIR}/files/common/persistent-peer DESTINATION /opt/
 IF(TIZEN_WIFI_MODULE_BUNDLE)
 	INSTALL(FILES ${CMAKE_SOURCE_DIR}/files/bundle/p2p_supp.conf DESTINATION etc/wifi-direct)
 	INSTALL(FILES ${CMAKE_SOURCE_DIR}/files/bundle/p2p_supp.conf DESTINATION /opt/etc)
-	INSTALL(FILES ${CMAKE_SOURCE_DIR}/files/bundle/dhcpd.p2p.conf DESTINATION etc/wifi-direct)
+	INSTALL(FILES ${CMAKE_SOURCE_DIR}/files/bundle/dhcpd.wlan.conf DESTINATION etc/wifi-direct)
 	INSTALL(FILES ${CMAKE_SOURCE_DIR}/files/bundle/dhcpd-notify.sh DESTINATION bin)
 	INSTALL(FILES ${CMAKE_SOURCE_DIR}/files/bundle/wifi-direct-dhcp.sh DESTINATION bin)
 ELSE(TIZEN_WIFI_MODULE_BUNDLE)

@@ -106,7 +106,12 @@ cp %{_builddir}/%{buildsubdir}/LICENSE.APLv2 %{buildroot}%{_datadir}/license/%{n
 cp %{_builddir}/%{buildsubdir}/LICENSE.APLv2 %{buildroot}%{_datadir}/license/wifi-direct-plugin-wpasupplicant
 
 %post
+#TV profile uses default XU3 device which creates wlan interface only
+%if "%{profile}" == "tv"
+chmod 644 /usr/etc/wifi-direct/dhcpd.wlan.conf
+%else
 chmod 644 /usr/etc/wifi-direct/dhcpd.p2p.conf
+%endif
 chmod 755 /usr/bin/dhcpd-notify.sh
 chmod 755 /usr/etc/wifi-direct/udhcp_script.non-autoip
 chmod 755 /usr/bin/wifi-direct-server.sh
@@ -136,7 +141,12 @@ chmod 755 /usr/sbin/p2p_supp.sh
 %manifest wifi-direct-manager.manifest
 %defattr(-,root,root,-)
 %{_bindir}/wfd-manager
+#TV profile uses default XU3 device which creates wlan interface only
+%if "%{profile}" == "tv"
+/usr/etc/wifi-direct/dhcpd.wlan.conf
+%else
 /usr/etc/wifi-direct/dhcpd.p2p.conf
+%endif
 /usr/etc/wifi-direct/udhcp_script.non-autoip
 /usr/etc/wifi-direct/p2p_supp.conf
 /opt/etc/p2p_supp.conf
