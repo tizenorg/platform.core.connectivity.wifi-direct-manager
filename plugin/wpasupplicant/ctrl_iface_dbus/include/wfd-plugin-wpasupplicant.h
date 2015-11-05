@@ -90,6 +90,19 @@
 #define DEFAULT_NO_GROUP_IFACE 1
 #endif
 
+#if defined TIZEN_COMMON
+#define PRIMARY_DEVICE_TYPE "\x00\x07\x00\x50\xf2\x04\x00\x01"
+#define DEFAULT_DEVICE_NAME "[Common]Tizen"
+#define DEFAULT_GO_INTENT 7
+#define DEFAULT_PERSISTENT_RECONNECT 1
+#define DEFAULT_LISTEN_REG_CLASS 81
+#define DEFAULT_LISTEN_CHANNEL 1
+#define DEFAULT_OPER_REG_CLASS 81
+#define DEFAULT_OPER_CHANNEL 1
+#define DEFAULT_CONFIG_METHOD "keypad virtual_push_button physical_display"
+#define DEFAULT_NO_GROUP_IFACE 1
+#endif
+
 #if 0
 #define COMMON_IFACE_NAME "p2p0"
 #define DEFAULT_CONFIG_METHOD "push_button"
