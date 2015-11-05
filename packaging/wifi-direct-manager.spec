@@ -83,6 +83,13 @@ cmake . -DCMAKE_INSTALL_PREFIX=%{_prefix} -DARCHITECTURE=$ARCH \
 	-DCTRL_IFACE_DBUS=1 \
 	-DTIZEN_WIFI_MODULE_BUNDLE=1 \
 	-DTIZEN_TV=1 \
+%else
+%if "%{profile}" == "common"
+	-DTIZEN_FEATURE_SERVICE_DISCOVERY=1 \
+	-DCTRL_IFACE_DBUS=1 \
+	-DTIZEN_WIFI_MODULE_BUNDLE=1 \
+    -DTIZEN_COMMON=1 \
+%endif
 %endif
 %endif
 %endif
