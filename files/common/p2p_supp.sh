@@ -52,7 +52,7 @@ start_dbus()
 
 stop()
 {
-	/usr/bin/killall wpa_supplicant
+	/usr/bin/pkill -x wpa_supplicant
 }
 
 case $1 in

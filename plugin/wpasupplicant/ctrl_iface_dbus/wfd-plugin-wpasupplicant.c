@@ -225,42 +225,6 @@ static int __ws_hex_to_num(char *src, int len)
 	return num;
 }
 
-static int __ws_hex_to_txt(char *src, int length, char *dest)
-{
-	// TODO: check it is good to change dest parameter as double pointer.
-	// It could be better to allocate memory for dest parameter here.
-	char *temp = NULL;
-	char *ptr = NULL;
-	int len = 0;
-	int i = 0;
-
-	if (!src || length < 0 || !dest) {
-		WDP_LOGE("Invalid parameter");
-		return -1;
-	}
-
-	// TODO: flush destination memory
-
-	ptr = src;
-	temp = dest;
-
-	if (!length)
-		len = strlen(src);
-	else
-		len = length;
-
-	for (i=0; i<len/2 && *ptr!=0; i++) {
-		temp[i] = (char) __ws_hex_to_num(ptr, 2);
-		if (temp[i] < 0) {
-			WDP_LOGE("Failed to convert hexa string to num");
-			return -1;
-		}
-		ptr += 2;
-	}
-
-	return 0;
-}
-
 static int __ws_segment_to_service(char *segment, wfd_oem_new_service_s **service)
 {
 	wfd_oem_new_service_s *serv_tmp = NULL;
@@ -363,21 +327,8 @@ static int __ws_segment_to_service(char *segment, wfd_oem_new_service_s **servic
 
 		WDP_LOGD("Query: %s", serv_tmp->data.bonjour.query);
 		WDP_LOGD("RData: %s", serv_tmp->data.bonjour.rdata);
-	} else if (serv_tmp->protocol == WFD_OEM_SERVICE_TYPE_VENDOR) {
-		WDP_LOGD("===== Vendor specific service =====");
-		if (!strncmp(ptr, "0000f00b", 8)) {
-			WDP_LOGD("\tSAMSUNG_BT_ADDR");
-			ptr += 16;
-			serv_tmp->protocol = WFD_OEM_SERVICE_TYPE_BT_ADDR;
-			serv_tmp->data.vendor.data1 = (char*) calloc(1, 9);
-			g_strlcpy(serv_tmp->data.vendor.data1, "0000f00b", 9);
-			serv_tmp->data.vendor.data2 = (char*) calloc(1, 18);
-			__ws_hex_to_txt(ptr, 0, serv_tmp->data.vendor.data2);
-		}
-		WDP_LOGD("Info1: %s", serv_tmp->data.vendor.data1);
-		WDP_LOGD("Info2: %s", serv_tmp->data.vendor.data2);
 	} else {
-		WDP_LOGE("Not supported yet. Only bonjour and samsung vendor service supproted [%d]",
+		WDP_LOGE("Not supported yet. Only bonjour service supproted [%d]",
 					serv_tmp->protocol);
 		g_free(serv_tmp);
 		return -1;
@@ -392,6 +343,8 @@ static int __ws_segment_to_service(char *segment, wfd_oem_new_service_s **servic
 static void __ws_path_to_addr(char *peer_path,
 		unsigned char *dev_addr, GVariant *parameter)
 {
+	__WDP_LOG_FUNC_ENTER__;
+
 	static unsigned char peer_dev[WS_MACSTR_LEN] = {'\0',};
 	const char *path = NULL;
 	char *loc = NULL;
@@ -401,11 +354,13 @@ static void __ws_path_to_addr(char *peer_path,
 	WDP_LOGD("Retrive Added path [%s]", peer_path);
 
 	loc = strrchr(peer_path,'/');
-	__ws_mac_compact_to_normal(loc + 1, peer_dev);
+	if(loc != NULL)
+		__ws_mac_compact_to_normal(loc + 1, peer_dev);
 
 	__ws_txt_to_mac(peer_dev, dev_addr);
 	WDP_LOGD("peer mac [" MACSTR "]", MAC2STR(dev_addr));
 
+	__WDP_LOG_FUNC_EXIT__;
 	return;
 }
 
@@ -483,9 +438,9 @@ static void _supplicant_signal_cb(GDBusConnection *connection,
 	DEBUG_SIGNAL(sender, object_path, interface, signal, parameters);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
-        if(!g_pd) {
-                WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-                return;
+    if(!g_pd) {
+        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+        return;
         }
 
 	if (!g_strcmp0(signal,"InterfaceAdded")) {
@@ -528,6 +483,8 @@ static void _supplicant_signal_cb(GDBusConnection *connection,
 
 static void __ws_get_peer_property(const char *key, GVariant *value, void *user_data)
 {
+	__WDP_LOG_FUNC_ENTER__;
+
 	wfd_oem_device_s *peer = (wfd_oem_device_s *)user_data;
 	if(!peer) {
 		__WDP_LOG_FUNC_EXIT__;
@@ -614,12 +571,15 @@ static void __ws_get_peer_property(const char *key, GVariant *value, void *user_
 	} else {
 		WDP_LOGE("Unknown value");
 	}
+	__WDP_LOG_FUNC_EXIT__;
 	return;
 }
 
 static void __ws_peer_property(const char *key, GVariant *value, void *user_data)
 {
+	__WDP_LOG_FUNC_ENTER__;
 	if(!user_data) {
+		__WDP_LOG_FUNC_EXIT__;
 		return;
 	}
 
@@ -706,6 +666,7 @@ static void __ws_peer_property(const char *key, GVariant *value, void *user_data
 	} else {
 		WDP_LOGE("Unknown value");
 	}
+	__WDP_LOG_FUNC_EXIT__;
 	return;
 }
 
@@ -725,11 +686,13 @@ void __ws_interface_property(const char *key, GVariant *value, void *user_data)
 		WDP_LOGD("Ifname [%s]", event->ifname);
 
 	}
+	__WDP_LOG_FUNC_EXIT__;
 	return;
 }
 
 void __ws_group_property(const char *key, GVariant *value, void *user_data)
 {
+	__WDP_LOG_FUNC_ENTER__;
 	wfd_oem_event_s *event = (wfd_oem_event_s *)user_data;
 	if(!event || !event->edata)
 		return;
@@ -779,11 +742,13 @@ void __ws_group_property(const char *key, GVariant *value, void *user_data)
 	} else {
 		WDP_LOGE("Unknown value");
 	}
+	__WDP_LOG_FUNC_EXIT__;
 	return;
 }
 
 void __ws_extract_invitation_details(const char *key, GVariant *value, void *user_data)
 {
+	__WDP_LOG_FUNC_ENTER__;
 	wfd_oem_event_s *event = (wfd_oem_event_s *)user_data;
 	if(!event || !event->edata)
 		return;
@@ -814,18 +779,20 @@ void __ws_extract_invitation_details(const char *key, GVariant *value, void *use
 	} else {
 		WDP_LOGE("Unknown value");
 	}
+	__WDP_LOG_FUNC_EXIT__;
 	return;
 }
 
 void __ws_extract_group_details(const char *key, GVariant *value, void *user_data)
 {
+	__WDP_LOG_FUNC_ENTER__;
 	wfd_oem_event_s *event = (wfd_oem_event_s *)user_data;
 	if(!event || !event->edata)
 		return;
 
-        if(!g_pd) {
-                WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-                return;
+    if(!g_pd) {
+        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+        return;
         }
 
 	wfd_oem_group_data_s *group = (wfd_oem_group_data_s *)event->edata;
@@ -891,11 +858,13 @@ void __ws_extract_group_details(const char *key, GVariant *value, void *user_dat
 				_group_signal_cb,
 				NULL, NULL);
 	}
+	__WDP_LOG_FUNC_EXIT__;
 	return;
 }
 
 void __ws_extract_gonegfailaure_details(const char *key, GVariant *value, void *user_data)
 {
+	__WDP_LOG_FUNC_ENTER__;
 	wfd_oem_event_s *event = (wfd_oem_event_s *)user_data;
 	if(!event || !event->edata)
 		return;
@@ -919,11 +888,13 @@ void __ws_extract_gonegfailaure_details(const char *key, GVariant *value, void *
 		WDP_LOGD("Retrive status [%d]", status);
 		conn->status = status;
 	}
+	__WDP_LOG_FUNC_EXIT__;
 	return;
 }
 
 void __ws_extract_gonegsuccess_details(const char *key, GVariant *value, void *user_data)
 {
+	__WDP_LOG_FUNC_ENTER__;
 	wfd_oem_event_s *event = (wfd_oem_event_s *)user_data;
 	if(!event || !event->edata)
 		return;
@@ -952,8 +923,8 @@ void __ws_extract_gonegsuccess_details(const char *key, GVariant *value, void *u
 		unsigned char ssid[WS_SSID_LEN +1] = {0,};
 
 		__ws_unpack_ay(ssid, value, WS_SSID_LEN);
-			memcpy(edata->ssid, ssid, WS_SSID_LEN+1);
-			WDP_LOGD("ssid [%s]", edata->ssid);
+		memcpy(edata->ssid, ssid, WS_SSID_LEN+1);
+		WDP_LOGD("ssid [%s]", edata->ssid);
 
 	} else if (g_strcmp0(key, "peer_device_addr") == 0) {
 
@@ -977,6 +948,7 @@ void __ws_extract_gonegsuccess_details(const char *key, GVariant *value, void *u
 	} else if (g_strcmp0(key, "peer_config_timeout") == 0) {
 
 	}
+	__WDP_LOG_FUNC_EXIT__;
 	return;
 }
 
@@ -1026,8 +998,19 @@ void __ws_extract_servicediscoveryresponse_details(const char *key, GVariant *va
 	CHECK_KEY_VALUE(key, value);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 	if (g_strcmp0(key, "peer_object") == 0) {
-		static char peer_path[DBUS_OBJECT_PATH_MAX] = {'\0',};
-		__ws_path_to_addr(peer_path, event->dev_addr, value);
+		static unsigned char peer_dev[WS_MACSTR_LEN] = {'\0',};
+		const char *path = NULL;
+		char *loc = NULL;
+
+		g_variant_get(value, "o", &path);
+		if(path == NULL)
+			return;
+
+		WDP_LOGD("Retrive Added path [%s]", path);
+		loc = strrchr(path,'/');
+		if(loc != NULL)
+			__ws_mac_compact_to_normal(loc + 1, peer_dev);
+		__ws_txt_to_mac(peer_dev, event->dev_addr);
 
 	} else if (g_strcmp0(key, "update_indicator")) {
 
@@ -1053,6 +1036,71 @@ void __ws_extract_servicediscoveryresponse_details(const char *key, GVariant *va
 }
 #endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
 
+static int _ws_flush()
+{
+	__WDP_LOG_FUNC_ENTER__;
+	GDBusConnection *g_dbus = NULL;
+	dbus_method_param_s params;
+	int res = 0;
+
+    if(!g_pd) {
+        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+        return -1;
+        }
+
+	g_dbus = g_pd->g_dbus;
+	if (!g_dbus) {
+		WDP_LOGE("DBus connection is NULL");
+		return -1;
+	}
+	memset(&params, 0x0, sizeof(dbus_method_param_s));
+
+	dbus_set_method_param(&params, "Flush", g_pd->iface_path, g_dbus);
+	params.params = NULL;
+
+	res = dbus_method_call(&params, SUPPLICANT_P2PDEVICE, NULL, NULL);
+	if (res < 0)
+		WDP_LOGE("Failed to send command to wpa_supplicant");
+	else
+		WDP_LOGD("Succeeded to flush");
+
+	__WDP_LOG_FUNC_EXIT__;
+	return 0;
+}
+
+static int _ws_cancel()
+{
+	__WDP_LOG_FUNC_ENTER__;
+	GDBusConnection *g_dbus = NULL;
+	dbus_method_param_s params;
+	int res = 0;
+
+    if(!g_pd) {
+        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+        return -1;
+        }
+
+
+	g_dbus = g_pd->g_dbus;
+	if (!g_dbus) {
+		WDP_LOGE("DBus connection is NULL");
+		return -1;
+	}
+	memset(&params, 0x0, sizeof(dbus_method_param_s));
+
+	dbus_set_method_param(&params, "Cancel", g_pd->iface_path , g_dbus);
+	params.params = NULL;
+
+	res = dbus_method_call(&params, SUPPLICANT_P2PDEVICE, NULL, NULL);
+	if (res < 0)
+		WDP_LOGE("Failed to send command to wpa_supplicant");
+	else
+		WDP_LOGD("Succeeded to cancel");
+
+	__WDP_LOG_FUNC_EXIT__;
+	return 0;
+}
+
 static void _ws_process_device_found(GDBusConnection *connection,
 		const gchar *object_path, GVariant *parameters)
 {
@@ -1061,9 +1109,9 @@ static void _ws_process_device_found(GDBusConnection *connection,
 	wfd_oem_dev_data_s *edata = NULL;
 	static char peer_path[DBUS_OBJECT_PATH_MAX] = {'\0',};
 
-        if(!g_pd) {
-                WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-                return;
+    if(!g_pd) {
+        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+        return;
         }
 
 	edata = (wfd_oem_dev_data_s *) g_try_malloc0(sizeof(wfd_oem_dev_data_s));
@@ -1097,9 +1145,9 @@ static void _ws_process_device_lost(GDBusConnection *connection,
 	wfd_oem_event_s event;
 	static char peer_path[DBUS_OBJECT_PATH_MAX] = {'\0',};
 
-        if(!g_pd) {
-                WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-                return;
+    if(!g_pd) {
+        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+        return;
         }
 
 	memset(&event, 0x0, sizeof(wfd_oem_event_s));
@@ -1120,9 +1168,9 @@ static void _ws_process_find_stoppped(GDBusConnection *connection,
 	__WDP_LOG_FUNC_ENTER__;
 	wfd_oem_event_s event;
 
-        if(!g_pd) {
-                WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-                return;
+    if(!g_pd) {
+        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+        return;
         }
 
 	memset(&event, 0x0, sizeof(wfd_oem_event_s));
@@ -1149,9 +1197,9 @@ static void _ws_process_prov_disc_req_display_pin(GDBusConnection *connection,
 	const char *pin = NULL;
 	char *loc = NULL;
 
-        if(!g_pd) {
-                WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-                return;
+    if(!g_pd) {
+        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+        return;
         }
 
 	edata = (wfd_oem_dev_data_s *) g_try_malloc0(sizeof(wfd_oem_dev_data_s));
@@ -1203,9 +1251,9 @@ static void _ws_process_prov_disc_resp_display_pin(GDBusConnection *connection,
 	const char *pin = NULL;
 	char *loc = NULL;
 
-        if(!g_pd) {
-                WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-                return;
+    if(!g_pd) {
+        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+        return;
         }
 
 	edata = (wfd_oem_dev_data_s *) g_try_malloc0(sizeof(wfd_oem_dev_data_s));
@@ -1251,9 +1299,9 @@ static void _ws_process_prov_disc_req_enter_pin(GDBusConnection *connection,
 	wfd_oem_dev_data_s *edata = NULL;
 	static char peer_path[DBUS_OBJECT_PATH_MAX] = {'\0',};
 
-        if(!g_pd) {
-                WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-                return;
+    if(!g_pd) {
+        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+        return;
         }
 
 	edata = (wfd_oem_dev_data_s *) g_try_malloc0(sizeof(wfd_oem_dev_data_s));
@@ -1289,9 +1337,9 @@ static void _ws_process_prov_disc_resp_enter_pin(GDBusConnection *connection,
 	wfd_oem_dev_data_s *edata = NULL;
 	static char peer_path[DBUS_OBJECT_PATH_MAX] = {'\0',};
 
-        if(!g_pd) {
-                WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-                return;
+    if(!g_pd) {
+        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+        return;
         }
 
 	edata = (wfd_oem_dev_data_s *) g_try_malloc0(sizeof(wfd_oem_dev_data_s));
@@ -1327,9 +1375,9 @@ static void _ws_process_prov_disc_pbc_req(GDBusConnection *connection,
 	wfd_oem_dev_data_s *edata = NULL;
 	static char peer_path[DBUS_OBJECT_PATH_MAX] = {'\0',};
 
-        if(!g_pd) {
-                WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-                return;
+    if(!g_pd) {
+        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+        return;
         }
 
 	edata = (wfd_oem_dev_data_s *) g_try_malloc0(sizeof(wfd_oem_dev_data_s));
@@ -1365,9 +1413,9 @@ static void _ws_process_prov_disc_pbc_resp(GDBusConnection *connection,
 	wfd_oem_dev_data_s *edata = NULL;
 	static char peer_path[DBUS_OBJECT_PATH_MAX] = {'\0',};
 
-        if(!g_pd) {
-                WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-                return;
+    if(!g_pd) {
+        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+        return;
         }
 
 	edata = (wfd_oem_dev_data_s *) g_try_malloc0(sizeof(wfd_oem_dev_data_s));
@@ -1406,9 +1454,9 @@ static void _ws_process_prov_disc_failure(GDBusConnection *connection,
 	int prov_status = 0;
 	char *loc = NULL;
 
-        if(!g_pd) {
-                WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-                return;
+    if(!g_pd) {
+        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+        return;
         }
 
 	memset(&event, 0x0, sizeof(wfd_oem_event_s));
@@ -1477,9 +1525,9 @@ static void _ws_process_go_neg_success(GDBusConnection *connection,
 	wfd_oem_event_s event;
 	wfd_oem_conn_data_s *edata = NULL;
 
-        if(!g_pd) {
-                WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-                return;
+    if(!g_pd) {
+        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+        return;
         }
 
 	edata = (wfd_oem_conn_data_s*)calloc(1, sizeof(wfd_oem_conn_data_s));
@@ -1563,9 +1611,9 @@ static void _ws_process_go_neg_request(GDBusConnection *connection,
 
 	int dev_pwd_id = 0;
 
-        if(!g_pd) {
-                WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-                return;
+    if(!g_pd) {
+        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+        return;
         }
 
 	edata = (wfd_oem_dev_data_s *) g_try_malloc0(sizeof(wfd_oem_dev_data_s));
@@ -1621,9 +1669,9 @@ static void _ws_process_invitation_received(GDBusConnection *connection,
 	wfd_oem_event_s event;
 	wfd_oem_invite_data_s *edata = NULL;
 
-        if(!g_pd) {
-                WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-                return;
+    if(!g_pd) {
+        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+        return;
         }
 
 	edata = (wfd_oem_invite_data_s *) g_try_malloc0(sizeof(wfd_oem_invite_data_s));
@@ -1675,9 +1723,9 @@ static void _ws_process_group_finished(GDBusConnection *connection,
 	__WDP_LOG_FUNC_ENTER__;
 	wfd_oem_event_s event;
 
-        if(!g_pd) {
-                WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-                return;
+    if(!g_pd) {
+        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+        return;
         }
 
 	memset(&event, 0x0, sizeof(wfd_oem_event_s));
@@ -1687,6 +1735,7 @@ static void _ws_process_group_finished(GDBusConnection *connection,
 
 	g_dbus_connection_signal_unsubscribe(g_pd->g_dbus, g_pd->group_sub_id);
 	memset(g_pd->group_iface_path, 0x0, DBUS_OBJECT_PATH_MAX);
+	_ws_flush();
 
 	g_pd->callback(g_pd->user_data, &event);
 
@@ -1701,9 +1750,9 @@ static void _ws_process_service_discovery_response(GDBusConnection *connection,
 	GVariantIter *iter = NULL;
 	wfd_oem_event_s event;
 
-        if(!g_pd) {
-                WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-                return;
+    if(!g_pd) {
+        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+        return;
         }
 
 	memset(&event, 0x0, sizeof(wfd_oem_event_s));
@@ -1762,9 +1811,9 @@ static void _ws_process_wps_failed(GDBusConnection *connection,
 	wfd_oem_event_s event;
 	const char *name = NULL;
 
-        if(!g_pd) {
-                WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-                return;
+    if(!g_pd) {
+        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+        return;
         }
 
 	memset(&event, 0x0, sizeof(wfd_oem_event_s));
@@ -1800,9 +1849,9 @@ static void _ws_process_group_formation_failure(GDBusConnection *connection,
 	__WDP_LOG_FUNC_ENTER__;
 	wfd_oem_event_s event;
 
-        if(!g_pd) {
-                WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-                return;
+    if(!g_pd) {
+        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+        return;
         }
 
 	memset(&event, 0x0, sizeof(wfd_oem_event_s));
@@ -1996,9 +2045,9 @@ static void _group_signal_cb(GDBusConnection *connection,
 	DEBUG_SIGNAL(sender, object_path, interface, signal, parameters);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
-        if(!g_pd) {
-                WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-                return;
+    if(!g_pd) {
+        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+        return;
         }
 
 	if(!g_strcmp0(signal,"PeerJoined")){
@@ -2053,9 +2102,9 @@ static void __register_p2pdevice_signal(GVariant *value, void *user_data)
 	static char interface_path[DBUS_OBJECT_PATH_MAX] = {'\0',};
 	const char *path = NULL;
 
-        if(!g_pd) {
-                WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-                return;
+    if(!g_pd) {
+        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+        return;
         }
 
 	pd_data = (ws_dbus_plugin_data_s *)g_pd;
@@ -2089,9 +2138,9 @@ static int _ws_create_interface(const char *iface_name, handle_reply function, v
 
 	int res = 0;
 
-        if(!g_pd) {
-                WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-                return -1;
+    if(!g_pd) {
+        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+        return -1;
         }
 
 	g_dbus = g_pd->g_dbus;
@@ -2125,9 +2174,9 @@ static int _ws_get_interface(const char *iface_name, handle_reply function, void
 	dbus_method_param_s params;
 	int res = 0;
 
-        if(!g_pd) {
-                WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-                return -1;
+    if(!g_pd) {
+        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+        return -1;
         }
 
 	g_dbus = g_pd->g_dbus;
@@ -2156,7 +2205,7 @@ static int _ws_get_interface(const char *iface_name, handle_reply function, void
 	return res;
 }
 
-#if 0
+#if defined (TIZEN_MOBILE) && (TIZEN_WLAN_BOARD_SPRD)
 static void __ws_remove_interface(GVariant *value, void *user_data)
 {
 	__WDP_LOG_FUNC_ENTER__;
@@ -2166,9 +2215,9 @@ static void __ws_remove_interface(GVariant *value, void *user_data)
 	static char interface_path[DBUS_OBJECT_PATH_MAX] = {'\0',};
 	int res = 0;
 
-        if(!g_pd) {
-                WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-                return;
+    if(!g_pd) {
+        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+        return;
         }
 
 	g_dbus = g_pd->g_dbus;
@@ -2195,7 +2244,7 @@ static void __ws_remove_interface(GVariant *value, void *user_data)
 	__WDP_LOG_FUNC_EXIT__;
 	return;
 }
-#endif
+#endif /* (TIZEN_MOBILE) && (TIZEN_WLAN_BOARD_SPRD) */
 
 static int _ws_init_dbus_connection(void)
 {
@@ -2204,9 +2253,9 @@ static int _ws_init_dbus_connection(void)
 	GError *error = NULL;
 	int res = 0;
 
-        if(!g_pd) {
-                WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-                return -1;
+    if(!g_pd) {
+        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+        return -1;
         }
 
 	conn = g_bus_get_sync(G_BUS_TYPE_SYSTEM, NULL, &error);
@@ -2235,8 +2284,15 @@ static int _ws_init_dbus_connection(void)
 		G_DBUS_SIGNAL_FLAGS_NONE,
 		_supplicant_signal_cb,
 		NULL, NULL);
+#if defined (TIZEN_MOBILE) && (TIZEN_WLAN_BOARD_SPRD)
+	if(_ws_get_interface(COMMON_IFACE_NAME, NULL, NULL) < 0)
+		_ws_create_interface(COMMON_IFACE_NAME, NULL, NULL);
+	if(_ws_get_interface(P2P_IFACE_NAME, __register_p2pdevice_signal, NULL) < 0)
+		res = _ws_create_interface(P2P_IFACE_NAME, __register_p2pdevice_signal, NULL);
+#else /* (TIZEN_MOBILE) && (TIZEN_WLAN_BOARD_SPRD) */
 	if(_ws_get_interface(COMMON_IFACE_NAME, __register_p2pdevice_signal, NULL) < 0)
 		res = _ws_create_interface(COMMON_IFACE_NAME, __register_p2pdevice_signal, NULL);
+#endif /* (TIZEN_MOBILE) && (TIZEN_WLAN_BOARD_SPRD) */
 
 	if (res < 0)
 			WDP_LOGE("Failed to subscribe interface signal");
@@ -2251,9 +2307,9 @@ static int _ws_deinit_dbus_connection(void)
 {
 	GDBusConnection *g_dbus = NULL;
 
-        if(!g_pd) {
-                WDP_LOGE("ws_plugin_data_s is not created yet");
-                return -1;
+    if(!g_pd) {
+        WDP_LOGE("ws_plugin_data_s is not created yet");
+        return -1;
         }
 
 	g_dbus = g_pd->g_dbus;
@@ -2348,6 +2404,7 @@ static int __ws_check_net_interface(char* if_name)
 	return 0;
 }
 #endif
+
 int ws_init(wfd_oem_event_cb callback, void *user_data)
 {
 	__WDP_LOG_FUNC_ENTER__;
@@ -2424,6 +2481,7 @@ gboolean _ws_util_execute_file(const char *file_path,
 	WDP_LOGE("failed to fork (%s)", strerror(errno));
 	return FALSE;
 }
+
 #if 0
 static int __ws_p2p_firmware_start(void)
 {
@@ -2536,7 +2594,7 @@ static int __ws_p2p_firmware_stop(void)
 
 static int __ws_p2p_supplicant_start(void)
 {
-	gboolean rv;
+	gboolean rv = FALSE;
 	const char *path = "/usr/sbin/p2p_supp.sh";
 	char *const args[] = { "/usr/sbin/p2p_supp.sh", "start_dbus", NULL };
 	char *const envs[] = { NULL };
@@ -2555,7 +2613,7 @@ static int __ws_p2p_supplicant_start(void)
 
 static int __ws_p2p_supplicant_stop(void)
 {
-	gboolean rv;
+	gboolean rv = FALSE;
 	const char *path = "/usr/sbin/p2p_supp.sh";
 	char *const args[] = { "/usr/sbin/p2p_supp.sh", "stop", NULL };
 	char *const envs[] = { NULL };
@@ -2685,9 +2743,9 @@ int __ws_init_p2pdevice()
 	int i = 0;
 	int res = 0;
 
-        if(!g_pd) {
-                WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-                return -1;
+	if(!g_pd) {
+		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+		return -1;
         }
 
 	for(i = 0; i < WS_DEVTYPE_LEN; i++)
@@ -2780,7 +2838,7 @@ int __ws_init_p2pdevice()
 	if (res < 0)
 		WDP_LOGE("Failed to send command to wpa_supplicant");
 	else
-		WDP_LOGE("Succeeded to initialize p2pdevice");
+		WDP_LOGD("Succeeded to initialize p2pdevice");
 	__WDP_LOG_FUNC_EXIT__;
 	return res;
 }
@@ -2796,10 +2854,10 @@ int __ws_set_config_methods()
 	dbus_method_param_s params;
 	int res = 0;
 
-        if(!g_pd) {
-                WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-                return -1;
-        }
+	if(!g_pd) {
+		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+		return -1;
+	}
 
 	g_dbus = g_pd->g_dbus;
 	if (!g_dbus) {
@@ -2832,9 +2890,9 @@ int ws_activate(int concurrent)
 	int res = 0;
 	int retry_count = 0;
 
-        if(!g_pd) {
-                WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-                return -1;
+    if(!g_pd) {
+        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+        return -1;
         }
 
 	res = __ws_p2p_supplicant_start();
@@ -2903,9 +2961,9 @@ int ws_deactivate(int concurrent)
 	__WDP_LOG_FUNC_ENTER__;
 	int res = 0;
 
-        if(!g_pd) {
-                WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-                return -1;
+    if(!g_pd) {
+        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+        return -1;
         }
 
 	if (!g_pd->activated) {
@@ -2916,6 +2974,12 @@ int ws_deactivate(int concurrent)
 	ws_stop_scan();
 
 	g_pd->concurrent = concurrent;
+#if defined (TIZEN_MOBILE) && (TIZEN_WLAN_BOARD_SPRD)
+	_ws_get_interface(P2P_IFACE_NAME, __ws_remove_interface, NULL);
+	if(concurrent == 0)
+		_ws_get_interface(COMMON_IFACE_NAME, __ws_remove_interface, NULL);
+#endif /* (TIZEN_MOBILE) && (TIZEN_WLAN_BOARD_SPRD) */
+
 	_ws_deinit_dbus_connection();
 
 	if(concurrent == 0) {
@@ -2927,70 +2991,6 @@ int ws_deactivate(int concurrent)
 #endif
 	}
 	g_pd->activated = FALSE;
-
-	__WDP_LOG_FUNC_EXIT__;
-	return 0;
-}
-
-static int _ws_flush()
-{
-	__WDP_LOG_FUNC_ENTER__;
-	GDBusConnection *g_dbus = NULL;
-	dbus_method_param_s params;
-	int res = 0;
-
-        if(!g_pd) {
-                WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-                return -1;
-        }
-
-	g_dbus = g_pd->g_dbus;
-	if (!g_dbus) {
-		WDP_LOGE("DBus connection is NULL");
-		return -1;
-	}
-	memset(&params, 0x0, sizeof(dbus_method_param_s));
-
-	dbus_set_method_param(&params, "Flush", g_pd->iface_path, g_dbus);
-	params.params = NULL;
-
-	res = dbus_method_call(&params, SUPPLICANT_P2PDEVICE, NULL, NULL);
-	if (res < 0)
-		WDP_LOGE("Failed to send command to wpa_supplicant");
-	else
-		WDP_LOGD("Succeeded to flush");
-
-	__WDP_LOG_FUNC_EXIT__;
-	return 0;
-}
-
-static int _ws_cancel()
-{
-	__WDP_LOG_FUNC_ENTER__;
-	GDBusConnection *g_dbus = NULL;
-	dbus_method_param_s params;
-	int res = 0;
-
-        if(!g_pd) {
-                WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-                return -1;
-        }
-
-	g_dbus = g_pd->g_dbus;
-	if (!g_dbus) {
-		WDP_LOGE("DBus connection is NULL");
-		return -1;
-	}
-	memset(&params, 0x0, sizeof(dbus_method_param_s));
-
-	dbus_set_method_param(&params, "Cancel", g_pd->iface_path , g_dbus);
-	params.params = NULL;
-
-	res = dbus_method_call(&params, SUPPLICANT_P2PDEVICE, NULL, NULL);
-	if (res < 0)
-		WDP_LOGE("Failed to send command to wpa_supplicant");
-	else
-		WDP_LOGD("Succeeded to cancel");
 
 	__WDP_LOG_FUNC_EXIT__;
 	return 0;
@@ -4669,12 +4669,6 @@ int ws_cancel_service_discovery(unsigned char *mac_addr, int service_type)
 		case WFD_OEM_SERVICE_TYPE_UPNP:
 			strncpy(s_type, SERV_DISC_REQ_UPNP, OEM_SERVICE_TYPE_LEN);
 		break;
-		case WFD_OEM_SERVICE_TYPE_BT_ADDR:
-			strncpy(s_type, SERVICE_TYPE_BT_ADDR, OEM_SERVICE_TYPE_LEN);
-			break;
-		case WFD_OEM_SERVICE_TYPE_CONTACT_INFO:
-			strncpy(s_type, SERVICE_TYPE_CONTACT_INFO, OEM_SERVICE_TYPE_LEN);
-			break;
 		default:
 			__WDP_LOG_FUNC_EXIT__;
 			WDP_LOGE("Invalid Service type");

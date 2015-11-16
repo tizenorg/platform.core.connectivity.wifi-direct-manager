@@ -1025,9 +1025,11 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 				rsp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 				break;
 			}
-			WDS_LOGE("Succeeded to start scan");
-			wfd_state_set(manager, WIFI_DIRECT_STATE_DISCOVERING);
-			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_DISCOVERING);
+			WDS_LOGD("Succeeded to start scan");
+			if (manager->local->dev_role != WFD_DEV_ROLE_GO) {
+				wfd_state_set(manager, WIFI_DIRECT_STATE_DISCOVERING);
+				wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_DISCOVERING);
+			}
 
 			noti = (wifi_direct_client_noti_s*) g_try_malloc0(sizeof(wifi_direct_client_noti_s));
 			if (req.data.int1) {
@@ -1081,9 +1083,11 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 				rsp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 				break;
 			}
-			WDS_LOGE("Succeeded to start specific scan");
-			wfd_state_set(manager, WIFI_DIRECT_STATE_DISCOVERING);
-			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_DISCOVERING);
+			WDS_LOGD("Succeeded to start specific scan");
+			if (manager->local->dev_role != WFD_DEV_ROLE_GO) {
+				wfd_state_set(manager, WIFI_DIRECT_STATE_DISCOVERING);
+				wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_DISCOVERING);
+			}
 
 			noti = (wifi_direct_client_noti_s*) g_try_malloc0(sizeof(wifi_direct_client_noti_s));
 			if (channel == WIFI_DIRECT_DISCOVERY_FULL_SCAN)
@@ -1864,7 +1868,7 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 				break;
 			}
 
-			res = wfd_service_add(&(manager->local->services), service_type, info_str, &rsp.param1);
+			res = wfd_service_add(service_type, info_str, &rsp.param1);
 			if (res < 0) {
 				WDS_LOGE("Failed to add service");
 				rsp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
@@ -1884,7 +1888,7 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 				break;
 			}
 
-			res = wfd_service_del(manager->local->services, service_id);
+			res = wfd_service_del(service_id);
 			if (res < 0) {
 				WDS_LOGE("Failed to delete service");
 				rsp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;

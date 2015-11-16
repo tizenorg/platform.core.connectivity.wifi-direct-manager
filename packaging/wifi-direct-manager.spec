@@ -1,6 +1,6 @@
 Name:		wifi-direct-manager
 Summary:	Wi-Fi Direct manger
-Version:	1.2.102
+Version:	1.2.103
 Release:	1
 Group:      Network & Connectivity/Wireless
 License:    Apache-2.0
@@ -11,6 +11,7 @@ BuildRequires:	pkgconfig(dlog)
 BuildRequires:	pkgconfig(vconf)
 BuildRequires:  pkgconfig(libnl-2.0)
 BuildRequires:	pkgconfig(dbus-1)
+BuildRequires:	pkgconfig(aul)
 BuildRequires:	pkgconfig(cynara-client)
 BuildRequires:	pkgconfig(cynara-creds-socket)
 BuildRequires:	pkgconfig(cynara-session)
@@ -69,9 +70,13 @@ cmake . -DCMAKE_INSTALL_PREFIX=%{_prefix} -DARCHITECTURE=$ARCH \
         -DTIZEN_FEATURE_WIFI_DISPLAY=0 \
 %else
 %if "%{profile}" == "mobile"
+%if "%{?tizen_target_name}" == "Z300H"
+	-DTIZEN_WLAN_BOARD_SPRD=1 \
+%endif
         -DTIZEN_FEATURE_SERVICE_DISCOVERY=1 \
         -DTIZEN_WLAN_CONCURRENT_ENABLE=1 \
         -DTIZEN_FEATURE_WIFI_DISPLAY=1 \
+        -DTIZEN_FEATURE_DEFAULT_CONNECTION_AGENT=0 \
         -DCTRL_IFACE_DBUS=1 \
         -DTIZEN_MOBILE=1 \
 %else

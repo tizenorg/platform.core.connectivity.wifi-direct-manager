@@ -57,8 +57,14 @@
 
 #if defined TIZEN_MOBILE
 #define COMMON_IFACE_NAME "wlan0"
+#if defined TIZEN_WLAN_BOARD_SPRD
+#define P2P_IFACE_NAME "p2p0"
+#define GROUP_IFACE_NAME "p2p0"
+#define GROUP_IFACE_PREFIX "p2p"
+#else /* TIZEN_WLAN_BOARD_SPRD */
 #define GROUP_IFACE_NAME "p2p-wlan0-0"
 #define GROUP_IFACE_PREFIX "p2p-wlan0-"
+#endif /* TIZEN_WLAN_BOARD_SPRD */
 #define PRIMARY_DEVICE_TYPE "\x00\x0a\x00\x50\xf2\x04\x00\x05"
 #define DEFAULT_DEVICE_NAME "Tizen"
 #define DEFAULT_GO_INTENT 7
@@ -67,7 +73,7 @@
 #define DEFAULT_LISTEN_CHANNEL 1
 #define DEFAULT_OPER_REG_CLASS 81
 #define DEFAULT_OPER_CHANNEL 1
-#define DEFAULT_CONFIG_METHOD "push_button"
+#define DEFAULT_CONFIG_METHOD "display push_button keypad"
 #define DEFAULT_NO_GROUP_IFACE 0
 #endif
 
@@ -132,9 +138,7 @@
 #define WS_MAX_SERVICE_LEN 1024
 #define SERVICE_QUERY_LEN 4
 
-#define SERVICE_TYPE_BT_ADDR "0000f00b"
 #define SERVICE_TYPE_ALL "0000f00c"
-#define SERVICE_TYPE_CONTACT_INFO "0000f00d"
 #define SERV_BROADCAST_ADDRESS "00:00:00:00:00:00"
 
 #define WS_QTYPE_PTR 0x0c

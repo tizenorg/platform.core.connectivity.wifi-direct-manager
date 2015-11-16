@@ -43,7 +43,10 @@
 #include <glib.h>
 
 #include <vconf.h>
+#if defined(TIZEN_FEATURE_DEFAULT_CONNECTION_AGENT)
 #include <app_control.h>
+#include <aul.h>
+#endif
 #include <wifi-direct.h>
 
 #include "wifi-direct-ipc.h"
@@ -553,43 +556,69 @@ int wfd_util_get_local_dev_mac(unsigned char *dev_mac)
 	return 0;
 }
 
+#ifdef TIZEN_FEATURE_DEFAULT_CONNECTION_AGENT
 int wfd_util_start_wifi_direct_popup()
 {
 	__WDS_LOG_FUNC_ENTER__;
 
-	app_control_h control = NULL;
-	if (APP_CONTROL_ERROR_NONE != app_control_create(&control)) {
-		WDS_LOGE("App control create Failed !");
+	app_control_h popup_control = NULL;
+	if (APP_CONTROL_ERROR_NONE != app_control_create(&popup_control)
+		|| NULL == popup_control) {
+		WDS_LOGE("App control operation Failed !");
 		return -1;
 	}
-	if (APP_CONTROL_ERROR_NONE != app_control_set_operation(control,
+	if (APP_CONTROL_ERROR_NONE != app_control_set_operation(popup_control,
 		APP_CONTROL_OPERATION_DEFAULT)) {
-		WDS_LOGE("App control set operation Failed !");
-		app_control_destroy(control);
+		WDS_LOGE("App control operation Failed !");
+		app_control_destroy(popup_control);
 		return -1;
 	}
-	if (APP_CONTROL_ERROR_NONE != app_control_set_app_id(control,
+	if (APP_CONTROL_ERROR_NONE != app_control_set_app_id(popup_control,
 		"org.tizen.wifi-direct-popup")) {
-		WDS_LOGE("App control set app id Failed !");
-		app_control_destroy(control);
+		WDS_LOGE("App control operation Failed !");
+		app_control_destroy(popup_control);
 		return -1;
 	}
 	if (APP_CONTROL_ERROR_NONE !=
-		app_control_send_launch_request(control, NULL, NULL)) {
-		WDS_LOGE("App control send launch request Failed !");
+		app_control_send_launch_request(popup_control, NULL, NULL)) {
+		WDS_LOGE("App control operation Failed !");
+		app_control_destroy(popup_control);
 		return -1;
 	}
 
-	app_control_destroy(control);
+	app_control_destroy(popup_control);
+
 	WDS_LOGD("Succeeded to launch wifi-direct-popup");
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
 }
 
+int wfd_util_stop_wifi_direct_popup()
+{
+	__WDS_LOG_FUNC_ENTER__;
+
+	int pid = aul_app_get_pid("org.tizen.wifi-direct-popup");
+	if (pid > 0) {
+		if (aul_terminate_pid(pid) != AUL_R_OK) {
+			WDS_LOGD("Failed to destroy wifi-direct-popup pid[%d]", pid);
+			return -1;
+		} else {
+			WDS_LOGD("Succeeded to destroy wifi-direct-popup");
+		}
+	} else {
+		WDS_LOGD("Wifi-direct-popup not running");
+	}
+
+	__WDS_LOG_FUNC_EXIT__;
+	return 0;
+}
+#endif /* TIZEN_FEATURE_DEFAULT_CONNECTION_AGENT */
+
 int _connect_remote_device(char *ip_str)
 {
 	int sock;
 	int flags;
+	int res = 0;
 	struct sockaddr_in remo_addr;
 
 	errno = 0;
@@ -600,7 +629,13 @@ int _connect_remote_device(char *ip_str)
 	}
 
 	flags = fcntl(sock, F_GETFL, 0);
-	fcntl(sock, F_SETFL, flags | O_NONBLOCK);
+	res = fcntl(sock, F_SETFL, flags | O_NONBLOCK);
+	if (res < 0) {
+		WDS_LOGE("File descriptor create failed");
+		close(sock);
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
 
 	memset(&remo_addr, 0x0, sizeof(remo_addr));
 	remo_addr.sin_family = AF_INET;
@@ -608,7 +643,14 @@ int _connect_remote_device(char *ip_str)
 	remo_addr.sin_port = htons(9999);
 
 	errno = 0;
-	connect(sock, (struct sockaddr*) &remo_addr, sizeof(remo_addr));
+	res = connect(sock, (struct sockaddr*) &remo_addr, sizeof(remo_addr));
+	if (res < 0) {
+		WDS_LOGE("Failed to connect to server socket [%s]", strerror(errno));
+		close(sock);
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
 	WDS_SECLOGD("Status of connection to remote device[%s] - (%s)", ip_str, strerror(errno));
 
 	close(sock);

@@ -91,12 +91,12 @@ void dbus_property_foreach(GVariantIter *iter,
 
 		if (key) {
 			if (strcmp(key, "Properties") == 0) {
-				WDP_LOGE("Properties");
+				WDP_LOGD("Properties");
 				GVariantIter *iter_raw = NULL;
 				g_variant_get(value, "a{sv}", &iter_raw);
 				dbus_property_foreach(iter_raw, function, user_data);
 			} else if (function) {
-				WDP_LOGE("function");
+				WDP_LOGD("function");
 				function(key, value, user_data);
 			}
 			WDP_LOGE("do nothing");
@@ -175,7 +175,7 @@ int dbus_property_get_all(const char *path, GDBusConnection *connection,
 		}
 		g_variant_unref(reply);
 	} else{
-		WDP_LOGE("No properties");
+		WDP_LOGD("No properties");
 	}
 	if(function)
 		function(NULL, NULL, user_data);
