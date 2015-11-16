@@ -76,8 +76,8 @@ typedef struct {
 } wfd_service_s;
 
 
-int wfd_service_add(GList **services, int type, char *data, int *service_id);
-int wfd_service_del(GList *services, int service_id);
+int wfd_service_add(int type, char *data, int *service_id);
+int wfd_service_del(int service_id);
 #if 0
 int wfd_service_disc_req(unsigned char *addr, int type, char *data);
 int wfd_service_disc_cancel(int handle);

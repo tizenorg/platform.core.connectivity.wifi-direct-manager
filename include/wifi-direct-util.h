@@ -115,7 +115,12 @@ unsigned int wfd_util_static_ip_convert_order(unsigned int net_ip);
 #endif
 int wfd_util_set_wifi_direct_state(int state);
 int wfd_util_get_local_dev_mac(unsigned char *dev_mac);
+
+#ifdef TIZEN_FEATURE_DEFAULT_CONNECTION_AGENT
 int wfd_util_start_wifi_direct_popup();
+int wfd_util_stop_wifi_direct_popup();
+#endif /* TIZEN_FEATURE_DEFAULT_CONNECTION_AGENT */
+
 int wfd_util_dhcps_start();
 int wfd_util_dhcps_wait_ip_leased(wfd_device_s *peer);
 int wfd_util_dhcps_stop();
@@ -126,9 +131,9 @@ int wfd_util_dhcpc_get_server_ip(unsigned char* ip_addr);
 int wfd_util_get_local_ip(unsigned char* ip_addr);
 
 #ifdef CTRL_IFACE_DBUS
-#ifdef TIZEN_VENDOR_ATH
+#ifdef TIZEN_WLAN_BOARD_SPRD
 int wfd_util_static_ip_unset(const char *ifname);
-#endif /* TIZEN_VENDOR_ATH */
+#endif /* TIZEN_WLAN_BOARD_SPRD */
 /*TODO: ODROID Image does not have support libnl-2.0*/
 int wfd_util_ip_over_eap_assign(wfd_device_s *peer, const char *ifname);
 int wfd_util_ip_over_eap_lease(wfd_device_s *peer);

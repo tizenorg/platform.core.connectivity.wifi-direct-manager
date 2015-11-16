@@ -31,8 +31,13 @@
 #define DEFAULT_DEVICE_NAME "Tizen_Device"
 
 #if defined TIZEN_MOBILE
+#if defined TIZEN_WLAN_BOARD_SPRD
+#define DEFAULT_IFNAME "p2p0"
+#define GROUP_IFNAME "p2p0"
+#else /* TIZEN_WLAN_BOARD_SPRD */
 #define DEFAULT_IFNAME "wlan0"
 #define GROUP_IFNAME "p2p-wlan0-0"
+#endif /* TIZEN_WLAN_BOARD_SPRD */
 #endif
 
 #if defined TIZEN_WIFI_MODULE_BUNDLE

@@ -153,6 +153,9 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_DEACTIVATED);
 	manager->req_wps_mode = WFD_WPS_MODE_PBC;
 
+#ifdef TIZEN_FEATURE_DEFAULT_CONNECTION_AGENT
+	wfd_util_stop_wifi_direct_popup();
+#endif /* TIZEN_FEATURE_DEFAULT_CONNECTION_AGENT */
 	__WDS_LOG_FUNC_EXIT__;
  	return;
  }
@@ -268,6 +271,13 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 
 	if (event == NULL || manager == NULL) {
 		WDS_LOGE("Invalid parameter");
+		return;
+	}
+
+	wfd_group_s *group = (wfd_group_s*) manager->group;
+	if (group && group->role == WFD_DEV_ROLE_GC &&
+						event->event_id == WFD_OEM_EVENT_PROV_DISC_REQ) {
+		WDS_LOGD("Device has GC role - ignore this provision request");
 		return;
 	}
 
@@ -431,6 +441,12 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 		return;
 	}
 
+	wfd_group_s *group = (wfd_group_s*) manager->group;
+	if (group && group->role == WFD_DEV_ROLE_GC) {
+		WDS_LOGD("Device has GC role - ignore this go neg request");
+		return;
+	}
+
 #ifdef CTRL_IFACE_DBUS
 	wfd_oem_dev_data_s *edata = NULL;
 
@@ -524,7 +540,12 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	}
 
 	edata = (wfd_oem_conn_data_s*) event->edata;
-	if (edata && edata->status < 0 && session->connecting_120) {
+	if (!edata) {
+		WDS_LOGE("Invalid p2p connection data");
+		return;
+	 }
+
+	if (edata->status < 0 && session->connecting_120) {
 		if (session->retry_gsrc) {
 			g_source_remove(session->retry_gsrc);
 			session->retry_gsrc = 0;
@@ -842,6 +863,11 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 		if(peer_addr != NULL)
 			g_snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
 	} else if (manager->state >= WIFI_DIRECT_STATE_CONNECTED) {
+#if defined (CTRL_IFACE_DBUS)
+		if(manager->local->dev_role != WFD_DEV_ROLE_GO)
+			noti.event = WIFI_DIRECT_CLI_EVENT_DISCONNECTION_RSP;
+		else
+#endif
 		noti.event = WIFI_DIRECT_CLI_EVENT_GROUP_DESTROY_RSP;
 		noti.error = WIFI_DIRECT_ERROR_NONE;
 	} else {
@@ -1061,6 +1087,7 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 #endif /* TIZEN_TV */
 			wfd_oem_destroy_group(manager->oem_ops, group->ifname);
 			wfd_destroy_group(manager, group->ifname);
+			wfd_peer_clear_all(manager);
 		}
 	} else if (manager->state == WIFI_DIRECT_STATE_DISCONNECTING) {
 		noti.event = WIFI_DIRECT_CLI_EVENT_DISCONNECTION_RSP;
@@ -1285,11 +1312,6 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 				g_snprintf(noti.param2, 256, "%s|%s", service->data.bonjour.query, service->data.bonjour.rdata);
 				WDS_LOGD("Found service: [%d: %s] - [" MACSECSTR "]", service->protocol,
 							service->data.bonjour.query, MAC2SECSTR(event->dev_addr));
-			} else if (service->protocol == WFD_OEM_SERVICE_TYPE_BT_ADDR) {
-				g_snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(event->dev_addr));
-				g_snprintf(noti.param2, MACSTR_LEN, "%s", service->data.vendor.data2);
-				WDS_LOGD("Found service: [%d: %s] - [" MACSECSTR "]", service->protocol,
-							service->data.vendor.data2, MAC2SECSTR(event->dev_addr));
 			} else {
 				WDS_LOGD("Found service is not supported");
 				goto next;
@@ -1311,14 +1333,7 @@ next:
 			noti.type = edata->type;
 			g_snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(event->dev_addr));
 			switch(edata->type) {
-				case WFD_OEM_SERVICE_TYPE_BT_ADDR:
-					g_snprintf(noti.param2, MACSTR_LEN, MACSTR, MAC2STR(edata->data));
-					return;
-				case WFD_OEM_SERVICE_TYPE_CONTACT_INFO:
-					g_snprintf(noti.param2, MACSTR_LEN, "%s", edata->value);
-					return;
-				default:
-					WDS_LOGE("Unknown type [type ID: %d]", edata->type);
+				WDS_LOGE("Unknown type [type ID: %d]", edata->type);
 			}
 		}
 		wfd_client_send_event(manager, &noti);

@@ -1210,6 +1210,10 @@ static int _parsing_peer_info(char *msg, wfd_oem_device_s *peer)
 			info_cnt++;
 		}
 	}
+	if (info_cnt == 0) {
+		WDP_LOGD("Device info ids have no valid information");
+		return -1;
+	}
 
 	for (i = 0; i < info_cnt; i++) {
 		switch (infos[i].index){
@@ -1409,10 +1413,11 @@ static wfd_oem_dev_data_s *_convert_msg_to_dev_info(char *msg)
 				edata->group_flags = WFD_OEM_GROUP_FLAG_PERSISTENT_GROUP;
 			break;
 		case WS_DEV_INFO_P2P_GO_ADDR:
-			edata->dev_role = WFD_OEM_DEV_ROLE_GC;
 			res = _ws_txt_to_mac(infos[i].string, edata->p2p_go_addr);
 			if (res < 0)
 				memset(edata->p2p_go_addr, 0x00, OEM_MACADDR_LEN);
+			if (memcmp(edata->p2p_go_addr, null_mac, OEM_MACADDR_LEN))
+				edata->dev_role = WFD_OEM_DEV_ROLE_GC;
 			break;
 #ifdef TIZEN_FEATURE_WIFI_DISPLAY
 		case WS_DEV_INFO_WFD_DEV_INFO:
@@ -1745,30 +1750,8 @@ static int _ws_segment_to_service(char *segment, wfd_oem_new_service_s **service
 		WDP_LOGD("RData: %s", serv_tmp->data.bonjour.rdata);
 	} else if (serv_tmp->protocol == WFD_OEM_SERVICE_TYPE_VENDOR) {
 		WDP_LOGD("===== Vendor specific service =====");
-		if (!strncmp(ptr, "0000f00b", 8)) {
-			WDP_LOGD("\tSAMSUNG_BT_ADDR");
-			ptr += 16;
-			serv_tmp->protocol = WFD_OEM_SERVICE_TYPE_BT_ADDR;
-			serv_tmp->data.vendor.data1 = (char*) g_try_malloc0(9);
-			if (!serv_tmp->data.vendor.data1) {
-				WDP_LOGE("Failed to allocate memory for data.vendor.data1");
-				g_free(serv_tmp);
-				return -1;
-			}
-			g_strlcpy(serv_tmp->data.vendor.data1, "0000f00b", 9);
-			serv_tmp->data.vendor.data2 = (char*) g_try_malloc0(18);
-			if (!serv_tmp->data.vendor.data2) {
-				WDP_LOGE("Failed to allocate memory for data.vendor.data2");
-				g_free(serv_tmp->data.vendor.data1);
-				g_free(serv_tmp);
-				return -1;
-			}
-			_ws_hex_to_txt(ptr, 0, serv_tmp->data.vendor.data2);
-		}
-		WDP_LOGD("Info1: %s", serv_tmp->data.vendor.data1);
-		WDP_LOGD("Info2: %s", serv_tmp->data.vendor.data2);
 	} else {
-		WDP_LOGE("Not supported yet. Only bonjour and samsung vendor service supproted [%d]",
+		WDP_LOGE("Not supported yet. Only bonjour service supproted [%d]",
 					serv_tmp->protocol);
 		g_free(serv_tmp);
 		return -1;
@@ -1935,14 +1918,26 @@ static int _parsing_event_info(char *ifname, char *msg, wfd_oem_event_s *data)
 		{
 			/* Interface address of connected peer will come up */
 			char *temp_mac = NULL;
+			char *intf = NULL;
+			res = _extract_value_str(info_str, "ifname", &intf);
+			if (res < 0) {
+				WDP_LOGE("Failed to extract interface name");
+				break;
+			}
+			if (intf) {
+				strcpy(data->ifname, intf);
+				free(intf);
+			}
+			WDP_LOGD("Connected event from interface: %s", data->ifname);
 			res = _extract_value_str(info_str, "to", &temp_mac);
 			if (res < 0) {
 				WDP_LOGE("Failed to extract interface address");
 				break;
 			}
-			_ws_txt_to_mac(temp_mac, data->intf_addr);
-			if (temp_mac)
+			if (temp_mac) {
+				_ws_txt_to_mac(temp_mac, data->intf_addr);
 				g_free(temp_mac);
+			}
 			data->edata_type = WFD_OEM_EDATA_TYPE_NONE;
 		}
 		break;
@@ -2084,12 +2079,16 @@ static int _parsing_event_info(char *ifname, char *msg, wfd_oem_event_s *data)
 			char mac_addr[OEM_MACSTR_LEN] ={0, };
 			char *up_indic = NULL;
 			int len = 0;
+			int ret = 0;
 
 			_ws_txt_to_mac(info_str, data->dev_addr);
 			info_str += OEM_MACSTR_LEN;
 			g_snprintf(mac_addr, OEM_MACSTR_LEN, MACSTR, MAC2STR(data->dev_addr));
 
-			_extract_word(info_str, &up_indic);
+			ret = _extract_word(info_str, &up_indic);
+			if (ret < 0) {
+				WDP_LOGE("_extract_word is failed");
+			}
 			if (up_indic) {
 				WDP_LOGD("Update indicator: %s", up_indic);
 				info_str += strlen(up_indic) + 1;
@@ -2278,6 +2277,7 @@ static gboolean ws_event_handler(GIOChannel *source,
 				// goto done;
 			}
 			g_pd->group = NULL;
+			_ws_flush();
 		}
 		break;
 	case WS_EVENT_INVITATION_RECEIVED:
@@ -4171,16 +4171,6 @@ int ws_start_service_discovery(unsigned char *mac_addr, int service_type)
 			g_snprintf(cmd, sizeof(cmd), WS_CMD_SERV_DISC_REQ " %s %s", mac_str, SERV_DISC_REQ_UPNP);
 			g_strlcpy(service->service_type, SERV_DISC_REQ_UPNP, OEM_SERVICE_TYPE_LEN + 1);
 		break;
-		case WFD_OEM_SERVICE_TYPE_BT_ADDR:
-			strncat(query, SERVICE_TYPE_BT_ADDR, OEM_SERVICE_TYPE_LEN);
-			g_snprintf(cmd, sizeof(cmd), WS_CMD_SERV_DISC_REQ " %s %s", mac_str, query);
-			g_strlcpy(service->service_type, SERVICE_TYPE_BT_ADDR, OEM_SERVICE_TYPE_LEN + 1);
-			break;
-		case WFD_OEM_SERVICE_TYPE_CONTACT_INFO:
-			strncat(query, SERVICE_TYPE_CONTACT_INFO, OEM_SERVICE_TYPE_LEN);
-			g_snprintf(cmd, sizeof(cmd), WS_CMD_SERV_DISC_REQ " %s %s", mac_str, query);
-			g_strlcpy(service->service_type, SERVICE_TYPE_CONTACT_INFO, OEM_SERVICE_TYPE_LEN + 1);
-			break;
 		default:
 			WDP_LOGE("Invalid Service type");
 			__WDP_LOG_FUNC_EXIT__;
@@ -4255,12 +4245,6 @@ int ws_cancel_service_discovery(unsigned char *mac_addr, int service_type)
 		case WFD_OEM_SERVICE_TYPE_UPNP:
 			g_strlcpy(s_type, SERV_DISC_REQ_UPNP, OEM_SERVICE_TYPE_LEN + 1);
 		break;
-		case WFD_OEM_SERVICE_TYPE_BT_ADDR:
-			g_strlcpy(s_type, SERVICE_TYPE_BT_ADDR, OEM_SERVICE_TYPE_LEN + 1);
-			break;
-		case WFD_OEM_SERVICE_TYPE_CONTACT_INFO:
-			g_strlcpy(s_type, SERVICE_TYPE_CONTACT_INFO, OEM_SERVICE_TYPE_LEN + 1);
-			break;
 		default:
 			__WDP_LOG_FUNC_EXIT__;
 			WDP_LOGE("Invalid Service type");
@@ -4296,10 +4280,9 @@ int ws_cancel_service_discovery(unsigned char *mac_addr, int service_type)
 	return 0;
 }
 
-int _convert_bonjour_to_hex(char *query, char *rdata, char **hex)
+int _convert_bonjour_query_to_hex(char *query, char **hex)
 {
 	char hex_key[256] = {0, };;
-	char hex_value[256] = {0, };;
 	char *token = NULL;
 	char *temp = NULL;
 	int len = 0;
@@ -4307,15 +4290,22 @@ int _convert_bonjour_to_hex(char *query, char *rdata, char **hex)
 	int i = 0;
 	char temp_str[256] = {0, };
 	char *result_str = NULL;
+	char *str_query = NULL;
 
 	if (!query || !hex) {
 		WDP_LOGE("Invalid parameter");
 		return -1;
 	}
 
-	token = strtok_r(query, ".", &temp);
+	str_query = strdup(query);
+	if (!str_query) {
+		WDP_LOGE("Memory allocation failed");
+		return -1;
+	}
+
+	token = strtok_r(str_query, ".", &temp);
 	while (token) {
-		if (!strcmp(token, "local")) {
+		if (!strcmp(token, "local") || !strcmp(token, "_tcp") || !strcmp(token, "_udp")) {
 			WDP_LOGD("Query conversion done");
 			break;
 		}
@@ -4332,21 +4322,85 @@ int _convert_bonjour_to_hex(char *query, char *rdata, char **hex)
 		token = strtok_r(NULL, ".", &temp);
 	}
 
-	if (token && strstr(token, "local")) {
+	if (token && strstr(token, "_tcp")) {
+		token = strtok_r(NULL, ".", &temp);
+		if (token && strstr(token, "local")) {
+			strncat(hex_key, "c00c", 4);
+			strncat(hex_key, "000c", 4);
+			strncat(hex_key, "01", 2);
+			goto next;
+		}
+	} else if (token && strstr(token, "_udp")) {
+		token = strtok_r(NULL, ".", &temp);
+		if (token && strstr(token, "local")) {
+			strncat(hex_key, "c01c", 4);
+			strncat(hex_key, "000c", 4);
+			strncat(hex_key, "01", 2);
+			goto next;
+		}
+	} else if (token && strstr(token, "local")) {
 		strncat(hex_key, "c011", 4);
 		strncat(hex_key, "000c", 4);
 		strncat(hex_key, "01", 2);
-	} else {
-		strncat(hex_key, "c011", 4);
-		strncat(hex_key, "0010", 4);
-		strncat(hex_key, "01", 2);
+		goto next;
+	}
+
+	strncat(hex_key, "c00c", 4);
+	strncat(hex_key, "0010", 4);
+	strncat(hex_key, "01", 2);
+
+next:
+	g_free(str_query);
+
+	tot_len = strlen(hex_key);
+	result_str = (char*) calloc(1, tot_len+1);
+	if (!result_str) {
+		WDP_LOGE("Failed to allocate memory for result string");
+		return -1;
+	}
+	sprintf(result_str, "%s", hex_key);
+
+	*hex = result_str;
+
+	return 0;
+}
+
+
+int _convert_bonjour_to_hex(char *query, char *rdata,
+						wfd_oem_bonjour_rdata_type_e rdata_type, char **hex)
+{
+	char *hex_key = NULL;
+	char hex_value[256] = {0, };
+	char *token = NULL;
+	char *temp = NULL;
+	int len = 0;
+	int tot_len = 0;
+	int i = 0;
+	char temp_str[256] = {0, };
+	char *result_str = NULL;
+	char *str_rdata = NULL;
+
+	if (!query || !hex) {
+		WDP_LOGE("Invalid parameter");
+		return -1;
+	}
+
+	if (_convert_bonjour_query_to_hex(query, &hex_key) < 0 || !hex_key) {
+		WDP_LOGE("_convert_bonjour_query_to_hex failed");
+		return -1;
 	}
 
 	if (!rdata || !strlen(rdata)) {
 		WDP_LOGD("RDATA is NULL");
 		strncat(hex_value, "00", 2);
 	} else {
-		token = strtok_r(rdata, ".", &temp);
+		str_rdata = strdup(rdata);
+		if (!str_rdata) {
+			WDP_LOGE("Memory allocation failed");
+			g_free(hex_key);
+			return -1;
+		}
+		token = strtok_r(str_rdata, ".", &temp);
 		while (token) {
 			WDP_LOGD("Token: %s", token);
 			len = strlen(token);
@@ -4360,19 +4414,24 @@ int _convert_bonjour_to_hex(char *query, char *rdata, char **hex)
 
 			token = strtok_r(NULL, ".", &temp);
 		}
+		g_free(str_rdata);
 	}
 
-	strncat(hex_value, "c027", 4);
+	if (rdata_type == WFD_OEM_BONJOUR_RDATA_PTR)
+		strncat(hex_value, "c027", 4);
 
 	tot_len = strlen(hex_key) + strlen(hex_value);
 	result_str = (char*) g_try_malloc0(tot_len+2);
 	if (!result_str) {
 		WDP_LOGE("Failed to allocate memory for result string");
+		g_free(hex_key);
 		return -1;
 	}
 	g_snprintf(result_str, tot_len+2, "%s %s", hex_key, hex_value);
 
 	*hex = result_str;
+
+	g_free(hex_key);
 
 	return 0;
 }
@@ -4400,7 +4459,9 @@ int ws_serv_add(wfd_oem_new_service_s *service)
 
 			res = _convert_bonjour_to_hex(service->data.bonjour.query,
 								    service->data.bonjour.rdata,
+								    service->data.bonjour.rdata_type,
 								    &hex);
+
 			if (res < 0) {
 				WDP_LOGE("Failed to convert Key string as hex string");
 				return -1;
@@ -4463,7 +4524,7 @@ int ws_serv_del(wfd_oem_new_service_s *service)
 			WDP_LOGD("Service type: WFD_OEM_SERVICE_TYPE_BONJOUR, Data: %s", service);
 			char *hex_key = NULL;
 
-			res = _convert_bonjour_to_hex(service->data.bonjour.query, NULL, &hex_key);
+			res = _convert_bonjour_query_to_hex(service->data.bonjour.query, &hex_key);
 			if (res != 0) {
 				WDP_LOGE("Failed to convert Key string as hex string");
 				return -1;
@@ -4496,11 +4557,11 @@ int ws_serv_del(wfd_oem_new_service_s *service)
 	}
 
 	if (strstr(reply, "FAIL")) {
-		WDP_LOGE("Failed to add service");
+		WDP_LOGE("Failed to delete service");
 		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
-	WDP_LOGD("Succeeded to add service");
+	WDP_LOGD("Succeeded to del service");
 
 	__WDP_LOG_FUNC_EXIT__;
 	return 0;

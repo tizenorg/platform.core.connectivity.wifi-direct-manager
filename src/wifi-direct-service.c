@@ -12,7 +12,7 @@
 #include "wifi-direct-util.h"
 
 
-int wfd_service_add(GList **services, int type, char *info_str, int *service_id)
+int wfd_service_add(int type, char *info_str, int *service_id)
 {
 	__WDS_LOG_FUNC_ENTER__;
 	wfd_manager_s *manager = wfd_get_manager();
@@ -40,7 +40,7 @@ int wfd_service_add(GList **services, int type, char *info_str, int *service_id)
 	}
 
 	service->type = type;
-	service->id = (intptr_t) &service;
+	service->id = (intptr_t) service;
 
 	info1 = g_strndup(info_str, strlen(info_str));
 	if(info1 == NULL) {
@@ -75,7 +75,6 @@ int wfd_service_add(GList **services, int type, char *info_str, int *service_id)
 		break;
 		case WIFI_DIRECT_SERVICE_TYPE_WS_DISCOVERY:
 		case WIFI_DIRECT_SERVICE_TYPE_WIFI_DISPLAY:
-		case WIFI_DIRECT_SERVICE_TYPE_BT_ADDR:
 			WDS_LOGE("Not supported yet");
 			g_free(info1);
 			g_free(service);
@@ -108,14 +107,14 @@ int wfd_service_add(GList **services, int type, char *info_str, int *service_id)
 //	free(oem_service);
 
 	service->str_ptr = info1;
-	*services = g_list_prepend(*services, service);
+	manager->local->services = g_list_prepend(manager->local->services, service);
 	*service_id = service->id;
 
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
 }
 
-int wfd_service_del(GList *services, int service_id)
+int wfd_service_del(int service_id)
 {
 	__WDS_LOG_FUNC_ENTER__;
 	wfd_manager_s *manager = wfd_get_manager();
@@ -123,12 +122,12 @@ int wfd_service_del(GList *services, int service_id)
 	wfd_service_s *service = NULL;
 	int res = 0;
 
-	if (!services) {
-		WDS_LOGE("Invalid parameter");
+	if (!manager->local->services) {
+		WDS_LOGE("No services to delete");
 		return -1;
 	}
 
-	temp = g_list_first(services);
+	temp = g_list_first(manager->local->services);
 	while (temp) {
 		service = (wfd_service_s*) temp->data;
 		if (service->id == service_id) {
@@ -150,7 +149,7 @@ int wfd_service_del(GList *services, int service_id)
 		return -1;
 	}
 
-	services = g_list_remove(services, service);
+	manager->local->services = g_list_remove(manager->local->services, service);
 
 	g_free(service->str_ptr);
 	g_free(service);

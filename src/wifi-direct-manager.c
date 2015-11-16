@@ -550,8 +550,9 @@ int wfd_manager_activate(wfd_manager_s *manager)
 
 	wfd_manager_local_config_set(manager);
 	wfd_util_set_country();
-
+#ifdef TIZEN_FEATURE_DEFAULT_CONNECTION_AGENT
 	wfd_util_start_wifi_direct_popup();
+#endif /* TIZEN_FEATURE_DEFAULT_CONNECTION_AGENT */
 
 	res = wfd_util_get_local_dev_mac(manager->local->dev_addr);
 	if (res < 0) {
@@ -633,6 +634,9 @@ int wfd_manager_deactivate(wfd_manager_s *manager)
 	wfd_peer_clear_all(manager);
 	wfd_local_reset_data(manager);
 
+#ifdef TIZEN_FEATURE_DEFAULT_CONNECTION_AGENT
+	wfd_util_stop_wifi_direct_popup();
+#endif /* TIZEN_FEATURE_DEFAULT_CONNECTION_AGENT */
 	__WDS_LOG_FUNC_EXIT__;
 	return WIFI_DIRECT_ERROR_NONE;
 }
@@ -786,7 +790,8 @@ int wfd_manager_cancel_connection(wfd_manager_s *manager, unsigned char *peer_ad
 
 	if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
 		wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
-		wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
+		if (group && group->member_count > 0)
+			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
 	} else {
 		wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
 		wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
