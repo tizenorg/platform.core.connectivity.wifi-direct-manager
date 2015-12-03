@@ -70,7 +70,7 @@ cmake . -DCMAKE_INSTALL_PREFIX=%{_prefix} -DARCHITECTURE=$ARCH \
         -DTIZEN_FEATURE_WIFI_DISPLAY=0 \
 %else
 %if "%{profile}" == "mobile"
-%if "%{?tizen_target_name}" == "Z300H"
+%if "%{?tizen_target_name}" == "TM1"
 	-DTIZEN_WLAN_BOARD_SPRD=1 \
 %endif
         -DTIZEN_FEATURE_SERVICE_DISCOVERY=1 \
