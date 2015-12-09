@@ -1091,7 +1091,7 @@ static int _ws_cancel()
 	dbus_set_method_param(&params, "Cancel", g_pd->iface_path , g_dbus);
 	params.params = NULL;
 
-	res = dbus_method_call(&params, SUPPLICANT_P2PDEVICE, NULL, NULL);
+	res = dbus_method_call(&params, SUPPLICANT_WPS, NULL, NULL);
 	if (res < 0)
 		WDP_LOGE("Failed to send command to wpa_supplicant");
 	else
