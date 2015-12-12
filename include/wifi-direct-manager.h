@@ -45,6 +45,12 @@
 #define GROUP_IFNAME "wlan0"
 #endif
 
+#if defined TIZEN_TV_BOARD_PRD
+#define DEFAULT_IFNAME "p2p0"
+#define GROUP_IFNAME "p2p0"
+#endif
+
+
 #ifndef DEFAULT_IFNAME
 #define DEFAULT_IFNAME "p2p0"
 #endif

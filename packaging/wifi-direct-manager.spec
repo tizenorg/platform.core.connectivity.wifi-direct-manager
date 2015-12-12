@@ -1,6 +1,6 @@
 Name:		wifi-direct-manager
 Summary:	Wi-Fi Direct manger
-Version:	1.2.104
+Version:	1.2.105
 Release:	1
 Group:      Network & Connectivity/Wireless
 License:    Apache-2.0
@@ -85,8 +85,9 @@ cmake . -DCMAKE_INSTALL_PREFIX=%{_prefix} -DARCHITECTURE=$ARCH \
 	-DTIZEN_WLAN_CONCURRENT_ENABLE=0 \
 	-DTIZEN_FEATURE_WIFI_DISPLAY=1 \
 	-DCTRL_IFACE_DBUS=1 \
-	-DTIZEN_WIFI_MODULE_BUNDLE=1 \
+	-DTIZEN_WIFI_MODULE_BUNDLE=0 \
 	-DTIZEN_TV=1 \
+	-DTIZEN_TV_BOARD_PRD=1 \
 %endif
 %endif
 %endif
@@ -113,7 +114,9 @@ cp %{_builddir}/%{buildsubdir}/LICENSE.APLv2 %{buildroot}%{_datadir}/license/wif
 %post
 #TV profile uses default XU3 device which creates wlan interface only
 %if "%{profile}" == "tv"
-chmod 644 /usr/etc/wifi-direct/dhcpd.wlan.conf
+# Comment it for temp puprose. Tizen TV Board supports p2p0 interface
+#chmod 644 /usr/etc/wifi-direct/dhcpd.wlan.conf
+chmod 644 /usr/etc/wifi-direct/dhcpd.p2p.conf
 %else
 chmod 644 /usr/etc/wifi-direct/dhcpd.p2p.conf
 %endif
@@ -148,7 +151,8 @@ chmod 755 /usr/sbin/p2p_supp.sh
 %{_bindir}/wfd-manager
 #TV profile uses default XU3 device which creates wlan interface only
 %if "%{profile}" == "tv"
-/usr/etc/wifi-direct/dhcpd.wlan.conf
+/usr/etc/wifi-direct/dhcpd.p2p.conf
+#/usr/etc/wifi-direct/dhcpd.wlan.conf
 %else
 /usr/etc/wifi-direct/dhcpd.p2p.conf
 %endif

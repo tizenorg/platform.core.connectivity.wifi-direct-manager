@@ -50,9 +50,9 @@
 #define CONF_FILE_PATH "/etc/wpa_supplicant/wpa_supplicant.conf"
 #endif
 
-#if 0
+#if defined TIZEN_TV_BOARD_PRD
 #define DEFAULT_MAC_FILE_PATH "/sys/class/net/p2p0/address"
-#define CONF_FILE_PATH "/opt/etc/p2p_supp.conf"
+#define CONF_FILE_PATH "/etc/wpa_supplicant/wpa_supplicant.conf"
 #endif
 
 #if defined TIZEN_MOBILE
@@ -81,6 +81,12 @@
 #define COMMON_IFACE_NAME "wlan0"
 #define GROUP_IFACE_NAME "wlan0"
 #define GROUP_IFACE_PREFIX "wlan"
+#endif
+
+#if defined TIZEN_TV_BOARD_PRD
+#define COMMON_IFACE_NAME "p2p0"
+#define GROUP_IFACE_NAME "p2p0"
+#define GROUP_IFACE_PREFIX "p2p"
 #endif
 
 #if defined TIZEN_TV
