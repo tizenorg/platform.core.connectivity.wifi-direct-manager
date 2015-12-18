@@ -2365,7 +2365,7 @@ static int _ws_reset_plugin(ws_dbus_plugin_data_s *f_pd)
 	return 0;
 }
 
-#if 0
+#ifndef TIZEN_WIFI_MODULE_BUNDLE
 static int __ws_check_net_interface(char* if_name)
 {
 	struct ifreq ifr;
@@ -2482,7 +2482,7 @@ gboolean _ws_util_execute_file(const char *file_path,
 	return FALSE;
 }
 
-#if 0
+#ifndef TIZEN_WIFI_MODULE_BUNDLE
 static int __ws_p2p_firmware_start(void)
 {
 	GError *error = NULL;
@@ -2902,7 +2902,7 @@ int ws_activate(int concurrent)
 		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
-#if 0
+#ifndef TIZEN_WIFI_MODULE_BUNDLE
 	while (retry_count < WS_CONN_RETRY_COUNT) {
 		/* load wlan driver */
 		if(concurrent == 0)
@@ -2940,7 +2940,7 @@ int ws_activate(int concurrent)
 	if (res < 0) {
 		res = __ws_p2p_supplicant_stop();
 		WDP_LOGI("[/usr/sbin/p2p_supp.sh stop] returns %d", res);
-#if 0
+#ifndef TIZEN_WIFI_MODULE_BUNDLE
 		res = __ws_p2p_firmware_stop();
 		WDP_LOGI("P2P firmware stopped with error %d", res);
 #endif
@@ -2985,7 +2985,7 @@ int ws_deactivate(int concurrent)
 	if(concurrent == 0) {
 		res = __ws_p2p_supplicant_stop();
 		WDP_LOGI("[/usr/sbin/p2p_supp.sh stop] returns %d", res);
-#if 0
+#ifndef TIZEN_WIFI_MODULE_BUNDLE
 		res = __ws_p2p_firmware_stop();
 		WDP_LOGI("P2P firmware stopped with error %d", res);
 #endif
