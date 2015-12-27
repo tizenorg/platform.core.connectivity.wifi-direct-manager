@@ -313,7 +313,7 @@ static int _ws_hex_to_num(char *src, int len)
 
 	return num;
 }
-
+#if 0
 static int _ws_hex_to_txt(char *src, int length, char *dest)
 {
 	// TODO: check it is good to change dest parameter as double pointer.
@@ -349,6 +349,7 @@ static int _ws_hex_to_txt(char *src, int length, char *dest)
 
 	return 0;
 }
+#endif
 #endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
 
 static int _ws_txt_to_devtype(char *txt, int *pri, int *sec)
