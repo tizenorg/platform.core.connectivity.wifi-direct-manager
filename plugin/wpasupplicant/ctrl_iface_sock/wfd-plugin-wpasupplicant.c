@@ -838,17 +838,23 @@ static int _connect_to_supplicant(char *ifname, ws_sock_data_s **sock_data)
 static gboolean _remove_event_source(gpointer data)
 {
 	__WDP_LOG_FUNC_ENTER__;
-	int source_id = (int) data;
+	ws_sock_data_s *sock_data = NULL;
 	int res = 0;
 
-	if (source_id < 0) {
-		WDP_LOGE("Invalid source ID [%d]", source_id);
+	sock_data = (ws_sock_data_s *) data;
+	if (sock_data == NULL) {
+		WDP_LOGE("Invalid sock_data");
 		return FALSE;
 	}
 
-	res = g_source_remove(source_id);
+	if (sock_data->gsource < 0) {
+		WDP_LOGE("Invalid source ID [%d]", sock_data->gsource);
+		return FALSE;
+	}
+
+	res = g_source_remove(sock_data->gsource);
 	if (!res) {
-		WDP_LOGE("Failed to remove GSource(%d)", source_id);
+		WDP_LOGE("Failed to remove GSource(%d)", sock_data->gsource);
 		return FALSE;
 	}
 	WDP_LOGD("Succeeded to remove GSource");
@@ -887,7 +893,7 @@ static int _disconnect_from_supplicant(char *ifname, ws_sock_data_s *sock_data)
 	}
 
 	if (sock_data->gsource > 0)
-		g_idle_add(_remove_event_source, (gpointer) sock_data->gsource);
+		g_idle_add(_remove_event_source, (gpointer) sock_data);
 	sock_data->gsource = 0;
 
 	// close control interface
