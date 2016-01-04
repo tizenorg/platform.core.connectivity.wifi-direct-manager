@@ -56,6 +56,7 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 
 	if (!manager || !data) {
 		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
@@ -64,6 +65,7 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 		peer = wfd_add_peer(manager, data->p2p_dev_addr, data->name);
 		if (!peer) {
 			WDS_LOGE("Failed to add peer");
+			__WDS_LOG_FUNC_EXIT__;
 			return -1;
 		}
 	} else {
@@ -104,6 +106,7 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	wfd_session_s *session = (wfd_session_s*) data;
 	if (!session) {
 		WDS_LOGE("Session is NULL");
+		__WDS_LOG_FUNC_EXIT__;
 		return G_SOURCE_REMOVE;
 	}
 
@@ -124,7 +127,7 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 			WDS_LOGE("Invalid session state [%d]", session->state);
 			break;
 	}
-
+	__WDS_LOG_FUNC_EXIT__;
 	return G_SOURCE_REMOVE;
 }
 
@@ -136,6 +139,7 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 
 	if (event == NULL || manager == NULL) {
 		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
@@ -170,18 +174,21 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 
 	if (event == NULL || manager == NULL) {
 		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
 	edata = (wfd_oem_dev_data_s*) event->edata;
 	if (!edata || event->edata_type != WFD_OEM_EDATA_TYPE_DEVICE) {
 		WDS_LOGE("Invalid event data");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
 	res = _wfd_event_update_peer(manager, edata);
 	if (res < 0) {
 		WDS_LOGE("Failed to update peer data");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
@@ -207,6 +214,7 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 
 	if (event == NULL || manager == NULL) {
 		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
@@ -230,17 +238,20 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 
 	if (event == NULL || manager == NULL) {
 		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
 	if (manager->state != WIFI_DIRECT_STATE_DISCOVERING &&
 			manager->state != WIFI_DIRECT_STATE_ACTIVATED) {
 		WDS_LOGE("Notify finding stopped when discovering or activated. [%d]", manager->state);
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
 	if (manager->scan_mode == WFD_SCAN_MODE_PASSIVE) {
 		WDS_LOGE("During passive scan, Discover Finished event will not notified");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
@@ -271,6 +282,7 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 
 	if (event == NULL || manager == NULL) {
 		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
@@ -278,6 +290,7 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	if (group && group->role == WFD_DEV_ROLE_GC &&
 						event->event_id == WFD_OEM_EVENT_PROV_DISC_REQ) {
 		WDS_LOGD("Device has GC role - ignore this provision request");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
@@ -287,6 +300,7 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	edata = (wfd_oem_dev_data_s*) event->edata;
 	if (!edata || event->edata_type != WFD_OEM_EDATA_TYPE_DEVICE) {
 		WDS_LOGE("Invalid event data");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
@@ -301,6 +315,7 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 		peer = wfd_add_peer(manager, event->dev_addr, "DIRECT-");
 		if (!peer) {
 			WDS_LOGE("Failed to add peer for invitation");
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 		peer->state = WFD_PEER_STATE_CONNECTING;
@@ -326,6 +341,7 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 
 	if (event == NULL || manager == NULL) {
 		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
@@ -335,6 +351,7 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	edata = (wfd_oem_dev_data_s*) event->edata;
 	if (!edata || event->edata_type != WFD_OEM_EDATA_TYPE_DEVICE) {
 		WDS_LOGE("Invalid event data");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
@@ -349,6 +366,7 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 		peer = wfd_add_peer(manager, event->dev_addr, "DIRECT-");
 		if (!peer) {
 			WDS_LOGE("Failed to add peer for invitation");
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 		peer->state = WFD_PEER_STATE_CONNECTING;
@@ -375,18 +393,21 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 
 	if (event == NULL || manager == NULL) {
 		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
 	session = (wfd_session_s*) manager->session;
 	if (!session) {
 		WDS_LOGE("Unexpected event. Session not exist");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
 	peer_addr = wfd_session_get_peer_addr(session);
 	if (!peer_addr) {
 		WDS_LOGE("Session do not have peer");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
@@ -438,12 +459,14 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 
 	if (event == NULL || manager == NULL) {
 		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
 	wfd_group_s *group = (wfd_group_s*) manager->group;
 	if (group && group->role == WFD_DEV_ROLE_GC) {
 		WDS_LOGD("Device has GC role - ignore this go neg request");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
@@ -453,11 +476,13 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	edata = (wfd_oem_dev_data_s*) event->edata;
 	if (!edata || event->edata_type != WFD_OEM_EDATA_TYPE_DEVICE) {
 		WDS_LOGE("Invalid event data");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
 	if (_wfd_event_update_peer(manager, edata) < 0) {
 		WDS_LOGE("Failed to update peer data");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 #else /* CTRL_IFACE_DBUS */
@@ -467,6 +492,7 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	edata = (wfd_oem_conn_data_s*) event->edata;
 	if (!edata || event->edata_type != WFD_OEM_EDATA_TYPE_CONN) {
 		WDS_LOGE("Invalid connection event data");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
@@ -476,6 +502,7 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 		peer = wfd_add_peer(manager, event->dev_addr, "DIRECT-");
 		if (!peer) {
 			WDS_LOGE("Failed to add peer for invitation");
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
@@ -494,6 +521,7 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 #endif /* CTRL_IFACE_DBUS */
 		if (!session) {
 			WDS_LOGE("Failed to create session");
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 		session->type = SESSION_TYPE_NORMAL;
@@ -524,24 +552,28 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 
 	if (event == NULL || manager == NULL) {
 		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
 	session = (wfd_session_s*) manager->session;
 	if (!session) {
 		WDS_LOGE("Unexpected event. Session not exist");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
 	peer_addr = wfd_session_get_peer_addr(session);
 	if (!peer_addr) {
 		WDS_LOGE("Session do not have peer");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
 	edata = (wfd_oem_conn_data_s*) event->edata;
 	if (!edata) {
 		WDS_LOGE("Invalid p2p connection data");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	 }
 
@@ -552,6 +584,7 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 		}
 		session->retry_gsrc = g_idle_add((GSourceFunc) _wfd_connection_retry, session);
 		WDS_LOGD("Connection will be retried");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
@@ -583,12 +616,14 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 
 	if (event == NULL || manager == NULL) {
 		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
 	edata = (wfd_oem_conn_data_s*) event->edata;
 	if (edata == NULL) {
 		WDS_LOGE("Invalid event data");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
@@ -614,18 +649,21 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 
 	if (event == NULL || manager == NULL) {
 		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
 	session = (wfd_session_s*) manager->session;
 	if (!session) {
 		WDS_LOGE("Unexpected event. Session not exist");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
 	peer_addr = wfd_session_get_peer_addr(session);
 	if (!peer_addr) {
 		WDS_LOGE("Session do not have peer");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
@@ -688,18 +726,21 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 
 	if (event == NULL || manager == NULL) {
 		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
 	session = (wfd_session_s*) manager->session;
 	if (!session) {
 		WDS_LOGE("Unexpected event. Session not exist");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
 	peer_addr = wfd_session_get_peer_addr(session);
 	if (!peer_addr) {
 		WDS_LOGE("Session do not has peer");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
@@ -776,6 +817,7 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 
 	if (event == NULL || manager == NULL) {
 		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
@@ -787,6 +829,7 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 		group = wfd_create_pending_group(manager, event->intf_addr);
 		if (!group) {
 			WDS_LOGE("Failed to create pending group");
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 		manager->group = group;
@@ -796,18 +839,21 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 		if (!session) {
 			WDS_LOGE("Unexpected Event. Group should be removed(Client)");
 			wfd_oem_destroy_group(manager->oem_ops, event->ifname);
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 
 		group = wfd_create_group(manager, event);
 		if (!group) {
 			WDS_LOGE("Failed to create group");
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	} else {
 		if (!session && !(group->flags & WFD_GROUP_FLAG_AUTONOMOUS)) {
 			WDS_LOGE("Unexpected Event. Group should be removed(Owner)");
 			wfd_oem_destroy_group(manager->oem_ops, group->ifname);
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 
@@ -815,6 +861,7 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 			wfd_group_complete(manager, event);
 		} else {
 			WDS_LOGE("Unexpected event. Group already exist");
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
@@ -849,6 +896,7 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 
 	if (event == NULL || manager == NULL) {
 		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
@@ -872,6 +920,7 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 		noti.error = WIFI_DIRECT_ERROR_NONE;
 	} else {
 		WDS_LOGD("Unexpected event(GROUP_DESTROYED). Ignore it");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 	wfd_client_send_event(manager, &noti);
@@ -898,6 +947,7 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 
 	if (event == NULL || manager == NULL) {
 		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
@@ -907,6 +957,7 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 		peer = wfd_add_peer(manager, event->dev_addr, "DIRECT-");
 		if (!peer) {
 			WDS_LOGE("Failed to add peer for invitation");
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
@@ -920,6 +971,7 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 					manager->req_wps_mode, SESSION_DIRECTION_INCOMING);
 	if (!session) {
 		WDS_LOGE("Failed to create session");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 	session->type = SESSION_TYPE_INVITE;
@@ -930,6 +982,7 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	res = wfd_session_start(session);
 	if (res < 0) {
 		WDS_LOGE("Failed to start session");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
@@ -962,12 +1015,14 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 
 	if (event == NULL || manager == NULL) {
 		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
 	// FIXME: Move this code to plugin
 	if (!memcmp(event->intf_addr, manager->local->intf_addr, MACADDR_LEN)) {
 		WDS_LOGD("Ignore this event");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
@@ -979,12 +1034,14 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 		wfd_destroy_group(manager, GROUP_IFNAME);
 		wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
 		wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
 	peer = wfd_session_get_peer(session);
 	if (!peer) {
 		WDS_LOGE("Peer not found");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
@@ -993,6 +1050,7 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 		group = wfd_create_pending_group(manager, event->intf_addr);
 		if (!group) {
 			WDS_LOGE("Failed to create pending group");
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 		manager->group = group;
@@ -1044,12 +1102,14 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 
 	if (event == NULL || manager == NULL) {
 		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
 	group = (wfd_group_s*) manager->group;
 	if (!group) {
 		WDS_LOGE("Group not found");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
@@ -1063,6 +1123,7 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 		peer = wfd_session_get_peer(manager->session);
 		if (!peer) {
 			WDS_LOGE("Failed to find connecting peer");
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
@@ -1107,11 +1168,13 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 			noti.error = WIFI_DIRECT_ERROR_CONNECTION_FAILED;
 		} else {
 			WDS_LOGE("Unexpected Peer State. Ignore it");
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 		g_snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
 	} else {
 		WDS_LOGE("Unexpected event. Ignore it");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 	wfd_client_send_event(manager, &noti);
@@ -1134,12 +1197,14 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 
 	if (event == NULL || manager == NULL) {
 		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
 	// FIXME: Move this code to plugin
 	if (!memcmp(event->intf_addr, manager->local->intf_addr, MACADDR_LEN)) {
 		WDS_LOGD("Ignore this event");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
@@ -1151,12 +1216,14 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 		wfd_destroy_group(manager, GROUP_IFNAME);
 		wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
 		wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
 	peer = wfd_session_get_peer(session);
 	if (!peer) {
 		WDS_LOGE("Peer not found");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
@@ -1165,6 +1232,7 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 		group = wfd_create_pending_group(manager, event->intf_addr);
 		if (!group) {
 			WDS_LOGE("Failed to create pending group");
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 		manager->group = group;
@@ -1192,12 +1260,14 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 
 	if (event == NULL || manager == NULL) {
 		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
 	group = (wfd_group_s*) manager->group;
 	if (!group) {
 		WDS_LOGE("Group not found");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
@@ -1211,6 +1281,7 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 		peer = wfd_session_get_peer(manager->session);
 		if (!peer) {
 			WDS_LOGE("Failed to find connecting peer");
+			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
 	}
@@ -1259,6 +1330,7 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 		g_snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
 	} else {
 		WDS_LOGE("Unexpected event. Ignore it");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 	wfd_client_send_event(manager, &noti);
@@ -1288,6 +1360,7 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 
 	if (event == NULL || manager == NULL) {
 		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
@@ -1481,6 +1554,7 @@ static struct {
 
 	if (!user_data || !data) {
 		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
