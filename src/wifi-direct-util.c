@@ -968,12 +968,14 @@ int wfd_util_dhcpc_get_server_ip(unsigned char* ip_addr)
 
 		if(strcmp(get_str, ZEROIP) == 0) {
 			WDS_LOGE("Failed to get vconf value[%s]", VCONFKEY_DHCPC_SERVER_IP);
+			g_free(get_str);
 			__WDS_LOG_FUNC_EXIT__;
 			return -1;
 		}
 
 		WDS_LOGD("VCONFKEY_DHCPC_SERVER_IP(%s) : %s\n", VCONFKEY_DHCPC_SERVER_IP, get_str);
 		_txt_to_ip(get_str, ip_addr);
+		g_free(get_str);
 		if (*ip_addr)
 			break;
 		count++;
@@ -1005,12 +1007,14 @@ int wfd_util_get_local_ip(unsigned char* ip_addr)
 
 		if(strcmp(get_str, ZEROIP) == 0) {
 			WDS_LOGE("Failed to get vconf value[%s]", VCONFKEY_LOCAL_IP);
+			g_free(get_str);
 			__WDS_LOG_FUNC_EXIT__;
 			return -1;
 		}
 
 		WDS_LOGD("VCONFKEY_DHCPC_SERVER_IP(%s) : %s\n", VCONFKEY_LOCAL_IP, get_str);
 		_txt_to_ip(get_str, ip_addr);
+		g_free(get_str);
 		if (*ip_addr)
 			break;
 		count++;
