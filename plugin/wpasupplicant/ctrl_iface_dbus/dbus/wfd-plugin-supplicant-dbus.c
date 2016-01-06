@@ -98,8 +98,9 @@ void dbus_property_foreach(GVariantIter *iter,
 			} else if (function) {
 				WDP_LOGD("function");
 				function(key, value, user_data);
+			} else {
+				WDP_LOGE("do nothing");
 			}
-			WDP_LOGE("do nothing");
 		}
 	}
 	if(function)
