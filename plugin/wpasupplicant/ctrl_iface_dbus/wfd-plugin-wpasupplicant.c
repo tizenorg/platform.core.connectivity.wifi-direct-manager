@@ -349,7 +349,7 @@ static void __ws_path_to_addr(char *peer_path,
 	const char *path = NULL;
 	char *loc = NULL;
 
-	g_variant_get(parameter, "(o)", &path);
+	g_variant_get(parameter, "(&o)", &path);
 	g_strlcpy(peer_path, path, DBUS_OBJECT_PATH_MAX);
 	WDP_LOGD("Retrive Added path [%s]", peer_path);
 
@@ -451,7 +451,7 @@ static void _supplicant_signal_cb(GDBusConnection *connection,
 		static char interface_path[DBUS_OBJECT_PATH_MAX] = {'\0',};
 		const char *path = NULL;
 
-		g_variant_get(parameters, "(o)", &path);
+		g_variant_get(parameters, "(&o)", &path);
 		g_strlcpy(interface_path, path, DBUS_OBJECT_PATH_MAX);
 
 		WDP_LOGD("Retrive removed path [%s]", interface_path);
@@ -497,7 +497,7 @@ static void __ws_get_peer_property(const char *key, GVariant *value, void *user_
 	if (g_strcmp0(key, "DeviceName") == 0) {
 		const char *name = NULL;
 
-		g_variant_get(value, "s", &name);
+		g_variant_get(value, "&s", &name);
 		g_strlcpy(peer->dev_name, name, WS_SSID_LEN);
 		WDP_LOGD("Device name [%s]", peer->dev_name);
 
@@ -590,7 +590,7 @@ static void __ws_peer_property(const char *key, GVariant *value, void *user_data
 	if (g_strcmp0(key, "DeviceName") == 0) {
 		const char *name = NULL;
 
-		g_variant_get(value, "s", &name);
+		g_variant_get(value, "&s", &name);
 		g_strlcpy(peer->name, name, WS_SSID_LEN);
 		WDP_LOGD("Device Name [%s]", peer->name);
 
@@ -656,7 +656,7 @@ static void __ws_peer_property(const char *key, GVariant *value, void *user_data
 
 	} else if (g_strcmp0(key, "GODeviceAddress") == 0) {
 
-		unsigned char go_dev_addr[OEM_MACADDR_LEN];
+		unsigned char go_dev_addr[OEM_MACADDR_LEN] = {0,};
 		if (__ws_unpack_ay(go_dev_addr, value, WS_MACADDR_LEN))
 			WDP_LOGD("[" MACSTR "]", MAC2STR(go_dev_addr));
 
@@ -672,6 +672,7 @@ static void __ws_peer_property(const char *key, GVariant *value, void *user_data
 
 void __ws_interface_property(const char *key, GVariant *value, void *user_data)
 {
+	__WDP_LOG_FUNC_ENTER__;
 	wfd_oem_event_s *event = (wfd_oem_event_s *)user_data;
 	if(!event)
 		return;
@@ -681,7 +682,7 @@ void __ws_interface_property(const char *key, GVariant *value, void *user_data)
 	if (g_strcmp0(key, "Ifname") == 0) {
 		const char *ifname = NULL;
 
-		g_variant_get(value, "s", &ifname);
+		g_variant_get(value, "&s", &ifname);
 		g_strlcpy(event->ifname, ifname, OEM_IFACE_NAME_LEN+1);
 		WDP_LOGD("Ifname [%s]", event->ifname);
 
@@ -704,7 +705,7 @@ void __ws_group_property(const char *key, GVariant *value, void *user_data)
 	if (g_strcmp0(key, "Role") == 0) {
 		const char *role = NULL;
 
-		g_variant_get(value, "s", &role);
+		g_variant_get(value, "&s", &role);
 		WDP_LOGD("Role [%s]", role);
 
 		if (!strncmp(role, "GO", 2))
@@ -721,7 +722,7 @@ void __ws_group_property(const char *key, GVariant *value, void *user_data)
 	} else if (g_strcmp0(key, "Passphrase") == 0) {
 		const char *passphrase = NULL;
 
-		g_variant_get(value, "s", &passphrase);
+		g_variant_get(value, "&s", &passphrase);
 		g_strlcpy(group->pass, passphrase, OEM_PASS_PHRASE_LEN+1);
 		WDP_LOGD("passphrase [%s]", group->pass);
 
@@ -803,7 +804,7 @@ void __ws_extract_group_details(const char *key, GVariant *value, void *user_dat
 		static char interface_path[DBUS_OBJECT_PATH_MAX] = {'\0',};
 		const char *i_path = NULL;
 
-		g_variant_get(value, "o", &i_path);
+		g_variant_get(value, "&o", &i_path);
 		g_strlcpy(interface_path, i_path, DBUS_OBJECT_PATH_MAX);
 		WDP_LOGD("Retrive Added path [%s]", interface_path);
 		g_strlcpy(g_pd->group_iface_path, interface_path, DBUS_OBJECT_PATH_MAX);
@@ -813,7 +814,7 @@ void __ws_extract_group_details(const char *key, GVariant *value, void *user_dat
 	} else if (g_strcmp0(key, "role") == 0) {
 		const char *role = NULL;
 
-		g_variant_get(value, "s", &role);
+		g_variant_get(value, "&s", &role);
 		WDP_LOGD("Role [%s]", role);
 
 		if (!strncmp(role, "GO", 2))
@@ -840,7 +841,7 @@ void __ws_extract_group_details(const char *key, GVariant *value, void *user_dat
 		static char group_path[DBUS_OBJECT_PATH_MAX] = {'\0',};
 		const char *g_path;
 
-		g_variant_get(value, "o", &g_path);
+		g_variant_get(value, "&o", &g_path);
 		g_strlcpy(group_path, g_path, DBUS_OBJECT_PATH_MAX);
 		WDP_LOGD("Retrive group path [%s]", group_path);
 		dbus_property_get_all(group_path, g_pd->g_dbus, SUPPLICANT_P2P_GROUP,
@@ -877,7 +878,7 @@ void __ws_extract_gonegfailaure_details(const char *key, GVariant *value, void *
 		static char peer_path[DBUS_OBJECT_PATH_MAX] = {'\0',};
 		const char *path;
 
-		g_variant_get(value, "o", &path);
+		g_variant_get(value, "&o", &path);
 		g_strlcpy(peer_path, path, DBUS_OBJECT_PATH_MAX);
 		WDP_LOGD("Retrive peer path [%s]", peer_path);
 
@@ -913,7 +914,7 @@ void __ws_extract_gonegsuccess_details(const char *key, GVariant *value, void *u
 		//local device role
 		const char *role = NULL;
 
-		g_variant_get(value, "s", &role);
+		g_variant_get(value, "&s", &role);
 		if (!strncmp(role, "GO", 2))
 			event->dev_role = WFD_OEM_DEV_ROLE_GO;
 		else if (!strncmp(role, "client", 6))
@@ -1002,7 +1003,7 @@ void __ws_extract_servicediscoveryresponse_details(const char *key, GVariant *va
 		const char *path = NULL;
 		char *loc = NULL;
 
-		g_variant_get(value, "o", &path);
+		g_variant_get(value, "&o", &path);
 		if(path == NULL)
 			return;
 
@@ -1216,7 +1217,7 @@ static void _ws_process_prov_disc_req_display_pin(GDBusConnection *connection,
 	event.event_id = WFD_OEM_EVENT_PROV_DISC_REQ;
 	event.wps_mode = WFD_OEM_WPS_MODE_DISPLAY;
 
-	g_variant_get(parameters, "(os)", &path, &pin);
+	g_variant_get(parameters, "(&o&s)", &path, &pin);
 	g_strlcpy(peer_path, path, DBUS_OBJECT_PATH_MAX);
 	WDP_LOGD("Retrive Added path [%s]", peer_path);
 
@@ -1270,7 +1271,7 @@ static void _ws_process_prov_disc_resp_display_pin(GDBusConnection *connection,
 	event.event_id = WFD_OEM_EVENT_PROV_DISC_RESP;
 	event.wps_mode = WFD_OEM_WPS_MODE_DISPLAY;
 
-	g_variant_get(parameters, "(os)", &path, &pin);
+	g_variant_get(parameters, "(&o&s)", &path, &pin);
 	g_strlcpy(peer_path, path, DBUS_OBJECT_PATH_MAX);
 	WDP_LOGD("Retrive Added path [%s]", peer_path);
 
@@ -1464,7 +1465,7 @@ static void _ws_process_prov_disc_failure(GDBusConnection *connection,
 	event.edata_type = WFD_OEM_EDATA_TYPE_DEVICE;
 	event.event_id = WFD_OEM_EVENT_PROV_DISC_FAIL;
 
-	g_variant_get(parameters, "(oi)", &path, &prov_status);
+	g_variant_get(parameters, "(&oi)", &path, &prov_status);
 	g_strlcpy(peer_path, path, DBUS_OBJECT_PATH_MAX);
 	WDP_LOGD("Retrive Added path [%s]", peer_path);
 	WDP_LOGD("Retrive Failure stateus [%d]", prov_status);
@@ -1629,7 +1630,7 @@ static void _ws_process_go_neg_request(GDBusConnection *connection,
 	event.edata_type = WFD_OEM_EDATA_TYPE_DEVICE;
 	event.event_id = WFD_OEM_EVENT_GO_NEG_REQ;
 
-	g_variant_get(parameters, "(oq)", &path, &dev_pwd_id);
+	g_variant_get(parameters, "(&oq)", &path, &dev_pwd_id);
 	g_strlcpy(peer_path, path, DBUS_OBJECT_PATH_MAX);
 	WDP_LOGD("Retrive peer path [%s]", peer_path);
 
@@ -1644,7 +1645,7 @@ static void _ws_process_go_neg_request(GDBusConnection *connection,
 	else
 		event.wps_mode = WFD_OEM_WPS_MODE_NONE;
 
-	g_variant_get(parameters, "(o)", &path);
+	g_variant_get(parameters, "(&o)", &path);
 	g_strlcpy(peer_path, path, DBUS_OBJECT_PATH_MAX);
 	WDP_LOGD("Retrive Added path [%s]", peer_path);
 
@@ -1821,7 +1822,7 @@ static void _ws_process_wps_failed(GDBusConnection *connection,
 	event.event_id = WFD_OEM_EVENT_WPS_FAIL;
 	event.edata_type = WFD_OEM_EDATA_TYPE_NONE;
 
-	g_variant_get(parameters, "(sa{sv})", &name, &iter);
+	g_variant_get(parameters, "(&sa{sv})", &name, &iter);
 
 	WDP_LOGD("code [%s]", name);
 
@@ -2017,7 +2018,7 @@ static void __ws_parse_peer_joined(char *peer_path,
 	char *loc = NULL;
 	int i = 0;
 
-	g_variant_get(parameter, "(oay)", &path, &iter);
+	g_variant_get(parameter, "(&oay)", &path, &iter);
 	g_strlcpy(peer_path, path, DBUS_OBJECT_PATH_MAX);
 	WDP_LOGD("Retrive Added path [%s]", peer_path);
 
@@ -2109,7 +2110,7 @@ static void __register_p2pdevice_signal(GVariant *value, void *user_data)
 
 	pd_data = (ws_dbus_plugin_data_s *)g_pd;
 
-	g_variant_get(value, "(o)", &path);
+	g_variant_get(value, "(&o)", &path);
 	g_strlcpy(interface_path, path, DBUS_OBJECT_PATH_MAX);
 	g_strlcpy(pd_data->iface_path, path, DBUS_OBJECT_PATH_MAX);
 
@@ -2226,7 +2227,7 @@ static void __ws_remove_interface(GVariant *value, void *user_data)
 		return;
 	}
 
-	g_variant_get(value, "(o)", &path);
+	g_variant_get(value, "(&o)", &path);
 	g_strlcpy(interface_path, path, DBUS_OBJECT_PATH_MAX);
 	WDP_LOGD("interface object path [%s]", interface_path);
 
@@ -3476,7 +3477,7 @@ static void __ws_get_pin(GVariant *value, void *user_data)
 	__WDP_LOG_FUNC_ENTER__;
 	const char *pin = NULL;
 
-	g_variant_get(value, "(s)", &pin);
+	g_variant_get(value, "(&s)", &pin);
 	g_strlcpy((char *)user_data, pin, OEM_PINSTR_LEN + 1);
 
 	__WDP_LOG_FUNC_EXIT__;
@@ -3537,7 +3538,7 @@ static void __store_group_iface_path(GVariant *value, void *user_data) {
 
 	pd_data = (ws_dbus_plugin_data_s *) g_pd;
 
-	g_variant_get(value, "(o)", &path);
+	g_variant_get(value, "(&o)", &path);
 	g_strlcpy(pd_data->group_iface_path, path, DBUS_OBJECT_PATH_MAX);
 
 	WDP_LOGD("group object path [%s]", pd_data->group_iface_path);
@@ -4085,14 +4086,14 @@ void __parsing_networks (const char *key, GVariant *value, void *user_data)
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 	if (g_strcmp0(key, "ssid") == 0) {
 		const char *ssid = NULL;
-		g_variant_get(value, "s", &ssid);
+		g_variant_get(value, "&s", &ssid);
 		WDP_LOGD("ssid [%s]", ssid);
 		g_strlcpy(network->ssid, ssid + 1, WS_SSID_LEN + 1);
 		network->ssid[strlen(ssid) - 2] = '\0';
 
 	} else if (g_strcmp0(key, "bssid") == 0) {
 		unsigned char *bssid = NULL;
-		g_variant_get(value, "s", &bssid);
+		g_variant_get(value, "&s", &bssid);
 		WDP_LOGD("bssid [%s]", bssid);
 		__ws_txt_to_mac(bssid, network->bssid);
 
@@ -4123,7 +4124,7 @@ void __ws_extract_p2pdevice_details(const char *key, GVariant *value, void *user
 		}
 
 		g_variant_get(value, "ao", &iter);
-		while(g_variant_iter_loop(iter, "o", &path)) {
+		while(g_variant_iter_loop(iter, "&o", &path)) {
 			if(num >= WS_MAX_PERSISTENT_COUNT)
 				break;
 			WDP_LOGD("Retrive persistent path [%s]", path);
