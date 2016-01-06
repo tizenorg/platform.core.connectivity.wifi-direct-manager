@@ -475,7 +475,7 @@ static int _wfd_register_client(void *data, int sock)
 		GIOChannel *gio = NULL;
 		gio = g_io_channel_unix_new(sock);
 		client->gsource_id = g_io_add_watch(gio, G_IO_IN | G_IO_ERR | G_IO_HUP,
-							(GIOFunc) wfd_client_process_request, (gpointer)(void *)(intptr_t)sock);
+							(GIOFunc) wfd_client_process_request, NULL);
 		g_io_channel_unref(gio);
 
 		manager->clients = g_list_prepend(manager->clients, (gpointer) client);
@@ -631,11 +631,11 @@ static int _wfd_create_server_socket(wfd_manager_s *manager)
 }
 
 static gboolean _wfd_accept_client(GIOChannel *source,
-									GIOCondition condition,
-									gpointer user_data)
+				   GIOCondition condition,
+				   gpointer user_data)
 {
 	__WDS_LOG_FUNC_ENTER__;
-	wfd_manager_s *manager = (wfd_manager_s*) user_data;
+	wfd_manager_s *manager = wfd_get_manager();
 	int cli_sock = -1;
 	socklen_t cli_len = 0;
 	int res = 0;
@@ -690,7 +690,7 @@ int wfd_client_handler_init(wfd_manager_s *manager)
 
 	GIOChannel *gio = g_io_channel_unix_new(manager->serv_sock);
 	manager->client_handle = g_io_add_watch(gio, G_IO_IN,
-							(GIOFunc) _wfd_accept_client, manager);
+							(GIOFunc) _wfd_accept_client, NULL);
 	g_io_channel_unref(gio);
 
 	__WDS_LOG_FUNC_EXIT__;
@@ -903,11 +903,11 @@ static int _wfd_check_client_privilege(int client_sock, int cmd)
 }
 
 static gboolean wfd_client_process_request(GIOChannel *source,
-									GIOCondition condition,
-									gpointer user_data)
+					   GIOCondition condition,
+					   gpointer user_data)
 {
 	__WDS_LOG_FUNC_ENTER__;
-	int sock = (intptr_t) user_data;
+	int sock = g_io_channel_unix_get_fd(source);
 	wifi_direct_client_request_s req;
 	wifi_direct_client_response_s rsp;
 	char *extra_rsp = NULL;
