@@ -1673,13 +1673,17 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 		}
 		break;
 	case WIFI_DIRECT_CMD_IS_DISCOVERABLE:
-		if (manager->state == WIFI_DIRECT_STATE_DISCOVERING ||
-				wfd_group_is_autonomous(manager->group) == TRUE)
-			rsp.param1 = TRUE;
-		else
-			rsp.param1 = FALSE;
+		{
+			wfd_device_s *local = manager->local;
 
-		WDS_LOGI("Is discoverable : [%s]", rsp.param1 ? "Yes" : "No");
+			if (manager->state == WIFI_DIRECT_STATE_DISCOVERING ||
+					local->dev_role == WFD_DEV_ROLE_GO)
+				rsp.param1 = TRUE;
+			else
+				rsp.param1 = FALSE;
+
+			WDS_LOGI("Is discoverable : [%s]", rsp.param1 ? "Yes" : "No");
+		}
 		break;
 	case WIFI_DIRECT_CMD_GET_SUPPORTED_WPS_MODE:	// manager (sync)
 		res = wfd_local_get_supported_wps_mode(&rsp.param1);
