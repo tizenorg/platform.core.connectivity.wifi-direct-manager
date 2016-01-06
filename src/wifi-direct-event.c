@@ -1126,6 +1126,21 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
+
+#ifdef CTRL_IFACE_DBUS
+		/**
+		 * If no peer connected and
+		 * disconnected event is not for connecting peer
+		 * then event should be ignored.
+		 * This situation can arrise when TV is GO and
+		 * some connected peer sent disassociation.
+		 */
+		if (memcmp(peer_addr, event->dev_addr, MACADDR_LEN)) {
+			WDS_LOGE("Unexpected event, Ignore it...");
+			__WDS_LOG_FUNC_EXIT__;
+			return;
+		}
+#endif /* CTRL_DBUS_IFACE */
 	}
 	memcpy(peer_addr, peer->dev_addr, MACADDR_LEN);
 	memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
