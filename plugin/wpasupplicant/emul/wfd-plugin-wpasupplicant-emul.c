@@ -66,15 +66,23 @@ static wfd_oem_ops_s supplicant_ops = {
 
 #ifdef TIZEN_FEATURE_WIFI_DISPLAY
 	.miracast_init = ws_miracast_init,
-	.set_display = ws_set_disply,
+	.set_display = ws_set_display,
 #endif /* TIZEN_FEATURE_WIFI_DISPLAY */
 	};
 
-static ws_plugin_data_s *g_pd;
-
 int wfd_plugin_load(wfd_oem_ops_s **ops)
 {
-	return -1;
+	__WDP_LOG_FUNC_ENTER__;
+	if (!ops) {
+		WDP_LOGE("Invalid parameter");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	*ops = &supplicant_ops;
+
+	__WDP_LOG_FUNC_EXIT__;
+	return 0;
 }
 
 int ws_init(wfd_oem_event_cb callback, void *user_data)
@@ -237,7 +245,7 @@ int ws_get_supported_wps_mode()
 	return -1;
 }
 
-int ws_create_group(int persistent, int freq)
+int ws_create_group(int persistent, int freq, const char *passphrase)
 {
 	__WDP_LOG_FUNC_ENTER__;
 
@@ -380,15 +388,15 @@ int ws_start_service_discovery(unsigned char *mac_addr, int service_type)
 {
 	__WDP_LOG_FUNC_ENTER__;
 
-	__WDP_LOG_FUNC_EXUT__;
+	__WDP_LOG_FUNC_EXIT__;
 	return -1;
 }
 
-int ws_cancel_service_discovery(unsigned char *mac_addr, int service_type);
+int ws_cancel_service_discovery(unsigned char *mac_addr, int service_type)
 {
 	__WDP_LOG_FUNC_ENTER__;
 
-	__WDP_LOG_FUNC_EXUT__;
+	__WDP_LOG_FUNC_EXIT__;
 	return -1;
 }
 
@@ -396,7 +404,7 @@ int ws_serv_add(wfd_oem_new_service_s *service)
 {
 	__WDP_LOG_FUNC_ENTER__;
 
-	__WDP_LOG_FUNC_EXUT__;
+	__WDP_LOG_FUNC_EXIT__;
 	return -1;
 }
 
@@ -404,7 +412,7 @@ int ws_serv_del(wfd_oem_new_service_s *service)
 {
 	__WDP_LOG_FUNC_ENTER__;
 
-	__WDP_LOG_FUNC_EXUT__;
+	__WDP_LOG_FUNC_EXIT__;
 	return -1;
 }
 #endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
@@ -414,15 +422,15 @@ int ws_miracast_init(int enable)
 {
 	__WDP_LOG_FUNC_ENTER__;
 
-	__WDP_LOG_FUNC_EXUT__;
+	__WDP_LOG_FUNC_EXIT__;
 	return -1;
 }
 
-int ws_set_wifi_display(wfd_oem_display_s *wifi_display)
+int ws_set_display(wfd_oem_display_s *wifi_display)
 {
 	__WDP_LOG_FUNC_ENTER__;
 
-	__WDP_LOG_FUNC_EXUT__;
+	__WDP_LOG_FUNC_EXIT__;
 	return -1;
 }
 #endif /* TIZEN_FEATURE_WIFI_DISPLAY */

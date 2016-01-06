@@ -64,18 +64,6 @@
 
 #endif /* USE_DLOG */
 
-typedef struct {
-	int initialized;	// check whether plugin is initialized or not. block init function if initialized
-	int activated;
-	int concurrent;
-	int global_sock;
-	ws_sock_data_s *common;
-	ws_sock_data_s *group;
-	unsigned char local_dev_addr[WS_MACADDR_LEN];
-	wfd_oem_event_cb callback;
-	void *user_data;
-} ws_plugin_data_s;
-
 int ws_init(wfd_oem_event_cb callback, void *user_data);
 int ws_deinit();
 int ws_activate(int concurrent);
