@@ -64,7 +64,7 @@ static gboolean _session_timeout_cb(gpointer *user_data)
 
 	memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
 	noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
-	noti.error = WIFI_DIRECT_ERROR_CONNECTION_CANCELED;
+	noti.error = WIFI_DIRECT_ERROR_CONNECTION_TIME_OUT;
 	if(peer_addr != NULL)
 		g_snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
 	wfd_client_send_event(manager, &noti);
@@ -124,8 +124,8 @@ int wfd_session_timer(wfd_session_s *session, int start)
 			return -1;
 		}
 		session->timer = g_timeout_add(120000,
-							(GSourceFunc) _session_timeout_cb,
-							session);
+						(GSourceFunc) _session_timeout_cb,
+						NULL);
 		WDS_LOGD("Session timer started");
 	} else {
 		session->connecting_120 = 0;
