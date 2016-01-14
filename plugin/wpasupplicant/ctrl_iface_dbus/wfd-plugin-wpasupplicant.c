@@ -438,10 +438,10 @@ static void _supplicant_signal_cb(GDBusConnection *connection,
 	DEBUG_SIGNAL(sender, object_path, interface, signal, parameters);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
-    if(!g_pd) {
-        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-        return;
-        }
+	if (!g_pd) {
+		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+		return;
+	}
 
 	if (!g_strcmp0(signal,"InterfaceAdded")) {
 		WDP_LOGD("InterfaceAdded");
@@ -790,10 +790,10 @@ void __ws_extract_group_details(const char *key, GVariant *value, void *user_dat
 	if(!event || !event->edata)
 		return;
 
-    if(!g_pd) {
-        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-        return;
-        }
+	if (!g_pd) {
+		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+		return;
+	}
 
 	wfd_oem_group_data_s *group = (wfd_oem_group_data_s *)event->edata;
 #if defined (TIZEN_DEBUG_DBUS_VALUE)
@@ -1043,10 +1043,10 @@ static int _ws_flush()
 	dbus_method_param_s params;
 	int res = 0;
 
-    if(!g_pd) {
-        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-        return -1;
-        }
+	if (!g_pd) {
+		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+		return -1;
+	}
 
 	g_dbus = g_pd->g_dbus;
 	if (!g_dbus) {
@@ -1075,10 +1075,10 @@ static int _ws_cancel()
 	dbus_method_param_s params;
 	int res = 0;
 
-    if(!g_pd) {
-        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-        return -1;
-        }
+	if (!g_pd) {
+		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+		return -1;
+	}
 
 
 	g_dbus = g_pd->g_dbus;
@@ -1108,11 +1108,6 @@ static void _ws_process_device_found(GDBusConnection *connection,
 	wfd_oem_event_s event;
 	wfd_oem_dev_data_s *edata = NULL;
 	static char peer_path[DBUS_OBJECT_PATH_MAX] = {'\0',};
-
-    if(!g_pd) {
-        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-        return;
-        }
 
 	edata = (wfd_oem_dev_data_s *) g_try_malloc0(sizeof(wfd_oem_dev_data_s));
 	if (!edata) {
@@ -1145,11 +1140,6 @@ static void _ws_process_device_lost(GDBusConnection *connection,
 	wfd_oem_event_s event;
 	static char peer_path[DBUS_OBJECT_PATH_MAX] = {'\0',};
 
-    if(!g_pd) {
-        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-        return;
-        }
-
 	memset(&event, 0x0, sizeof(wfd_oem_event_s));
 
 	event.edata_type = WFD_OEM_EDATA_TYPE_NONE;
@@ -1167,11 +1157,6 @@ static void _ws_process_find_stoppped(GDBusConnection *connection,
 {
 	__WDP_LOG_FUNC_ENTER__;
 	wfd_oem_event_s event;
-
-    if(!g_pd) {
-        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-        return;
-        }
 
 	memset(&event, 0x0, sizeof(wfd_oem_event_s));
 
@@ -1196,11 +1181,6 @@ static void _ws_process_prov_disc_req_display_pin(GDBusConnection *connection,
 	const char *path = NULL;
 	const char *pin = NULL;
 	char *loc = NULL;
-
-    if(!g_pd) {
-        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-        return;
-        }
 
 	edata = (wfd_oem_dev_data_s *) g_try_malloc0(sizeof(wfd_oem_dev_data_s));
 	if (!edata) {
@@ -1251,11 +1231,6 @@ static void _ws_process_prov_disc_resp_display_pin(GDBusConnection *connection,
 	const char *pin = NULL;
 	char *loc = NULL;
 
-    if(!g_pd) {
-        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-        return;
-        }
-
 	edata = (wfd_oem_dev_data_s *) g_try_malloc0(sizeof(wfd_oem_dev_data_s));
 	if (!edata) {
 		WDP_LOGF("Failed to allocate memory for event. [%s]",
@@ -1299,11 +1274,6 @@ static void _ws_process_prov_disc_req_enter_pin(GDBusConnection *connection,
 	wfd_oem_dev_data_s *edata = NULL;
 	static char peer_path[DBUS_OBJECT_PATH_MAX] = {'\0',};
 
-    if(!g_pd) {
-        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-        return;
-        }
-
 	edata = (wfd_oem_dev_data_s *) g_try_malloc0(sizeof(wfd_oem_dev_data_s));
 	if (!edata) {
 		WDP_LOGF("Failed to allocate memory for event. [%s]",
@@ -1336,11 +1306,6 @@ static void _ws_process_prov_disc_resp_enter_pin(GDBusConnection *connection,
 	wfd_oem_event_s event;
 	wfd_oem_dev_data_s *edata = NULL;
 	static char peer_path[DBUS_OBJECT_PATH_MAX] = {'\0',};
-
-    if(!g_pd) {
-        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-        return;
-        }
 
 	edata = (wfd_oem_dev_data_s *) g_try_malloc0(sizeof(wfd_oem_dev_data_s));
 	if (!edata) {
@@ -1375,11 +1340,6 @@ static void _ws_process_prov_disc_pbc_req(GDBusConnection *connection,
 	wfd_oem_dev_data_s *edata = NULL;
 	static char peer_path[DBUS_OBJECT_PATH_MAX] = {'\0',};
 
-    if(!g_pd) {
-        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-        return;
-        }
-
 	edata = (wfd_oem_dev_data_s *) g_try_malloc0(sizeof(wfd_oem_dev_data_s));
 	if (!edata) {
 		WDP_LOGF("Failed to allocate memory for event. [%s]",
@@ -1412,11 +1372,6 @@ static void _ws_process_prov_disc_pbc_resp(GDBusConnection *connection,
 	wfd_oem_event_s event;
 	wfd_oem_dev_data_s *edata = NULL;
 	static char peer_path[DBUS_OBJECT_PATH_MAX] = {'\0',};
-
-    if(!g_pd) {
-        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-        return;
-        }
 
 	edata = (wfd_oem_dev_data_s *) g_try_malloc0(sizeof(wfd_oem_dev_data_s));
 	if (!edata) {
@@ -1453,11 +1408,6 @@ static void _ws_process_prov_disc_failure(GDBusConnection *connection,
 	const char *path = NULL;
 	int prov_status = 0;
 	char *loc = NULL;
-
-    if(!g_pd) {
-        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-        return;
-        }
 
 	memset(&event, 0x0, sizeof(wfd_oem_event_s));
 
@@ -1524,11 +1474,6 @@ static void _ws_process_go_neg_success(GDBusConnection *connection,
 	GVariantIter *iter = NULL;
 	wfd_oem_event_s event;
 	wfd_oem_conn_data_s *edata = NULL;
-
-    if(!g_pd) {
-        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-        return;
-        }
 
 	edata = (wfd_oem_conn_data_s*)calloc(1, sizeof(wfd_oem_conn_data_s));
 	if (!edata) {
@@ -1611,11 +1556,6 @@ static void _ws_process_go_neg_request(GDBusConnection *connection,
 
 	int dev_pwd_id = 0;
 
-    if(!g_pd) {
-        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-        return;
-        }
-
 	edata = (wfd_oem_dev_data_s *) g_try_malloc0(sizeof(wfd_oem_dev_data_s));
 	if (!edata) {
 		WDP_LOGF("Failed to allocate memory for event. [%s]",
@@ -1669,11 +1609,6 @@ static void _ws_process_invitation_received(GDBusConnection *connection,
 	wfd_oem_event_s event;
 	wfd_oem_invite_data_s *edata = NULL;
 
-    if(!g_pd) {
-        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-        return;
-        }
-
 	edata = (wfd_oem_invite_data_s *) g_try_malloc0(sizeof(wfd_oem_invite_data_s));
 	if (!edata) {
 		WDP_LOGF("Failed to allocate memory for event. [%s]",
@@ -1723,11 +1658,6 @@ static void _ws_process_group_finished(GDBusConnection *connection,
 	__WDP_LOG_FUNC_ENTER__;
 	wfd_oem_event_s event;
 
-    if(!g_pd) {
-        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-        return;
-        }
-
 	memset(&event, 0x0, sizeof(wfd_oem_event_s));
 
 	event.event_id = WFD_OEM_EVENT_GROUP_DESTROYED;
@@ -1749,11 +1679,6 @@ static void _ws_process_service_discovery_response(GDBusConnection *connection,
 	__WDP_LOG_FUNC_ENTER__;
 	GVariantIter *iter = NULL;
 	wfd_oem_event_s event;
-
-    if(!g_pd) {
-        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-        return;
-        }
 
 	memset(&event, 0x0, sizeof(wfd_oem_event_s));
 
@@ -1811,11 +1736,6 @@ static void _ws_process_wps_failed(GDBusConnection *connection,
 	wfd_oem_event_s event;
 	const char *name = NULL;
 
-    if(!g_pd) {
-        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-        return;
-        }
-
 	memset(&event, 0x0, sizeof(wfd_oem_event_s));
 
 	event.event_id = WFD_OEM_EVENT_WPS_FAIL;
@@ -1848,11 +1768,6 @@ static void _ws_process_group_formation_failure(GDBusConnection *connection,
 {
 	__WDP_LOG_FUNC_ENTER__;
 	wfd_oem_event_s event;
-
-    if(!g_pd) {
-        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-        return;
-        }
 
 	memset(&event, 0x0, sizeof(wfd_oem_event_s));
 
@@ -1896,7 +1811,7 @@ static struct {
 		_ws_process_prov_disc_resp_display_pin
 	},
 	{
-			SUPPLICANT_P2PDEVICE,
+		SUPPLICANT_P2PDEVICE,
 		"ProvisionDiscoveryRequestEnterPin",
 		_ws_process_prov_disc_req_enter_pin
 	},
@@ -1998,6 +1913,11 @@ static void _p2pdevice_signal_cb(GDBusConnection *connection,
 	DEBUG_SIGNAL(sender, object_path, interface, signal, parameters);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
+	if (!g_pd) {
+		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+		return;
+	}
+
 	for (i = 0; ws_p2pdevice_signal_map[i].member != NULL; i++) {
 		if (!g_strcmp0(signal, ws_p2pdevice_signal_map[i].member) &&
 				ws_p2pdevice_signal_map[i].function != NULL)
@@ -2045,38 +1965,38 @@ static void _group_signal_cb(GDBusConnection *connection,
 	DEBUG_SIGNAL(sender, object_path, interface, signal, parameters);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
-    if(!g_pd) {
-        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-        return;
-        }
+	if (!g_pd) {
+		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+		return;
+	}
 
-	if(!g_strcmp0(signal,"PeerJoined")){
+	if (!g_strcmp0(signal,"PeerJoined")) {
 
-			wfd_oem_event_s event;
-			wfd_oem_dev_data_s *edata = NULL;
+		wfd_oem_event_s event;
+		wfd_oem_dev_data_s *edata = NULL;
 
-			static char peer_path[DBUS_OBJECT_PATH_MAX] = {'\0',};
+		static char peer_path[DBUS_OBJECT_PATH_MAX] = {'\0',};
 
-			edata = (wfd_oem_dev_data_s *) g_try_malloc0(sizeof(wfd_oem_dev_data_s));
-			if (!edata) {
-				WDP_LOGF("Failed to allocate memory for event. [%s]",
-						strerror(errno));
-				__WDP_LOG_FUNC_EXIT__;
-				return;
-			}
-			memset(&event, 0x0, sizeof(wfd_oem_event_s));
+		edata = (wfd_oem_dev_data_s *) g_try_malloc0(sizeof(wfd_oem_dev_data_s));
+		if (!edata) {
+			WDP_LOGF("Failed to allocate memory for event. [%s]",
+					strerror(errno));
+			__WDP_LOG_FUNC_EXIT__;
+			return;
+		}
+		memset(&event, 0x0, sizeof(wfd_oem_event_s));
 
-			event.edata = (void*) edata;
-			event.edata_type = WFD_OEM_EDATA_TYPE_DEVICE;
-			event.event_id = WFD_OEM_EVENT_STA_CONNECTED;
+		event.edata = (void*) edata;
+		event.edata_type = WFD_OEM_EDATA_TYPE_DEVICE;
+		event.event_id = WFD_OEM_EVENT_STA_CONNECTED;
 
-			__ws_parse_peer_joined(peer_path, event.dev_addr, event.ip_addr_peer, parameters);
+		__ws_parse_peer_joined(peer_path, event.dev_addr, event.ip_addr_peer, parameters);
 
-			dbus_property_get_all(peer_path, g_pd->g_dbus, SUPPLICANT_P2P_PEER,
-						__ws_peer_property, event.edata);
+		dbus_property_get_all(peer_path, g_pd->g_dbus, SUPPLICANT_P2P_PEER,
+				__ws_peer_property, event.edata);
 
-			g_pd->callback(g_pd->user_data, &event);
-			g_free(edata);
+		g_pd->callback(g_pd->user_data, &event);
+		g_free(edata);
 
 	} else if (!g_strcmp0(signal,"PeerDisconnected")) {
 
@@ -2102,10 +2022,10 @@ static void __register_p2pdevice_signal(GVariant *value, void *user_data)
 	static char interface_path[DBUS_OBJECT_PATH_MAX] = {'\0',};
 	const char *path = NULL;
 
-    if(!g_pd) {
-        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-        return;
-        }
+	if (!g_pd) {
+		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+		return;
+	}
 
 	pd_data = (ws_dbus_plugin_data_s *)g_pd;
 
@@ -2138,10 +2058,10 @@ static int _ws_create_interface(const char *iface_name, handle_reply function, v
 
 	int res = 0;
 
-    if(!g_pd) {
-        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-        return -1;
-        }
+	if (!g_pd) {
+		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+		return -1;
+	}
 
 	g_dbus = g_pd->g_dbus;
 	if (!g_dbus) {
@@ -2174,10 +2094,10 @@ static int _ws_get_interface(const char *iface_name, handle_reply function, void
 	dbus_method_param_s params;
 	int res = 0;
 
-    if(!g_pd) {
-        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-        return -1;
-        }
+	if (!g_pd) {
+		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+		return -1;
+	}
 
 	g_dbus = g_pd->g_dbus;
 	if (!g_dbus) {
@@ -2215,10 +2135,10 @@ static void __ws_remove_interface(GVariant *value, void *user_data)
 	static char interface_path[DBUS_OBJECT_PATH_MAX] = {'\0',};
 	int res = 0;
 
-    if(!g_pd) {
-        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-        return;
-        }
+	if (!g_pd) {
+		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+		return;
+	}
 
 	g_dbus = g_pd->g_dbus;
 	if (!g_dbus) {
@@ -2253,10 +2173,10 @@ static int _ws_init_dbus_connection(void)
 	GError *error = NULL;
 	int res = 0;
 
-    if(!g_pd) {
-        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-        return -1;
-        }
+	if (!g_pd) {
+		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+		return -1;
+	}
 
 	conn = g_bus_get_sync(G_BUS_TYPE_SYSTEM, NULL, &error);
 
@@ -2743,7 +2663,7 @@ int __ws_init_p2pdevice()
 	int i = 0;
 	int res = 0;
 
-	if(!g_pd) {
+	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
 		return -1;
         }
@@ -2854,7 +2774,7 @@ int __ws_set_config_methods()
 	dbus_method_param_s params;
 	int res = 0;
 
-	if(!g_pd) {
+	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
 		return -1;
 	}
@@ -2890,10 +2810,10 @@ int ws_activate(int concurrent)
 	int res = 0;
 	int retry_count = 0;
 
-    if(!g_pd) {
-        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-        return -1;
-        }
+	if (!g_pd) {
+		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+		return -1;
+	}
 
 	res = __ws_p2p_supplicant_start();
 	if (res < 0) {
@@ -2961,10 +2881,10 @@ int ws_deactivate(int concurrent)
 	__WDP_LOG_FUNC_ENTER__;
 	int res = 0;
 
-    if(!g_pd) {
-        WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
-        return -1;
-        }
+	if (!g_pd) {
+		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+		return -1;
+	}
 
 	if (!g_pd->activated) {
 		WDP_LOGE("Wi-Fi Direct is not activated");
@@ -3022,7 +2942,7 @@ int ws_start_scan(wfd_oem_scan_param_s *param)
 		return -1;
 	}
 
-	if(!g_pd) {
+	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
 		return -1;
 	}
@@ -3078,7 +2998,7 @@ int ws_restart_scan(int freq)
 	dbus_method_param_s params;
 	int res = 0;
 
-	if(!g_pd) {
+	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
 		return -1;
 	}
@@ -3120,7 +3040,7 @@ int ws_stop_scan()
 	dbus_method_param_s params;
 	int res = 0;
 
-	if(!g_pd) {
+	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
 		return -1;
 	}
@@ -3182,7 +3102,7 @@ int ws_get_peer_info(unsigned char *peer_addr, wfd_oem_device_s **peer)
 		return -1;
 	}
 
-	if(!g_pd) {
+	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
 		return -1;
 	}
@@ -3236,7 +3156,7 @@ int ws_prov_disc_req(unsigned char *peer_addr, wfd_oem_wps_mode_e wps_mode, int 
 		return -1;
 	}
 
-	if(!g_pd) {
+	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
 		return -1;
 	}
@@ -3286,7 +3206,7 @@ int ws_connect(unsigned char *peer_addr, wfd_oem_conn_param_s *param)
 		return -1;
 	}
 
-	if(!g_pd) {
+	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
 		return -1;
 	}
@@ -3353,7 +3273,7 @@ int ws_disconnect(unsigned char *peer_addr)
 		return -1;
 	}
 
-	if(!g_pd) {
+	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
 		return -1;
 	}
@@ -3402,7 +3322,7 @@ int ws_reject_connection(unsigned char *peer_addr)
 		return -1;
 	}
 
-	if(!g_pd) {
+	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
 		return -1;
 	}
@@ -3491,7 +3411,7 @@ int ws_generate_pin(char **pin)
 	char n_pin[9] = {0,};
 	int res = 0;
 
-	if(!g_pd) {
+	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
 		return -1;
 	}
@@ -3530,7 +3450,7 @@ static void __store_group_iface_path(GVariant *value, void *user_data) {
 	ws_dbus_plugin_data_s * pd_data;
 	const char *path = NULL;
 
-	if(!g_pd) {
+	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
 		return;
 	}
@@ -3553,7 +3473,7 @@ int ws_create_group(int persistent, int freq, const char *passphrase)
 	dbus_method_param_s params;
 	int res = 0;
 
-	if(!g_pd) {
+	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
 		return -1;
 	}
@@ -3614,7 +3534,7 @@ int ws_destroy_group(const char *ifname)
 		return -1;
 	}
 
-	if(!g_pd) {
+	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
 		return -1;
 	}
@@ -3664,7 +3584,7 @@ int ws_invite(unsigned char *peer_addr, wfd_oem_invite_param_s *param)
 		return -1;
 	}
 
-	if(!g_pd) {
+	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
 		return -1;
 	}
@@ -3713,7 +3633,7 @@ int ws_wps_start(unsigned char *peer_addr, int wps_mode, const char *pin)
 	int i = 0;
 	int res = 0;
 
-	if(!g_pd) {
+	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
 		return -1;
 	}
@@ -3827,7 +3747,7 @@ int ws_set_dev_name(char *dev_name)
 		return -1;
 	}
 
-	if(!g_pd) {
+	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
 		return -1;
 	}
@@ -3907,7 +3827,7 @@ int ws_get_go_intent(int *go_intent)
 		return -1;
 	}
 
-	if(!g_pd) {
+	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
 		return -1;
 	}
@@ -3980,7 +3900,7 @@ int ws_set_go_intent(int go_intent)
 	dbus_method_param_s params;
 	int res = 0;
 
-	if(!g_pd) {
+	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
 		return -1;
 	}
@@ -4029,7 +3949,7 @@ int ws_set_country(char *ccode)
 	dbus_method_param_s params;
 	int res = 0;
 
-	if(!g_pd) {
+	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
 		return -1;
 	}
@@ -4150,7 +4070,7 @@ int ws_get_persistent_groups(wfd_oem_persistent_group_s **groups, int *group_cou
 	wfd_oem_persistent_group_s *wfd_persistent_groups = NULL;
 	int i, cnt = 0;
 
-	if(!g_pd) {
+	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
 		return -1;
 	}
@@ -4213,7 +4133,7 @@ int ws_remove_persistent_group(char *ssid, unsigned char *bssid)
 	int i, cnt = 0;
 	int res = 0;
 
-	if(!g_pd) {
+	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
 		return -1;
 	}
@@ -4286,7 +4206,7 @@ int ws_set_persistent_reconnect(unsigned char *bssid, int reconnect)
 	dbus_method_param_s params;
 	int res = 0;
 
-	if(!g_pd) {
+	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
 		return -1;
 	}
@@ -4559,7 +4479,7 @@ int ws_start_service_discovery(unsigned char *mac_addr, int service_type)
 	int i = 0;
 	int res = 0;
 
-	if(!g_pd) {
+	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
 		return -1;
 	}
@@ -4641,7 +4561,7 @@ int ws_cancel_service_discovery(unsigned char *mac_addr, int service_type)
 
 	int res = 0;
 
-	if(!g_pd) {
+	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
 		return -1;
 	}
@@ -4710,7 +4630,7 @@ int ws_serv_add(wfd_oem_new_service_s *service)
 	dbus_method_param_s params;
 	int res = 0;
 
-	if(!g_pd) {
+	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
 		return -1;
 	}
@@ -4773,7 +4693,7 @@ int ws_serv_del(wfd_oem_new_service_s *service)
 	dbus_method_param_s params;
 	int res = 0;
 
-	if(!g_pd) {
+	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
 		return -1;
 	}
@@ -4838,7 +4758,7 @@ int _ws_disable_display()
 	dbus_method_param_s params;
 	int res = 0;
 
-	if(!g_pd) {
+	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
 		return -1;
 	}
