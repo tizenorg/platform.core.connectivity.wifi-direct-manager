@@ -910,8 +910,8 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 	int sock = g_io_channel_unix_get_fd(source);
 	wifi_direct_client_request_s req;
 	wifi_direct_client_response_s rsp;
+	wifi_direct_client_noti_s noti;
 	char *extra_rsp = NULL;
-	wifi_direct_client_noti_s *noti = NULL;
 	wfd_manager_s *manager = wfd_get_manager();
 	int res = 0;
 
@@ -923,6 +923,7 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 
 	memset(&req, 0x0, sizeof(wifi_direct_client_request_s));
 	memset(&rsp, 0x0, sizeof(wifi_direct_client_response_s));
+	memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
 
 	res = _wfd_read_from_client(sock, (char*) &req, sizeof(req));
 	if (res < 0) {
@@ -939,6 +940,7 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 	rsp.cmd = req.cmd;
 	rsp.client_id = req.client_id;
 	rsp.result = WIFI_DIRECT_ERROR_NONE;
+	noti.event = WIFI_DIRECT_CLI_EVENT_INVALID;
 
 	if (_wfd_check_client_privilege(sock, req.cmd) != WIFI_DIRECT_ERROR_NONE) {
 		rsp.result = WIFI_DIRECT_ERROR_AUTH_FAILED;
@@ -973,9 +975,8 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 			return FALSE;
 		}
 
-		noti = (wifi_direct_client_noti_s*) g_try_malloc0(sizeof(wifi_direct_client_noti_s));
-		noti->event = WIFI_DIRECT_CLI_EVENT_ACTIVATION;
-		noti->error = wfd_manager_activate(manager);
+		noti.event = WIFI_DIRECT_CLI_EVENT_ACTIVATION;
+		noti.error = wfd_manager_activate(manager);
 		goto send_notification;
 		break;
 	case WIFI_DIRECT_CMD_DEACTIVATE:	// manager (event)
@@ -983,6 +984,7 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 			rsp.result = WIFI_DIRECT_ERROR_NOT_PERMITTED;
 			break;
 		}
+
 		res = _wfd_send_to_client(sock, (char*) &rsp, sizeof(rsp));
 		if (res < 0) {
 			WDS_LOGE("Failed to send response to client");
@@ -990,10 +992,8 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 			__WDS_LOG_FUNC_EXIT__;
 			return FALSE;
 		}
-
-		noti = (wifi_direct_client_noti_s*) g_try_malloc0(sizeof(wifi_direct_client_noti_s));
-		noti->event = WIFI_DIRECT_CLI_EVENT_DEACTIVATION;
-		noti->error = wfd_manager_deactivate(manager);
+		noti.event = WIFI_DIRECT_CLI_EVENT_DEACTIVATION;
+		noti.error = wfd_manager_deactivate(manager);
 		goto send_notification;
 		break;
 	case WIFI_DIRECT_CMD_GET_LINK_STATUS:
@@ -1031,15 +1031,14 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 				wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_DISCOVERING);
 			}
 
-			noti = (wifi_direct_client_noti_s*) g_try_malloc0(sizeof(wifi_direct_client_noti_s));
 			if (req.data.int1) {
-				noti->event = WIFI_DIRECT_CLI_EVENT_DISCOVER_START_LISTEN_ONLY;
+				noti.event = WIFI_DIRECT_CLI_EVENT_DISCOVER_START_LISTEN_ONLY;
 				manager->scan_mode = WFD_SCAN_MODE_PASSIVE;
 			} else {
-				noti->event = WIFI_DIRECT_CLI_EVENT_DISCOVER_START;
+				noti.event = WIFI_DIRECT_CLI_EVENT_DISCOVER_START;
 				manager->scan_mode = WFD_SCAN_MODE_ACTIVE;
 			}
-			noti->error = WIFI_DIRECT_ERROR_NONE;
+			noti.error = WIFI_DIRECT_ERROR_NONE;
 		}
 		break;
 	case WIFI_DIRECT_CMD_START_DISCOVERY_SPECIFIC_CHANNEL:
@@ -1089,12 +1088,11 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 				wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_DISCOVERING);
 			}
 
-			noti = (wifi_direct_client_noti_s*) g_try_malloc0(sizeof(wifi_direct_client_noti_s));
 			if (channel == WIFI_DIRECT_DISCOVERY_FULL_SCAN)
-				noti->event = WIFI_DIRECT_CLI_EVENT_DISCOVER_START;
+				noti.event = WIFI_DIRECT_CLI_EVENT_DISCOVER_START;
 			else
-				noti->event = WIFI_DIRECT_CLI_EVENT_DISCOVER_START_SEARCH_LISTEN;
-			noti->error = WIFI_DIRECT_ERROR_NONE;
+				noti.event = WIFI_DIRECT_CLI_EVENT_DISCOVER_START_SEARCH_LISTEN;
+			noti.error = WIFI_DIRECT_ERROR_NONE;
 			manager->scan_mode = WFD_SCAN_MODE_ACTIVE;
 		}
 		break;
@@ -1111,11 +1109,10 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 			rsp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 			break;
 		}
-		WDS_LOGE("Succeeded to stop scan");
+		WDS_LOGI("Succeeded to stop scan");
 
-		noti = (wifi_direct_client_noti_s*) g_try_malloc0(sizeof(wifi_direct_client_noti_s));
-		noti->event = WIFI_DIRECT_CLI_EVENT_DISCOVER_END;
-		noti->error = WIFI_DIRECT_ERROR_NONE;
+		noti.event = WIFI_DIRECT_CLI_EVENT_DISCOVER_END;
+		noti.error = WIFI_DIRECT_ERROR_NONE;
 		if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
 			wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
 			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
@@ -1171,15 +1168,14 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 			}
 
 			res = wfd_manager_connect(manager, req.data.mac_addr);
-			noti = (wifi_direct_client_noti_s*) g_try_malloc0(sizeof(wifi_direct_client_noti_s));
 			if (res < 0) {
-				noti->event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
-				noti->error = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+				noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
+				noti.error = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 			} else {
-				noti->event = WIFI_DIRECT_CLI_EVENT_CONNECTION_START;
-				noti->error = WIFI_DIRECT_ERROR_NONE;
+				noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_START;
+				noti.error = WIFI_DIRECT_ERROR_NONE;
 			}
-			g_snprintf(noti->param1, MACSTR_LEN, MACSTR, MAC2STR(req.data.mac_addr));
+			g_snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(req.data.mac_addr));
 			goto send_notification;
 		}
 		break;
@@ -1205,15 +1201,14 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 			}
 
 			res = wfd_manager_accept_connection(manager, req.data.mac_addr);
-			noti = (wifi_direct_client_noti_s*) g_try_malloc0(sizeof(wifi_direct_client_noti_s));
 			if (res < 0) {
-				noti->event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
-				noti->error = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+				noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
+				noti.error = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 			} else {
-				noti->event = WIFI_DIRECT_CLI_EVENT_CONNECTION_START;
-				noti->error = WIFI_DIRECT_ERROR_NONE;
+				noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_START;
+				noti.error = WIFI_DIRECT_ERROR_NONE;
 			}
-			g_snprintf(noti->param1, MACSTR_LEN, MACSTR, MAC2STR(req.data.mac_addr));
+			g_snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(req.data.mac_addr));
 			goto send_notification;
 		}
 		break;
@@ -1239,11 +1234,10 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 			wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
 			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
 
-			noti = (wifi_direct_client_noti_s*) g_try_malloc0(sizeof(wifi_direct_client_noti_s));
-			noti->event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
-			noti->error = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+			noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
+			noti.error = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 			if (session)
-				g_snprintf(noti->param1, MACSTR_LEN, MACSTR, MAC2STR(session->peer->dev_addr));
+				g_snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(session->peer->dev_addr));
 			goto send_notification;
 		}
 		break;
@@ -1267,10 +1261,9 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 			if (res < 0)
 				WDS_LOGE("Failed to cancel connection");
 
-			noti = (wifi_direct_client_noti_s*) g_try_malloc0(sizeof(wifi_direct_client_noti_s));
-			noti->event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
-			noti->error = WIFI_DIRECT_ERROR_CONNECTION_CANCELED;
-			g_snprintf(noti->param1, MACSTR_LEN, MACSTR, MAC2STR(req.data.mac_addr));
+			noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
+			noti.error = WIFI_DIRECT_ERROR_CONNECTION_CANCELED;
+			g_snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(req.data.mac_addr));
 			goto send_notification;
 		}
 		break;
@@ -1304,10 +1297,9 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 				// TODO: check whether to set state and break
 			}
 
-			noti = (wifi_direct_client_noti_s*) g_try_malloc0(sizeof(wifi_direct_client_noti_s));
-			noti->event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
-			noti->error = WIFI_DIRECT_ERROR_CONNECTION_CANCELED;
-			g_snprintf(noti->param1, MACSTR_LEN, MACSTR, MAC2STR(req.data.mac_addr));
+			noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
+			noti.error = WIFI_DIRECT_ERROR_CONNECTION_CANCELED;
+			g_snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(req.data.mac_addr));
 			goto send_notification;
 		}
 		break;
@@ -1344,10 +1336,9 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 				return FALSE;
 			}
 
-			noti = (wifi_direct_client_noti_s*) g_try_malloc0(sizeof(wifi_direct_client_noti_s));
-			noti->event = WIFI_DIRECT_CLI_EVENT_DISCONNECTION_RSP;
-			noti->error = wfd_manager_disconnect(manager, req.data.mac_addr);
-			g_snprintf(noti->param1, MACSTR_LEN, MACSTR, MAC2STR(req.data.mac_addr));
+			noti.event = WIFI_DIRECT_CLI_EVENT_DISCONNECTION_RSP;
+			noti.error = wfd_manager_disconnect(manager, req.data.mac_addr);
+			g_snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(req.data.mac_addr));
 			goto send_notification;
 		}
 		break;
@@ -1384,9 +1375,8 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 				return FALSE;
 			}
 
-			noti = (wifi_direct_client_noti_s*) g_try_malloc0(sizeof(wifi_direct_client_noti_s));
-			noti->event = WIFI_DIRECT_CLI_EVENT_DISCONNECTION_RSP;
-			noti->error = wfd_manager_disconnect_all(manager);
+			noti.event = WIFI_DIRECT_CLI_EVENT_DISCONNECTION_RSP;
+			noti.error = wfd_manager_disconnect_all(manager);
 			goto send_notification;
 		}
 		break;
@@ -1471,9 +1461,8 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 			wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
 			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
 
-			noti = (wifi_direct_client_noti_s*) g_try_malloc0(sizeof(wifi_direct_client_noti_s));
-			noti->event = WIFI_DIRECT_CLI_EVENT_GROUP_DESTROY_RSP;
-			noti->error = WIFI_DIRECT_ERROR_NONE;
+			noti.event = WIFI_DIRECT_CLI_EVENT_GROUP_DESTROY_RSP;
+			noti.error = WIFI_DIRECT_ERROR_NONE;
 		}
 		break;
 	case WIFI_DIRECT_CMD_IS_GROUPOWNER:
@@ -1917,9 +1906,8 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 				rsp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 			}
 
-			noti = (wifi_direct_client_noti_s*) g_try_malloc0(sizeof(wifi_direct_client_noti_s));
-			noti->event = WIFI_DIRECT_CLI_EVENT_SERVICE_DISCOVERY_STARTED;
-			noti->error = WIFI_DIRECT_ERROR_NONE;
+			noti.event = WIFI_DIRECT_CLI_EVENT_SERVICE_DISCOVERY_STARTED;
+			noti.error = WIFI_DIRECT_ERROR_NONE;
 		}
 		break;
 
@@ -2191,7 +2179,6 @@ send_response:
 	if (res < 0) {
 		WDS_LOGE("Failed to send response to client");
 		g_free(extra_rsp);
-		g_free(noti);
 		_wfd_deregister_client(manager, req.client_id);
 		__WDS_LOG_FUNC_EXIT__;
 		return FALSE;
@@ -2202,7 +2189,6 @@ send_response:
 		if (res < 0) {
 			WDS_LOGE("Failed to send extra response data to client");
 			g_free(extra_rsp);
-			g_free(noti);
 			_wfd_deregister_client(manager, req.client_id);
 			__WDS_LOG_FUNC_EXIT__;
 			return FALSE;
@@ -2212,17 +2198,15 @@ send_response:
 	}
 
 send_notification:
-	if (noti) {
-		res = wfd_client_send_event(manager, noti);
+	if (noti.event > WIFI_DIRECT_CLI_EVENT_INVALID && noti.event < WIFI_DIRECT_CLI_EVENT_MAX) {
+		res = wfd_client_send_event(manager, &noti);
 		if (res < 0) {
 			WDS_LOGE("Failed to send Notification to client");
 			g_free(extra_rsp);
-			g_free(noti);
 			__WDS_LOG_FUNC_EXIT__;
 			return FALSE;
 		}
-		WDS_LOGD("Succeeded to send Notification[%d] to client", noti->event);
-		g_free(noti);
+		WDS_LOGD("Succeeded to send Notification[%d] to client", noti.event);
 	}
 
 done:
