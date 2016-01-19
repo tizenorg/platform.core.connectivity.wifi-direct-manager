@@ -269,7 +269,7 @@ static int __ws_segment_to_service(char *segment, wfd_oem_new_service_s **servic
 		while (*ptr != 0 && strncmp(ptr, "c0", 2)) {
 			len = __ws_hex_to_num(ptr, 2);
 			ptr +=2;
-			if (len) {
+			if (len && len <= 0xffff) {
 				temp = (char*) calloc(1, len+2);
 				if (temp) {
 					temp[0] = '.';
@@ -309,7 +309,7 @@ static int __ws_segment_to_service(char *segment, wfd_oem_new_service_s **servic
 		while (*ptr != 0 && strncmp(ptr, "c0", 2)) {
 			len = __ws_hex_to_num(ptr, 2);
 			ptr += 2;
-			if (len) {
+			if (len && len <= 0xffff) {
 				temp = (char*) g_try_malloc0(len+2);
 				if (temp) {
 					temp[0] = '.';
@@ -1202,7 +1202,8 @@ static void _ws_process_prov_disc_req_display_pin(GDBusConnection *connection,
 	WDP_LOGD("Retrive Added path [%s]", peer_path);
 
 	loc = strrchr(peer_path,'/');
-	__ws_mac_compact_to_normal(loc + 1, peer_dev);
+	if(loc != NULL)
+		__ws_mac_compact_to_normal(loc + 1, peer_dev);
 	__ws_txt_to_mac(peer_dev, event.dev_addr);
 	WDP_LOGD("peer mac [" MACSTR "]", MAC2STR(event.dev_addr));
 
@@ -1251,7 +1252,8 @@ static void _ws_process_prov_disc_resp_display_pin(GDBusConnection *connection,
 	WDP_LOGD("Retrive Added path [%s]", peer_path);
 
 	loc = strrchr(peer_path,'/');
-	__ws_mac_compact_to_normal(loc + 1, peer_dev);
+	if(loc != NULL)
+		__ws_mac_compact_to_normal(loc + 1, peer_dev);
 	__ws_txt_to_mac(peer_dev, event.dev_addr);
 	WDP_LOGD("peer mac [" MACSTR "]", MAC2STR(event.dev_addr));
 
@@ -1421,7 +1423,8 @@ static void _ws_process_prov_disc_failure(GDBusConnection *connection,
 	WDP_LOGD("Retrive Failure stateus [%d]", prov_status);
 
 	loc = strrchr(peer_path,'/');
-	__ws_mac_compact_to_normal(loc + 1, peer_dev);
+	if(loc != NULL)
+		__ws_mac_compact_to_normal(loc + 1, peer_dev);
 	__ws_txt_to_mac(peer_dev, event.dev_addr);
 	WDP_LOGE("peer mac [" MACSTR "]", MAC2STR(event.dev_addr));
 
@@ -1590,7 +1593,8 @@ static void _ws_process_go_neg_request(GDBusConnection *connection,
 	WDP_LOGD("Retrive Added path [%s]", peer_path);
 
 	loc = strrchr(peer_path,'/');
-	__ws_mac_compact_to_normal(loc + 1, peer_dev);
+	if(loc != NULL)
+		__ws_mac_compact_to_normal(loc + 1, peer_dev);
 	__ws_txt_to_mac(peer_dev, event.dev_addr);
 	WDP_LOGD("peer mac [" MACSTR "]", MAC2STR(event.dev_addr));
 
@@ -1943,8 +1947,8 @@ static void __ws_parse_peer_joined(char *peer_path,
 	WDP_LOGD("Retrive Added path [%s]", peer_path);
 
 	loc = strrchr(peer_path,'/');
-	__ws_mac_compact_to_normal(loc + 1, peer_dev);
-
+	if(loc != NULL)
+		__ws_mac_compact_to_normal(loc + 1, peer_dev);
 	__ws_txt_to_mac(peer_dev, dev_addr);
 	WDP_LOGD("peer mac [" MACSTR "]", MAC2STR(dev_addr));
 
@@ -2228,10 +2232,11 @@ static int _ws_deinit_dbus_connection(void)
 {
 	GDBusConnection *g_dbus = NULL;
 
-    if(!g_pd) {
-        WDP_LOGE("ws_plugin_data_s is not created yet");
-        return -1;
-        }
+	if (!g_pd) {
+		WDP_LOGE("Invalid parameter");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
 
 	g_dbus = g_pd->g_dbus;
 	if (!g_dbus) {
