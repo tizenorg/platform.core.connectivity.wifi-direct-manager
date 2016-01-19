@@ -366,6 +366,15 @@ typedef struct {
 	int network_id;
 	char ssid[OEM_DEV_NAME_LEN+1];
 	unsigned char bssid[OEM_MACADDR_LEN];
+	char psk[OEM_PASS_PHRASE_LEN +1];
+	int proto;
+	int key_mgmt;
+	int pairwise;
+	int group;
+	int auth_alg;
+	int mode;
+	int p2p_client_num;
+	unsigned char p2p_client_list[OEM_MACADDR_LEN][OEM_MAX_PEER_NUM];
 	char persistent_path[OBJECT_PATH_MAX];
 	int total;
 } ws_network_info_s;

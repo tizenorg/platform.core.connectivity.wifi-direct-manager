@@ -3989,14 +3989,6 @@ int ws_set_country(char *ccode)
 	return res;
 }
 
-int _parsing_networks(char* buf, ws_network_info_s networks[], int *network_cnt)
-{
-	__WDP_LOG_FUNC_ENTER__;
-
-	__WDP_LOG_FUNC_EXIT__;
-	return 0;
-}
-
 void __parsing_networks (const char *key, GVariant *value, void *user_data)
 {
 	__WDP_LOG_FUNC_ENTER__;
@@ -4022,8 +4014,90 @@ void __parsing_networks (const char *key, GVariant *value, void *user_data)
 		WDP_LOGD("bssid [%s]", bssid);
 		__ws_txt_to_mac(bssid, network->bssid);
 
-	} else if (g_strcmp0(key, "mode") == 0) {
+	} else if (g_strcmp0(key, "proto") == 0) {
+		const char *proto = NULL;
+		g_variant_get(value, "&s", &proto);
+		WDP_LOGD("proto [%s]", proto);
 
+		if (g_strrstr(proto, WFD_OEM_STR_PROTO_WPA) != NULL)
+			network->proto |= WFD_OEM_PROTO_WPA;
+		if (g_strrstr(proto, WFD_OEM_STR_PROTO_RSN) != NULL)
+			network->proto |= WFD_OEM_PROTO_RSN;
+
+	} else if (g_strcmp0(key, "key_mgmt") == 0) {
+		const char *key_mgmt = NULL;
+		g_variant_get(value, "&s", &key_mgmt);
+		WDP_LOGD("key_mgmt [%s]", key_mgmt);
+
+		if (g_strrstr(key_mgmt, WFD_OEM_STR_KEY_MGMT_IEEE8021X) != NULL)
+			network->key_mgmt |= WFD_OEM_KEY_MGMT_IEEE8021X;
+		if (g_strrstr(key_mgmt, WFD_OEM_STR_KEY_MGMT_PSK) != NULL)
+			network->key_mgmt |= WFD_OEM_KEY_MGMT_PSK;
+		if (g_strrstr(key_mgmt, WFD_OEM_STR_KEY_MGMT_NONE) != NULL)
+			network->key_mgmt |= WFD_OEM_KEY_MGMT_NONE;
+
+	} else if (g_strcmp0(key, "pairwise") == 0) {
+		const char *pairwise = NULL;
+		g_variant_get(value, "&s", &pairwise);
+		WDP_LOGD("pairwise [%s]", pairwise);
+
+		if (g_strrstr(pairwise, WFD_OEM_STR_CIPHER_NONE) != NULL)
+			network->pairwise |= WFD_OEM_CIPHER_NONE;
+		if (g_strrstr(pairwise, WFD_OEM_STR_CIPHER_TKIP) != NULL)
+			network->pairwise |= WFD_OEM_CIPHER_TKIP;
+		if (g_strrstr(pairwise, WFD_OEM_STR_CIPHER_CCMP) != NULL)
+			network->pairwise |= WFD_OEM_CIPHER_CCMP;
+
+	}  else if (g_strcmp0(key, "group") == 0) {
+		const char *group = NULL;
+		g_variant_get(value, "&s", &group);
+		WDP_LOGD("group [%s]", group);
+
+		if (g_strrstr(group, WFD_OEM_STR_CIPHER_NONE) != NULL)
+			network->group |= WFD_OEM_CIPHER_NONE;
+		if (g_strrstr(group, WFD_OEM_STR_CIPHER_WEP40) != NULL)
+			network->group |= WFD_OEM_CIPHER_WEP40;
+		if (g_strrstr(group, WFD_OEM_STR_CIPHER_WEP104) != NULL)
+			network->group |= WFD_OEM_CIPHER_WEP104;
+		if (g_strrstr(group, WFD_OEM_STR_CIPHER_TKIP) != NULL)
+			network->group |= WFD_OEM_CIPHER_TKIP;
+		if (g_strrstr(group, WFD_OEM_STR_CIPHER_CCMP) != NULL)
+			network->group |= WFD_OEM_CIPHER_CCMP;
+
+	} else if (g_strcmp0(key, "auth_alg") == 0) {
+		const char *auth_alg = NULL;
+		g_variant_get(value, "&s", &auth_alg);
+		WDP_LOGD("auth_alg [%s]", auth_alg);
+
+		if (g_strrstr(auth_alg, WFD_OEM_STR_AUTH_ALG_OPEN) != NULL)
+			network->auth_alg |= WFD_OEM_AUTH_ALG_OPEN;
+
+	} else if (g_strcmp0(key, "mode") == 0) {
+		const char *mode = NULL;
+		g_variant_get(value, "&s", &mode);
+		WDP_LOGD("mode [%s]", mode);
+
+		if (g_strrstr(mode, WFD_OEM_STR_MODE_GC) != NULL)
+			network->mode |= WFD_OEM_PERSISTENT_MODE_GC;
+		if (g_strrstr(mode, WFD_OEM_STR_MODE_GO) != NULL)
+			network->mode |= WFD_OEM_PERSISTENT_MODE_GO;
+
+	} else if (g_strcmp0(key, "p2p_client_list") == 0) {
+		const char *p2p_client_list = NULL;
+		char *ptr = NULL;
+		int list_len = 0;
+		int num = 0;
+
+		g_variant_get(value, "&s", &p2p_client_list);
+		WDP_LOGD("p2p_client_list [%s]", p2p_client_list);
+		ptr = (char *)p2p_client_list;
+		while(ptr != NULL && list_len >= (OEM_MACSTR_LEN - 1)) {
+			__ws_txt_to_mac((unsigned char *)ptr, &(network->p2p_client_list[0][num]));
+			ptr += OEM_MACSTR_LEN;
+			list_len -= OEM_MACSTR_LEN;
+			num++;
+		}
+		network->p2p_client_num = num;
 	}
 	return;
 }

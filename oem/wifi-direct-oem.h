@@ -366,11 +366,62 @@ typedef struct {
 } wfd_oem_new_service_s;
 #endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
 
+#define WFD_OEM_STR_PROTO_WPA "WPA"
+#define WFD_OEM_STR_PROTO_RSN "RSN"
+#define WFD_OEM_STR_KEY_MGMT_IEEE8021X "WPA-EAP"
+#define WFD_OEM_STR_KEY_MGMT_PSK "WPA-PSK"
+#define WFD_OEM_STR_KEY_MGMT_NONE "WPA-NONE"
+#define WFD_OEM_STR_CIPHER_NONE "NONE"
+#define WFD_OEM_STR_CIPHER_WEP40 "WEP40"
+#define WFD_OEM_STR_CIPHER_WEP104 "WEP104"
+#define WFD_OEM_STR_CIPHER_TKIP "TKIP"
+#define WFD_OEM_STR_CIPHER_CCMP "CCMP"
+#define WFD_OEM_STR_AUTH_ALG_OPEN "OPEN"
+#define WFD_OEM_STR_MODE_GC "0"
+#define WFD_OEM_STR_MODE_GO "3"
+
+typedef enum {
+	WFD_OEM_PROTO_WPA = 0x01, /* WPA */
+	WFD_OEM_PROTO_RSN = 0x02, /* RSN */
+} wfd_oem_proto_e;
+
+typedef enum {
+	WFD_OEM_KEY_MGMT_IEEE8021X = 0x01,	/* WPA-EAP */
+	WFD_OEM_KEY_MGMT_PSK = 0x02,	/* WPA-PSK */
+	WFD_OEM_KEY_MGMT_NONE = 0x04, /* WPA-NONE */
+} wfd_oem_key_mgmt_e;
+
+typedef enum {
+	WFD_OEM_CIPHER_NONE = 0x01, /* NONE */
+	WFD_OEM_CIPHER_WEP40 = 0x02, /* WEP40 */
+	WFD_OEM_CIPHER_WEP104 = 0x04, /* WEP104 */
+	WFD_OEM_CIPHER_TKIP = 0x08, /* TKIP */
+	WFD_OEM_CIPHER_CCMP = 0x10, /* CCMP */
+} wfd_oem_cipher_e;
+
+typedef enum {
+	WFD_OEM_AUTH_ALG_OPEN = 0x01, /* OPEN */
+}wfd_oem_auth_alg_e;
+
+typedef enum {
+	WFD_OEM_PERSISTENT_MODE_GC = 0x0,
+	WFD_OEM_PERSISTENT_MODE_GO = 0x3,
+} wfd_oem_persistent_mode_e;
+
 typedef struct
 {
 	int network_id;
 	char ssid[OEM_DEV_NAME_LEN + 1];
 	unsigned char go_mac_address[OEM_MACADDR_LEN];
+	char psk[OEM_PASS_PHRASE_LEN +1];
+	int proto;
+	int key_mgmt;
+	int pairwise;
+	int group;
+	int auth_alg;
+	int mode;
+	int p2p_client_num;
+	unsigned char p2p_client_list[OEM_MACADDR_LEN][OEM_MAX_PEER_NUM];
 } wfd_oem_persistent_group_s;
 
 typedef int (*wfd_oem_event_cb) (void *user_data, void *event);
