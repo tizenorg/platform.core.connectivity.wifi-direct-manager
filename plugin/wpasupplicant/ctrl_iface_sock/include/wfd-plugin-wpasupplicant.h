@@ -562,7 +562,7 @@ int ws_get_pin(char *pin);
 int ws_set_pin(char *pin);
 int ws_generate_pin(char **pin);
 int ws_get_supported_wps_mode();
-int ws_create_group(int persistent, int freq, const char *passphrase);
+int ws_create_group(wfd_oem_group_param_s *param);
 int ws_destroy_group(const char *ifname);
 int ws_invite(unsigned char *peer_addr, wfd_oem_invite_param_s *param);
 int ws_wps_start(unsigned char *peer_addr, int wps_mode, const char *pin);

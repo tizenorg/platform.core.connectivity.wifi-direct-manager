@@ -213,13 +213,13 @@ int wfd_oem_get_supported_wps_mode(wfd_oem_ops_s *ops, int *wps_mode)
 	return ops->get_supported_wps_mode(wps_mode);
 }
 
-int wfd_oem_create_group(wfd_oem_ops_s *ops, int persistent, int freq, const char *passphrase)
+int wfd_oem_create_group(wfd_oem_ops_s *ops, wfd_oem_group_param_s *param)
 {
 	if (!ops || !ops->create_group) {
 		return -1;
 	}
 
-	return ops->create_group(persistent, freq, passphrase);
+	return ops->create_group(param);
 }
 
 int wfd_oem_destroy_group(wfd_oem_ops_s *ops, const char *ifname)
