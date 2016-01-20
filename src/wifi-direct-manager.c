@@ -34,6 +34,7 @@
 
 #include <glib.h>
 #include <glib-object.h>
+
 #include <wifi-direct.h>
 
 #include "wifi-direct-ipc.h"

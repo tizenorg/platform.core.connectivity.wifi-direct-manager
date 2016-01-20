@@ -29,48 +29,13 @@
 #define __WFD_PLUGIN_WPASUPPLICANT_H__
 
 
-#ifdef USE_DLOG
-#include <dlog.h>
-
-#undef LOG_TAG
-#define LOG_TAG "WIFI_DIRECT_PLUGIN"
-
-#define WDP_LOGV(format, args...) LOGV(format, ##args)
-#define WDP_LOGD(format, args...) LOGD(format, ##args)
-#define WDP_LOGI(format, args...) LOGI(format, ##args)
-#define WDP_LOGW(format, args...) LOGW(format, ##args)
-#define WDP_LOGE(format, args...) LOGE(format, ##args)
-#define WDP_LOGF(format, args...) LOGF(format, ##args)
-
-#define __WDP_LOG_FUNC_ENTER__ LOGD("Enter")
-#define __WDP_LOG_FUNC_EXIT__ LOGD("Quit")
-
-#define WDP_SECLOGI(format, args...) SECURE_LOG(LOG_INFO, LOG_TAG, format, ##args)
-#define WDP_SECLOGD(format, args...) SECURE_LOG(LOG_DEBUG, LOG_TAG, format, ##args)
-
-#else /* USE_DLOG */
-
-#define WDP_LOGV(format, args...)
-#define WDP_LOGD(format, args...)
-#define WDP_LOGI(format, args...)
-#define WDP_LOGW(format, args...)
-#define WDP_LOGE(format, args...)
-#define WDP_LOGF(format, args...)
-
-#define __WDP_LOG_FUNC_ENTER__
-#define __WDP_LOG_FUNC_EXIT__
-
-#define WDP_SECLOGI(format, args...)
-#define WDP_SECLOGD(format, args...)
-
-#endif /* USE_DLOG */
-
 #define MAC2STR(a) (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
 #define MACSTR "%02x:%02x:%02x:%02x:%02x:%02x"
 #define IP2STR(a) (a)[0], (a)[1], (a)[2], (a)[3]
 #define IPSTR "%d.%d.%d.%d"
 #define MAC2SECSTR(a) (a)[0], (a)[4], (a)[5]
 #define MACSECSTR "%02x:%02x:%02x"
+#define ISZEROMACADDR(a) !(a[0] | a[1] | a[2] | a[3] | a[4] | a[5])
 #define IP2SECSTR(a) (a)[0], (a)[3]
 #define IPSECSTR "%d..%d"
 
@@ -116,6 +81,13 @@
 #define GROUP_IFACE_PREFIX "p2p"
 #endif
 
+#ifdef TIZEN_FEATURE_IP_OVER_EAPOL
+#define DEFAULT_IP_GO "192.168.49.1"
+#define DEFAULT_IP_MASK "255.255.255.0"
+#define DEFAULT_IP_START "192.168.49.51"
+#define DEFAULT_IP_END "192.168.49.100"
+#endif /* TIZEN_FEATURE_IP_OVER_EAPOL */
+
 #define WS_POLL_TIMEOUT 5000
 #define WS_CONN_RETRY_COUNT 10
 #define WS_PINSTR_LEN 8
@@ -127,6 +99,7 @@
 #define WS_NETFLAG_LEN 32
 #define WS_MAX_PERSISTENT_COUNT 20
 #define WS_SCAN_RETRY_COUNT 10
+#define WS_IP_LEN 4
 
 #ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
 
@@ -206,7 +179,7 @@
 #ifdef TIZEN_FEATURE_WIFI_DISPLAY
 #define WS_WFD_INFO_PRIMARY_SINK 0x01
 #define WS_WFD_INFO_SECONDARY_SINK 0x02
-#define WS_WFD_INFO_AVAILABILITY 0x10
+#define WS_WFD_INFO_AVAILABLITY 0x10
 #define WS_WFD_INFO_WSD_SUPPORT 0x40
 #define WS_WFD_INFO_TDLS_SUPPORT 0x80
 #define WS_WFD_INFO_HDCP_SUPPORT 0x100
@@ -326,7 +299,11 @@ typedef enum {
 	WS_GROUP_INFO_PASS,	// passphrase=
 	WS_GROUP_INFO_GO_DEV_ADDR,	// go_dev_addr=
 	WS_GROUP_INFO_STATUS,		// status=
-
+#ifdef TIZEN_FEATURE_IP_OVER_EAPOL
+	WS_GROUP_INFO_IP_ADDR,	//ip_addr=
+	WS_GROUP_INFO_IP_MASK,	//ip_mask=
+	WS_GROUP_INFO_GO_IP_ADDR, //go_ip_addr=
+#endif /* TIZEN_FEATURE_IP_OVER_EAPOL */
 	WS_GROUP_INFO_LIMIT,
 } ws_group_info_id_e;
 

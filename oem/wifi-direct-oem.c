@@ -28,6 +28,7 @@
 #include <stdio.h>
 
 #include <glib.h>
+
 #include "wifi-direct-oem.h"
 
 int wfd_oem_init(wfd_oem_ops_s *ops, wfd_oem_event_cb event_callback, void *user_data)
@@ -202,6 +203,7 @@ int wfd_oem_generate_pin(wfd_oem_ops_s *ops, char **pin)
 
 	return ops->generate_pin(pin);
 }
+
 int wfd_oem_get_supported_wps_mode(wfd_oem_ops_s *ops, int *wps_mode)
 {
 	if (!ops || !ops->get_supported_wps_mode) {

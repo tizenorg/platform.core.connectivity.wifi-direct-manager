@@ -120,10 +120,12 @@
 #define DEFAULT_NO_GROUP_IFACE 1
 #endif
 
+#ifdef TIZEN_FEATURE_IP_OVER_EAPOL
 #define DEFAULT_IP_GO "\xc0\xa8\x31\x01"
 #define DEFAULT_IP_MASK "\xff\xff\xff\x00"
 #define DEFAULT_IP_START "\xc0\xa8\x31\x33"
 #define DEFAULT_IP_END "\xc0\xa8\x31\x64"
+#endif /* TIZEN_FEATURE_IP_OVER_EAPOL */
 
 #define WS_POLL_TIMEOUT 5000
 #define WS_CONN_RETRY_COUNT 10

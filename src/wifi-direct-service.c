@@ -2,7 +2,9 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+
 #include <glib.h>
+
 #include <wifi-direct.h>
 
 #include "wifi-direct-ipc.h"

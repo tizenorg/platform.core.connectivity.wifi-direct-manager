@@ -43,6 +43,8 @@
 #define OEM_QUERY_ID_LEN 15
 #define OEM_SERVICE_MAX_LEN 1024
 
+#define OEM_MAX_PEER_NUM 8
+
 typedef enum {
 	WFD_OEM_SC_SUCCESS = 0,
 	WFD_OEM_SC_FAIL_INFO_CURRENTLY_UNAVAILABLE = 1,
@@ -195,9 +197,11 @@ typedef struct {
 	int freq;
 	char pass[OEM_PASS_PHRASE_LEN+1];
 	unsigned char go_dev_addr[OEM_MACADDR_LEN];
+#ifdef TIZEN_FEATURE_IP_OVER_EAPOL
 	unsigned char ip_addr[OEM_IPADDR_LEN];
 	unsigned char ip_addr_mask[OEM_IPADDR_LEN];
 	unsigned char ip_addr_go[OEM_IPADDR_LEN];
+#endif /* TIZEN_FEATURE_IP_OVER_EAPOL */
 } wfd_oem_group_data_s;
 
 #ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
@@ -223,11 +227,11 @@ typedef struct {
 	int event_id;
 	unsigned char dev_addr[OEM_MACADDR_LEN];	// device address
 	unsigned char intf_addr[OEM_MACADDR_LEN];
-	unsigned char ip_addr_peer[OEM_IPADDR_LEN];
 	int wps_mode;
 	char wps_pin[OEM_PINSTR_LEN+1];	// just for DISPLAY
 	char ifname[OEM_IFACE_NAME_LEN+1];
 	int dev_role;
+	unsigned char ip_addr_peer[OEM_IPADDR_LEN];
 	int edata_type;
 	void *edata;
 } wfd_oem_event_s;

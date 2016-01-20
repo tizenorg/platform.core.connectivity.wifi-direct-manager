@@ -109,7 +109,9 @@ typedef enum {
 
 typedef enum {
 	WFD_IP_TYPE_DYNAMIC = 0x0,
+#ifdef TIZEN_FEATURE_IP_OVER_EAPOL
 	WFD_IP_TYPE_OVER_EAPOL = 0x1,
+#endif /* TIZEN_FEATURE_IP_OVER_EAPOL */
 } wfd_ip_type_e;
 
 #ifdef TIZEN_FEATURE_WIFI_DISPLAY
