@@ -1620,15 +1620,11 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 			break;
 		}
 
-		unsigned char ip_addr[IPADDR_LEN] = {0,};
-
-		res = wfd_util_get_local_ip(ip_addr);
+		res = wfd_local_get_ip_addr(rsp.param2);
 		if (res < 0) {
 			WDS_LOGE("Failed to get local IP address");
 			rsp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 		}
-		g_snprintf(rsp.param2, IPSTR_LEN, IPSTR, IP2STR(ip_addr));
-		WDS_LOGI("IP addr : [%s]", rsp.param2);
 		break;
 	case WIFI_DIRECT_CMD_GET_GO_INTENT:	// manager (sync)
 		res = wfd_manager_get_go_intent(&rsp.param1);

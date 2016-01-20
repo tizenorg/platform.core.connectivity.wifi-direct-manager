@@ -191,24 +191,26 @@ int wfd_group_complete(void *data, wfd_oem_event_s *group_info)
 		wfd_util_dhcps_start();
 		WDS_LOGD("Role is Group Owner. DHCP Server started");
 	} else {
-#ifdef CTRL_IFACE_DBUS
-		WDS_LOGD("Role is Group Client.complete session and add peer to member");
-		if (peer) {
-			memcpy(peer->intf_addr, group->go_dev_addr, MACADDR_LEN);
-			wfd_group_add_member(group, peer->dev_addr);
-			session->state = SESSION_STATE_COMPLETED;
-			/* memcpy(peer->intf_addr, event->intf_addr, MACADDR_LEN); */
-			peer->state = WFD_PEER_STATE_CONNECTED;
-			if(edata->ip_addr[3] && edata->ip_addr_go[3]) {
-				peer->ip_type = WFD_IP_TYPE_OVER_EAPOL;
-				memcpy(peer->client_ip_addr, edata->ip_addr, IPADDR_LEN);
-				WDS_LOGE("Peer's client IP [" IPSTR "]", IP2STR((char*) &peer->client_ip_addr));
-				memcpy(peer->go_ip_addr, edata->ip_addr_go, IPADDR_LEN);
-				WDS_LOGE("Peer's GO IP [" IPSTR "]", IP2STR((char*) &peer->go_ip_addr));
-			}
+		if(!peer) {
+			WDS_LOGE("Peer is not in the session");
+			return -1;
 		}
-		if(peer && peer->ip_type != WFD_IP_TYPE_OVER_EAPOL)
-#endif /* CTRL_IFACE_DBUS */
+		WDS_LOGD("Role is Group Client.complete session and add peer to member");
+		memcpy(peer->intf_addr, group->go_dev_addr, MACADDR_LEN);
+		wfd_group_add_member(group, peer->dev_addr);
+		session->state = SESSION_STATE_COMPLETED;
+		/* memcpy(peer->intf_addr, event->intf_addr, MACADDR_LEN); */
+		peer->state = WFD_PEER_STATE_CONNECTED;
+#ifdef TIZEN_FEATURE_IP_OVER_EAPOL
+		if(edata->ip_addr[3] && edata->ip_addr_go[3]) {
+			peer->ip_type = WFD_IP_TYPE_OVER_EAPOL;
+			memcpy(peer->client_ip_addr, edata->ip_addr, IPADDR_LEN);
+			WDS_LOGE("Peer's client IP [" IPSTR "]", IP2STR((char*) &peer->client_ip_addr));
+			memcpy(peer->go_ip_addr, edata->ip_addr_go, IPADDR_LEN);
+			WDS_LOGE("Peer's GO IP [" IPSTR "]", IP2STR((char*) &peer->go_ip_addr));
+		}
+		if(peer->ip_type != WFD_IP_TYPE_OVER_EAPOL)
+#endif /* TIZEN_FEATURE_IP_OVER_EAPOL */
 		wfd_util_dhcpc_start(peer);
 	}
 

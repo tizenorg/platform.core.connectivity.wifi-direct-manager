@@ -131,8 +131,8 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	return G_SOURCE_REMOVE;
 }
 
- static void __wfd_process_deactivated(wfd_manager_s *manager, wfd_oem_event_s *event)
- {
+static void __wfd_process_deactivated(wfd_manager_s *manager, wfd_oem_event_s *event)
+{
  	__WDS_LOG_FUNC_ENTER__;
 
 	wifi_direct_client_noti_s noti;
@@ -161,12 +161,12 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	wfd_util_stop_wifi_direct_popup();
 #endif /* TIZEN_FEATURE_DEFAULT_CONNECTION_AGENT */
 	__WDS_LOG_FUNC_EXIT__;
- 	return;
- }
+	return;
+}
 
- static void __wfd_process_peer_found(wfd_manager_s *manager, wfd_oem_event_s *event)
- {
- 	__WDS_LOG_FUNC_ENTER__;
+static void __wfd_process_peer_found(wfd_manager_s *manager, wfd_oem_event_s *event)
+{
+	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_oem_dev_data_s *edata = NULL;
 	wifi_direct_client_noti_s noti;
@@ -203,11 +203,11 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	}
 
  	__WDS_LOG_FUNC_EXIT__;
- 	return;
- }
+	return;
+}
 
- static void __wfd_process_peer_disappeared(wfd_manager_s *manager, wfd_oem_event_s *event)
- {
+static void __wfd_process_peer_disappeared(wfd_manager_s *manager, wfd_oem_event_s *event)
+{
  	__WDS_LOG_FUNC_ENTER__;
 
  	wifi_direct_client_noti_s noti;
@@ -228,10 +228,10 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 
  	__WDS_LOG_FUNC_EXIT__;
  	return;
- }
+}
 
- static void __wfd_process_discovery_finished(wfd_manager_s *manager, wfd_oem_event_s *event)
- {
+static void __wfd_process_discovery_finished(wfd_manager_s *manager, wfd_oem_event_s *event)
+{
  	__WDS_LOG_FUNC_ENTER__;
 
  	wifi_direct_client_noti_s noti;
@@ -269,15 +269,15 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	noti.error = WIFI_DIRECT_ERROR_NONE;
 	wfd_client_send_event(manager, &noti);
 
- 	__WDS_LOG_FUNC_EXIT__;
- 	return;
- }
+	__WDS_LOG_FUNC_EXIT__;
+	return;
+}
 
- static void __wfd_process_prov_disc_req(wfd_manager_s *manager, wfd_oem_event_s *event)
- {
+static void __wfd_process_prov_disc_req(wfd_manager_s *manager, wfd_oem_event_s *event)
+{
  	__WDS_LOG_FUNC_ENTER__;
 
- 	wfd_device_s *peer = NULL;
+	wfd_device_s *peer = NULL;
  	int res = 0;
 
 	if (event == NULL || manager == NULL) {
@@ -328,12 +328,12 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	if (res < 0)
 		WDS_LOGE("Failed to process event of session");
 
- 	__WDS_LOG_FUNC_EXIT__;
- 	return;
- }
+	__WDS_LOG_FUNC_EXIT__;
+	return;
+}
 
- static void __wfd_process_prov_disc_resp(wfd_manager_s *manager, wfd_oem_event_s *event)
- {
+static void __wfd_process_prov_disc_resp(wfd_manager_s *manager, wfd_oem_event_s *event)
+{
  	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_device_s *peer = NULL;
@@ -379,13 +379,13 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	if (res < 0)
 		WDS_LOGE("Failed to process event of session");
 
- 	__WDS_LOG_FUNC_EXIT__;
- 	return;
- }
+	__WDS_LOG_FUNC_EXIT__;
+	return;
+}
 
- static void __wfd_process_prov_disc_fail(wfd_manager_s *manager, wfd_oem_event_s *event)
- {
- 	__WDS_LOG_FUNC_ENTER__;
+static void __wfd_process_prov_disc_fail(wfd_manager_s *manager, wfd_oem_event_s *event)
+{
+	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_session_s *session = NULL;
 	wifi_direct_client_noti_s noti;
@@ -446,13 +446,13 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	wfd_oem_start_scan(manager->oem_ops, &param);
 	manager->scan_mode = WFD_SCAN_MODE_ACTIVE;
 #endif
- 	__WDS_LOG_FUNC_EXIT__;
- 	return;
- }
+	__WDS_LOG_FUNC_EXIT__;
+	return;
+}
 
- static void __wfd_process_go_neg_req(wfd_manager_s *manager, wfd_oem_event_s *event)
- {
- 	__WDS_LOG_FUNC_ENTER__;
+static void __wfd_process_go_neg_req(wfd_manager_s *manager, wfd_oem_event_s *event)
+{
+	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_session_s *session = NULL;
 	wifi_direct_client_noti_s noti;
@@ -472,6 +472,7 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 
 #ifdef CTRL_IFACE_DBUS
 	wfd_oem_dev_data_s *edata = NULL;
+	int res = 0;
 
 	edata = (wfd_oem_dev_data_s*) event->edata;
 	if (!edata || event->edata_type != WFD_OEM_EDATA_TYPE_DEVICE) {
@@ -480,7 +481,8 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 		return;
 	}
 
-	if (_wfd_event_update_peer(manager, edata) < 0) {
+	res = _wfd_event_update_peer(manager, edata);
+	if (res < 0) {
 		WDS_LOGE("Failed to update peer data");
 		__WDS_LOG_FUNC_EXIT__;
 		return;
@@ -537,13 +539,13 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	} else {
 		wfd_session_process_event(manager, event);
 	}
- 	__WDS_LOG_FUNC_EXIT__;
- 	return;
- }
+	__WDS_LOG_FUNC_EXIT__;
+	return;
+}
 
  static void __wfd_process_go_neg_fail(wfd_manager_s *manager, wfd_oem_event_s *event)
  {
- 	__WDS_LOG_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_session_s *session = NULL;
 	wfd_oem_conn_data_s *edata = NULL;
@@ -575,7 +577,7 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 		WDS_LOGE("Invalid p2p connection data");
 		__WDS_LOG_FUNC_EXIT__;
 		return;
-	 }
+	}
 
 	if (edata->status < 0 && session->connecting_120) {
 		if (session->retry_gsrc) {
@@ -600,14 +602,13 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	wfd_destroy_group(manager, GROUP_IFNAME);
 	wfd_destroy_session(manager);
 	manager->local->dev_role = WFD_DEV_ROLE_NONE;
+	__WDS_LOG_FUNC_EXIT__;
+	return;
+}
 
- 	__WDS_LOG_FUNC_EXIT__;
- 	return;
- }
-
- static void __wfd_process_go_neg_done(wfd_manager_s *manager, wfd_oem_event_s *event)
- {
- 	__WDS_LOG_FUNC_ENTER__;
+static void __wfd_process_go_neg_done(wfd_manager_s *manager, wfd_oem_event_s *event)
+{
+	__WDS_LOG_FUNC_ENTER__;
 
 #ifdef CTRL_IFACE_DBUS
 	wfd_session_s *session = NULL;
@@ -635,13 +636,13 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	manager->local->dev_role = event->dev_role;
 	wfd_session_process_event(manager, event);
 #endif /* CTRL_IFACE_DBUS */
- 	__WDS_LOG_FUNC_EXIT__;
- 	return;
- }
+	__WDS_LOG_FUNC_EXIT__;
+	return;
+}
 
- static void __wfd_process_wps_fail(wfd_manager_s *manager, wfd_oem_event_s *event)
- {
- 	__WDS_LOG_FUNC_ENTER__;
+static void __wfd_process_wps_fail(wfd_manager_s *manager, wfd_oem_event_s *event)
+{
+	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_session_s *session = NULL;
 	wifi_direct_client_noti_s noti;
@@ -702,9 +703,9 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	wfd_oem_start_scan(manager->oem_ops, &param);
 	manager->scan_mode = WFD_SCAN_MODE_ACTIVE;
 #endif
- 	__WDS_LOG_FUNC_EXIT__;
- 	return;
- }
+	__WDS_LOG_FUNC_EXIT__;
+	return;
+}
 
  static void __wfd_process_wps_done(wfd_manager_s *manager, wfd_oem_event_s *event)
  {
@@ -713,12 +714,12 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	wfd_session_process_event(manager, event);
 
 	__WDS_LOG_FUNC_EXIT__;
- 	return;
+	return;
  }
 
- static void __wfd_process_key_neg_fail(wfd_manager_s *manager, wfd_oem_event_s *event)
- {
-	 __WDS_LOG_FUNC_ENTER__;
+static void __wfd_process_key_neg_fail(wfd_manager_s *manager, wfd_oem_event_s *event)
+{
+	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_session_s *session = NULL;
 	wifi_direct_client_noti_s noti;
@@ -779,37 +780,37 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	wfd_oem_start_scan(manager->oem_ops, &param);
 	manager->scan_mode = WFD_SCAN_MODE_ACTIVE;
 #endif
- 	__WDS_LOG_FUNC_EXIT__;
- 	return;
- }
+	__WDS_LOG_FUNC_EXIT__;
+	return;
+}
 
- static void __wfd_process_key_neg_done(wfd_manager_s *manager, wfd_oem_event_s *event)
- {
- 	__WDS_LOG_FUNC_ENTER__;
+static void __wfd_process_key_neg_done(wfd_manager_s *manager, wfd_oem_event_s *event)
+{
+	__WDS_LOG_FUNC_ENTER__;
 
- 	__WDS_LOG_FUNC_EXIT__;
- 	return;
- }
+	__WDS_LOG_FUNC_EXIT__;
+	return;
+}
 
- static void __wfd_process_conn_fail(wfd_manager_s *manager, wfd_oem_event_s *event)
- {
- 	__WDS_LOG_FUNC_ENTER__;
+static void __wfd_process_conn_fail(wfd_manager_s *manager, wfd_oem_event_s *event)
+{
+	__WDS_LOG_FUNC_ENTER__;
 
- 	__WDS_LOG_FUNC_EXIT__;
- 	return;
- }
+	__WDS_LOG_FUNC_EXIT__;
+	return;
+}
 
- static void __wfd_process_conn_done(wfd_manager_s *manager, wfd_oem_event_s *event)
- {
- 	__WDS_LOG_FUNC_ENTER__;
+static void __wfd_process_conn_done(wfd_manager_s *manager, wfd_oem_event_s *event)
+{
+	__WDS_LOG_FUNC_ENTER__;
 
- 	__WDS_LOG_FUNC_EXIT__;
- 	return;
- }
+	__WDS_LOG_FUNC_EXIT__;
+	return;
+}
 
- static void __wfd_process_group_created(wfd_manager_s *manager, wfd_oem_event_s *event)
- {
- 	__WDS_LOG_FUNC_ENTER__;
+static void __wfd_process_group_created(wfd_manager_s *manager, wfd_oem_event_s *event)
+{
+	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_group_s *group = NULL;
 	wfd_session_s *session = NULL;
@@ -868,12 +869,30 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 
 	memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
 	if (group->role == WFD_DEV_ROLE_GC && session) {
-#ifdef CTRL_IFACE_DBUS
-		if(session->peer && session->peer->ip_type == WFD_IP_TYPE_OVER_EAPOL)
-			wfd_util_ip_over_eap_assign(session->peer, event->ifname);
-#else /* CTRL_IFACE_DBUS */
-		wfd_destroy_session(manager);
-#endif /* CTRL_IFACE_DBUS */
+#ifdef TIZEN_FEATURE_IP_OVER_EAPOL
+		wfd_device_s *peer = session->peer;
+		if(peer == NULL) {
+			WDS_LOGE("Unexpected event. Peer doesn't exist");
+			return;
+		}
+
+		wfd_update_peer(manager, peer);
+
+		if(peer->ip_type == WFD_IP_TYPE_OVER_EAPOL) {
+
+			wfd_util_ip_over_eap_assign(peer, event->ifname);
+
+			noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
+			noti.error = WIFI_DIRECT_ERROR_NONE;
+			snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer->dev_addr));
+			wfd_client_send_event(manager, &noti);
+
+			wfd_state_set(manager, WIFI_DIRECT_STATE_CONNECTED);
+			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_CONNECTED);
+
+			wfd_destroy_session(manager);
+		}
+#endif /* TIZEN_FEATURE_IP_OVER_EAPOL */
 		wfd_peer_clear_all(manager);
 	} else {
 		if (group->flags & WFD_GROUP_FLAG_AUTONOMOUS) {
@@ -883,14 +902,13 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
 		}
 	}
+	__WDS_LOG_FUNC_EXIT__;
+	return;
+}
 
- 	__WDS_LOG_FUNC_EXIT__;
- 	return;
- }
-
- static void __wfd_process_group_destroyed(wfd_manager_s *manager, wfd_oem_event_s *event)
- {
- 	__WDS_LOG_FUNC_ENTER__;
+static void __wfd_process_group_destroyed(wfd_manager_s *manager, wfd_oem_event_s *event)
+{
+	__WDS_LOG_FUNC_ENTER__;
 
 	wifi_direct_client_noti_s noti;
 
@@ -931,13 +949,13 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	wfd_destroy_session(manager);
 	manager->local->dev_role = WFD_DEV_ROLE_NONE;
 
- 	__WDS_LOG_FUNC_EXIT__;
- 	return;
- }
+	__WDS_LOG_FUNC_EXIT__;
+	return;
+}
 
- static void __wfd_process_invitation_req(wfd_manager_s *manager, wfd_oem_event_s *event)
- {
- 	__WDS_LOG_FUNC_ENTER__;
+static void __wfd_process_invitation_req(wfd_manager_s *manager, wfd_oem_event_s *event)
+{
+	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_device_s *peer = NULL;
 	wfd_session_s *session = NULL;
@@ -992,26 +1010,26 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	snprintf(noti.param1, sizeof(noti.param1), MACSTR, MAC2STR(event->dev_addr));
 	wfd_client_send_event(manager, &noti);
 
+	__WDS_LOG_FUNC_EXIT__;
+	return;
+}
+
+static void __wfd_process_invitation_res(wfd_manager_s *manager, wfd_oem_event_s *event)
+{
+	__WDS_LOG_FUNC_ENTER__;
+
  	__WDS_LOG_FUNC_EXIT__;
- 	return;
- }
+	return;
+}
 
- static void __wfd_process_invitation_res(wfd_manager_s *manager, wfd_oem_event_s *event)
- {
- 	__WDS_LOG_FUNC_ENTER__;
+static void __wfd_process_sta_connected(wfd_manager_s *manager, wfd_oem_event_s *event)
+{
+	__WDS_LOG_FUNC_ENTER__;
 
- 	__WDS_LOG_FUNC_EXIT__;
- 	return;
- }
-
- static void __wfd_process_sta_connected(wfd_manager_s *manager, wfd_oem_event_s *event)
- {
- 	__WDS_LOG_FUNC_ENTER__;
-
- 	wfd_session_s *session = NULL;
- 	wfd_device_s *peer = NULL;
- 	wfd_group_s *group = NULL;
- 	wifi_direct_client_noti_s noti;
+	wfd_session_s *session = NULL;
+	wfd_device_s *peer = NULL;
+	wfd_group_s *group = NULL;
+	wifi_direct_client_noti_s noti;
 
 	if (event == NULL || manager == NULL) {
 		WDS_LOGE("Invalid parameter");
@@ -1073,6 +1091,8 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	wfd_client_send_event(manager, &noti);
 #ifdef CTRL_IFACE_DBUS
 	wfd_update_peer(manager, peer);
+#endif /* CTRL_IFACE_DBUS */
+#ifdef TIZEN_FEATURE_IP_OVER_EAPOL
 	if (event->ip_addr_peer[3]) {
 		peer->ip_type = WFD_IP_TYPE_OVER_EAPOL;
 		memcpy(peer->client_ip_addr, event->ip_addr_peer, IPADDR_LEN);
@@ -1080,20 +1100,28 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 		memcpy(peer->go_ip_addr, manager->local->ip_addr, IPADDR_LEN);
 		WDS_LOGE("Peer's GO IP [" IPSTR "]", IP2STR((char*) &peer->go_ip_addr));
 	}
-	if(peer->ip_type == WFD_IP_TYPE_OVER_EAPOL)
-		wfd_util_ip_over_eap_lease(peer);
-	else
-#endif /* CTRL_IFACE_DBUS */
+	if(peer->ip_type == WFD_IP_TYPE_OVER_EAPOL) {
+		memcpy(peer->ip_addr, peer->client_ip_addr, IPADDR_LEN);
+
+		wifi_direct_client_noti_s noti;
+		memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
+		noti.event = WIFI_DIRECT_CLI_EVENT_IP_LEASED_IND;
+		noti.error = WIFI_DIRECT_ERROR_NONE;
+		snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer->dev_addr));
+		snprintf(noti.param2, IPSTR_LEN, IPSTR, IP2STR(peer->ip_addr));
+		wfd_client_send_event(manager, &noti);
+	} else
+#endif /* TIZEN_FEATURE_IP_OVER_EAPOL */
 	wfd_util_dhcps_wait_ip_leased(peer);
 	wfd_destroy_session(manager);
 
- 	__WDS_LOG_FUNC_EXIT__;
- 	return;
- }
+	__WDS_LOG_FUNC_EXIT__;
+	return;
+}
 
- static void __wfd_process_sta_disconnected(wfd_manager_s *manager, wfd_oem_event_s *event)
- {
- 	__WDS_LOG_FUNC_ENTER__;
+static void __wfd_process_sta_disconnected(wfd_manager_s *manager, wfd_oem_event_s *event)
+{
+	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_group_s *group = NULL;
 	wfd_device_s *peer = NULL;
@@ -1361,15 +1389,16 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 
  static void __wfd_process_terminating(wfd_manager_s *manager, wfd_oem_event_s *event)
  {
- 	__WDS_LOG_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
- 	__WDS_LOG_FUNC_EXIT__;
- 	return;
+	__WDS_LOG_FUNC_EXIT__;
+	return;
  }
+
 #ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
- static void __wfd_process_serv_disc_resp(wfd_manager_s *manager, wfd_oem_event_s *event)
- {
- 	__WDS_LOG_FUNC_ENTER__;
+static void __wfd_process_serv_disc_resp(wfd_manager_s *manager, wfd_oem_event_s *event)
+{
+	__WDS_LOG_FUNC_ENTER__;
 
 	wifi_direct_client_noti_s noti;
 
@@ -1427,17 +1456,17 @@ next:
 		wfd_client_send_event(manager, &noti);
 	}
 
- 	__WDS_LOG_FUNC_EXIT__;
- 	return;
- }
+	__WDS_LOG_FUNC_EXIT__;
+	return;
+}
 
- static void __wfd_process_serv_disc_started(wfd_manager_s *manager, wfd_oem_event_s *event)
- {
- 	__WDS_LOG_FUNC_ENTER__;
+static void __wfd_process_serv_disc_started(wfd_manager_s *manager, wfd_oem_event_s *event)
+{
+	__WDS_LOG_FUNC_ENTER__;
 
- 	__WDS_LOG_FUNC_EXIT__;
- 	return;
- }
+	__WDS_LOG_FUNC_EXIT__;
+	return;
+}
 #endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
 
 static struct {

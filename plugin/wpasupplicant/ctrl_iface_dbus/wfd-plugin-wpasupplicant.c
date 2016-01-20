@@ -796,7 +796,9 @@ void __ws_extract_group_details(const char *key, GVariant *value, void *user_dat
 		return;
 	}
 
+#ifdef TIZEN_FEATURE_IP_OVER_EAPOL
 	wfd_oem_group_data_s *group = (wfd_oem_group_data_s *)event->edata;
+#endif /* TIZEN_FEATURE_IP_OVER_EAPOL */
 #if defined (TIZEN_DEBUG_DBUS_VALUE)
 	CHECK_KEY_VALUE(key, value);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
@@ -821,7 +823,7 @@ void __ws_extract_group_details(const char *key, GVariant *value, void *user_dat
 			event->dev_role = WFD_OEM_DEV_ROLE_GO;
 		else if (!strncmp(role, "client", 6))
 			event->dev_role = WFD_OEM_DEV_ROLE_GC;
-
+#ifdef TIZEN_FEATURE_IP_OVER_EAPOL
 	} else if (g_strcmp0(key, "IpAddr") == 0) {
 
 		if (__ws_unpack_ay(group->ip_addr, value, OEM_IPADDR_LEN))
@@ -836,7 +838,7 @@ void __ws_extract_group_details(const char *key, GVariant *value, void *user_dat
 
 		if (__ws_unpack_ay(group->ip_addr_go, value, OEM_IPADDR_LEN))
 			WDP_LOGD("GO IP address [" IPSTR "]", IP2STR(group->ip_addr_go));
-
+#endif /* TIZEN_FEATURE_IP_OVER_EAPOL */
 	} else if (g_strcmp0(key, "group_object") == 0) {
 		static char group_path[DBUS_OBJECT_PATH_MAX] = {'\0',};
 		const char *g_path;
@@ -1940,7 +1942,9 @@ static void __ws_parse_peer_joined(char *peer_path,
 	static unsigned char peer_dev[WS_MACSTR_LEN] = {'\0',};
 	const char *path = NULL;
 	char *loc = NULL;
+#ifdef TIZEN_FEATURE_IP_OVER_EAPOL
 	int i = 0;
+#endif /* TIZEN_FEATURE_IP_OVER_EAPOL */
 
 	g_variant_get(parameter, "(&oay)", &path, &iter);
 	g_strlcpy(peer_path, path, DBUS_OBJECT_PATH_MAX);
@@ -1951,11 +1955,12 @@ static void __ws_parse_peer_joined(char *peer_path,
 		__ws_mac_compact_to_normal(loc + 1, peer_dev);
 	__ws_txt_to_mac(peer_dev, dev_addr);
 	WDP_LOGD("peer mac [" MACSTR "]", MAC2STR(dev_addr));
-
+#ifdef TIZEN_FEATURE_IP_OVER_EAPOL
 	for(i = 0; i < OEM_IPADDR_LEN; i++)
 		g_variant_iter_loop (iter, "y", &ip_addr[i]);
 
 	WDP_LOGD("peer ip [" IPSTR "]", IP2STR(ip_addr));
+#endif /* TIZEN_FEATURE_IP_OVER_EAPOL */
 
 	__WDP_LOG_FUNC_EXIT__;
 	return;
@@ -2662,10 +2667,13 @@ int __ws_init_p2pdevice()
 	dbus_method_param_s params;
 
 	const char *primary_device_type = PRIMARY_DEVICE_TYPE;
+
+#ifdef TIZEN_FEATURE_IP_OVER_EAPOL
 	const char *ip_addr_go = DEFAULT_IP_GO;
 	const char *ip_addr_mask = DEFAULT_IP_MASK;
 	const char *ip_addr_start = DEFAULT_IP_START;
 	const char *ip_addr_end = DEFAULT_IP_END;
+#endif /* TIZEN_FEATURE_IP_OVER_EAPOL */
 	int i = 0;
 	int res = 0;
 
@@ -2721,7 +2729,7 @@ int __ws_init_p2pdevice()
 	g_variant_builder_add (builder, "{sv}", "PrimaryDeviceType",
 			g_variant_new ("ay", type_builder));
 	g_variant_builder_unref (type_builder);
-
+#ifdef TIZEN_FEATURE_IP_OVER_EAPOL
 	type_builder = g_variant_builder_new (G_VARIANT_TYPE ("ay"));
 	for(i = 0; i < OEM_IPADDR_LEN; i++)
 		g_variant_builder_add(type_builder, "y", ip_addr_go[i]);
@@ -2749,7 +2757,7 @@ int __ws_init_p2pdevice()
 	g_variant_builder_add (builder, "{sv}", "IpAddrEnd",
 			g_variant_new ("ay", type_builder));
 	g_variant_builder_unref (type_builder);
-
+#endif /* TIZEN_FEATURE_IP_OVER_EAPOL */
 	value = g_variant_new ("a{sv}", builder);
 	g_variant_builder_unref (builder);
 

@@ -60,7 +60,7 @@
 #include "wifi-direct-session.h"
 #endif /* CTRL_IFACE_DBUS */
 
-#ifdef CTRL_IFACE_DBUS
+#ifdef TIZEN_FEATURE_IP_OVER_EAPOL
 #include <linux/unistd.h>
 #include <asm/types.h>
 #include <linux/netlink.h>
@@ -69,7 +69,10 @@
 #include <netlink/netlink.h>
 #include <netlink/socket.h>
 #include <netlink/route/neighbour.h>
-#endif /* CTRL_IFACE_DBUS */
+#endif /* TIZEN_FEATURE_IP_OVER_EAPOL */
+
+#define TIZEN_P2P_GO_IPADDR "192.168.49.1"
+#define MAX_SIZE_ERROR_BUFFER 256
 
 static int _txt_to_mac(char *txt, unsigned char *mac)
 {
@@ -790,6 +793,7 @@ int wfd_util_dhcps_start()
 	const char *path = "/usr/bin/wifi-direct-dhcp.sh";
 	char *const args[] = { "/usr/bin/wifi-direct-dhcp.sh", "server", NULL };
 	char *const envs[] = { NULL };
+	wfd_manager_s *manager = wfd_get_manager();
 
 	vconf_set_int(VCONFKEY_DHCPS_IP_LEASE, 0);
 
@@ -810,6 +814,8 @@ int wfd_util_dhcps_start()
 	vconf_set_str(VCONFKEY_GATEWAY, "192.168.49.1");
 
 	WDS_LOGD("Successfully started wifi-direct-dhcp.sh server");
+
+	_txt_to_ip(TIZEN_P2P_GO_IPADDR, manager->local->ip_addr);
 
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
@@ -985,46 +991,7 @@ int wfd_util_dhcpc_get_server_ip(unsigned char* ip_addr)
 	return 0;
 }
 
-int wfd_util_get_local_ip(unsigned char* ip_addr)
-{
-	__WDS_LOG_FUNC_ENTER__;
-	char* get_str = NULL;
-	int count = 0;
-
-	if (!ip_addr) {
-		WDS_LOGE("Invalid parameter");
-		__WDS_LOG_FUNC_EXIT__;
-		return -1;
-	}
-
-	while(count < 10) {
-		get_str = vconf_get_str(VCONFKEY_LOCAL_IP);
-		if (!get_str) {
-			WDS_LOGE("Failed to get vconf value[%s]", VCONFKEY_LOCAL_IP);
-			__WDS_LOG_FUNC_EXIT__;
-			return -1;
-		}
-
-		if(strcmp(get_str, ZEROIP) == 0) {
-			WDS_LOGE("Failed to get vconf value[%s]", VCONFKEY_LOCAL_IP);
-			g_free(get_str);
-			__WDS_LOG_FUNC_EXIT__;
-			return -1;
-		}
-
-		WDS_LOGD("VCONFKEY_DHCPC_SERVER_IP(%s) : %s\n", VCONFKEY_LOCAL_IP, get_str);
-		_txt_to_ip(get_str, ip_addr);
-		g_free(get_str);
-		if (*ip_addr)
-			break;
-		count++;
-	}
-
-	__WDS_LOG_FUNC_EXIT__;
-	return 0;
-}
-
-#ifdef CTRL_IFACE_DBUS
+#ifdef TIZEN_FEATURE_IP_OVER_EAPOL
 static int _wfd_util_set_vconf_for_static_ip(const char *ifname, char *static_ip)
 {
 	__WDS_LOG_FUNC_ENTER__;
@@ -1142,7 +1109,28 @@ static int _wfd_util_static_ip_set(const char *ifname, unsigned char *static_ip)
 	return res;
 }
 
-#ifdef TIZEN_VENDOR_ATH
+int wfd_util_ip_over_eap_assign(wfd_device_s *peer, const char *ifname)
+{
+	__WDS_LOG_FUNC_ENTER__;
+
+	char ip_str[IPSTR_LEN] = {0, };
+
+	if (!peer) {
+		WDS_LOGE("Invalid paramater");
+		return -1;
+	}
+
+	_wfd_util_static_ip_set(ifname, peer->client_ip_addr);
+	memcpy(peer->ip_addr, peer->go_ip_addr, IPADDR_LEN);
+
+	g_snprintf(ip_str, IPSTR_LEN, IPSTR, IP2STR(peer->ip_addr));
+	_connect_remote_device(ip_str);
+
+	__WDS_LOG_FUNC_EXIT__;
+	return 0;
+}
+
+#ifdef TIZEN_WLAN_BOARD_SPRD
 int wfd_util_static_ip_unset(const char *ifname)
 {
 	__WDS_LOG_FUNC_ENTER__;
@@ -1169,7 +1157,7 @@ int wfd_util_static_ip_unset(const char *ifname)
 		return -1;
 	}
 
-	res = wfd_util_dhcpc_get_ip(ifname, ip_addr, 0);
+	res = wfd_util_dhcpc_get_ip((char *)ifname, ip_addr, 0);
 	if (res < 0) {
 		WDS_LOGE("Failed to get local IP for interface %s", ifname);
 		__WDS_LOG_FUNC_EXIT__;
@@ -1240,62 +1228,5 @@ int wfd_util_static_ip_unset(const char *ifname)
 	__WDS_LOG_FUNC_EXIT__;
 	return res;
 }
-#endif /* TIZEN_VENDOR_ATH */
-
-int wfd_util_ip_over_eap_assign(wfd_device_s *peer, const char *ifname)
-{
-	__WDS_LOG_FUNC_ENTER__;
-	wfd_manager_s *manager = wfd_get_manager();
-	char ip_str[IPSTR_LEN] = {0, };
-	if (!peer) {
-		WDS_LOGE("Invalid paramater");
-		return -1;
-	}
-
-	_wfd_util_static_ip_set(ifname, peer->client_ip_addr);
-	memcpy(peer->ip_addr, peer->go_ip_addr, IPADDR_LEN);
-
-	wfd_destroy_session(manager);
-
-	g_snprintf(ip_str, IPSTR_LEN, IPSTR, IP2STR(peer->ip_addr));
-	_connect_remote_device(ip_str);
-
-	wfd_state_set(manager, WIFI_DIRECT_STATE_CONNECTED);
-	wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_CONNECTED);
-
-	wifi_direct_client_noti_s noti;
-	memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
-	noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
-	noti.error = WIFI_DIRECT_ERROR_NONE;
-	snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer->dev_addr));
-	wfd_client_send_event(manager, &noti);
-
-	__WDS_LOG_FUNC_EXIT__;
-	return 0;
-}
-
-int wfd_util_ip_over_eap_lease(wfd_device_s *peer)
-{
-	__WDS_LOG_FUNC_ENTER__;
-	wfd_manager_s *manager = wfd_get_manager();
-	wfd_group_s *group = (wfd_group_s*)manager->group;
-
-	if (!peer || !group) {
-		WDS_LOGE("Invalid paramater");
-		return -1;
-	}
-
-	memcpy(peer->ip_addr, peer->client_ip_addr, IPADDR_LEN);
-
-	wifi_direct_client_noti_s noti;
-	memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
-	noti.event = WIFI_DIRECT_CLI_EVENT_IP_LEASED_IND;
-	noti.error = WIFI_DIRECT_ERROR_NONE;
-	snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer->dev_addr));
-	snprintf(noti.param2, IPSTR_LEN, IPSTR, IP2STR(peer->ip_addr));
-	wfd_client_send_event(manager, &noti);
-
-	__WDS_LOG_FUNC_EXIT__;
-	return 0;
-}
-#endif /* CTRL_IFACE_DBUS */
+#endif /* TIZEN_WLAN_BOARD_SPRD */
+#endif /* TIZEN_FEATURE_IP_OVER_EAPOL */

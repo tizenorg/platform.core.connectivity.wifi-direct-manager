@@ -115,7 +115,6 @@ int wfd_util_check_mobile_ap_state();
 int wfd_util_wifi_direct_activatable();
 #if 0
 int wfd_util_get_wifi_direct_state();
-unsigned int wfd_util_static_ip_convert_order(unsigned int net_ip);
 #endif
 int wfd_util_set_wifi_direct_state(int state);
 int wfd_util_get_local_dev_mac(unsigned char *dev_mac);
@@ -132,14 +131,11 @@ int wfd_util_dhcpc_start(wfd_device_s *peer);
 int wfd_util_dhcpc_stop();
 int wfd_util_dhcpc_get_ip(char *ifname, unsigned char *ip_addr, int is_IPv6);
 int wfd_util_dhcpc_get_server_ip(unsigned char* ip_addr);
-int wfd_util_get_local_ip(unsigned char* ip_addr);
-
-#ifdef CTRL_IFACE_DBUS
+int wfd_util_local_get_ip(char *ifname, unsigned char *ip_addr, int is_IPv6);
+#ifdef TIZEN_FEATURE_IP_OVER_EAPOL
+int wfd_util_ip_over_eap_assign(wfd_device_s *peer, const char *ifname);
 #ifdef TIZEN_WLAN_BOARD_SPRD
 int wfd_util_static_ip_unset(const char *ifname);
 #endif /* TIZEN_WLAN_BOARD_SPRD */
-/*TODO: ODROID Image does not have support libnl-2.0*/
-int wfd_util_ip_over_eap_assign(wfd_device_s *peer, const char *ifname);
-int wfd_util_ip_over_eap_lease(wfd_device_s *peer);
-#endif /* CTRL_IFACE_DBUS */
+#endif /* TIZEN_FEATURE_IP_OVER_EAPOL */
 #endif /* __WIFI_DIRECT_UTIL_H__ */

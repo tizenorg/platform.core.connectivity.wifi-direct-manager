@@ -39,11 +39,13 @@
 #include <errno.h>
 #include <sys/ioctl.h>
 #include <net/if.h>
+#include <arpa/inet.h>
 
 #include <glib.h>
 #include <gio/gio.h>
 
 #include "wifi-direct-oem.h"
+#include "wfd-plugin-log.h"
 #include "wfd-plugin-wpasupplicant.h"
 
 #define NETCONFIG_SERVICE				"net.netconfig"
@@ -137,6 +139,11 @@ ws_string_s ws_group_info_strs[] = {
 	{"passphrase", WS_GROUP_INFO_PASS},
 	{"go_dev_addr", WS_GROUP_INFO_GO_DEV_ADDR},
 	{"status", WS_GROUP_INFO_STATUS},
+#ifdef TIZEN_FEATURE_IP_OVER_EAPOL
+	{"ip_addr", WS_GROUP_INFO_IP_ADDR},
+	{"ip_mask", WS_GROUP_INFO_IP_MASK},
+	{"go_ip_addr", WS_GROUP_INFO_GO_IP_ADDR},
+#endif /* TIZEN_FEATURE_IP_OVER_EAPOL */
 	{"", WS_GROUP_INFO_LIMIT},
 
 	};
@@ -1175,7 +1182,7 @@ static int _parsing_wfd_info(char *msg, wfd_oem_display_s *display )
 	if (wfd_info & WS_WFD_INFO_SECONDARY_SINK)
 		display->type |= WS_WFD_INFO_SECONDARY_SINK;
 
-	display->availability = (wfd_info & WS_WFD_INFO_AVAILABILITY) >> 4;
+	display->availability = (wfd_info & WS_WFD_INFO_AVAILABLITY) >> 4;
 	display->hdcp_support = (wfd_info & WS_WFD_INFO_HDCP_SUPPORT) >> 8;
 
 	strncpy(ctrl_port_msg, msg+4, 4);
@@ -1588,8 +1595,11 @@ static wfd_oem_group_data_s *_convert_msg_to_group_info(char *msg)
 	int info_cnt = 0;
 	ws_string_s infos[WS_GROUP_INFO_LIMIT];
 	wfd_oem_group_data_s *edata = NULL;
-	int res = 0;
 
+#ifdef TIZEN_FEATURE_IP_OVER_EAPOL
+	unsigned int addr = 0;
+#endif /* TIZEN_FEATURE_IP_OVER_EAPOL */
+	int res = 0;
 	if (!msg) {
 		WDP_LOGE("Invalid parameter");
 		return NULL;
@@ -1635,6 +1645,26 @@ static wfd_oem_group_data_s *_convert_msg_to_group_info(char *msg)
 			if (res < 0)
 				memset(edata->go_dev_addr, 0x00, OEM_MACADDR_LEN);
 			break;
+#ifdef TIZEN_FEATURE_IP_OVER_EAPOL
+		case WS_GROUP_INFO_IP_ADDR:
+			WDP_LOGD("Extracted peer ip = %s", infos[i].string);
+			res = inet_aton(infos[i].string, (struct in_addr *)&addr);
+			if(res == 1)
+				memcpy(&(edata->ip_addr), &addr, sizeof(edata->ip_addr));
+			break;
+		case WS_GROUP_INFO_IP_MASK:
+			WDP_LOGD("Extracted ip mask= %s", infos[i].string);
+			res = inet_aton(infos[i].string, (struct in_addr *)&addr);
+			if(res == 1)
+				memcpy(&(edata->ip_addr_mask), &addr, sizeof(edata->ip_addr_mask));
+			break;
+		case WS_GROUP_INFO_GO_IP_ADDR:
+			WDP_LOGD("Extracted peer go ip = %s", infos[i].string);
+			res = inet_aton(infos[i].string, (struct in_addr *)&addr);
+			if(res == 1)
+				memcpy(&(edata->ip_addr_go), &addr, sizeof(edata->ip_addr_go));
+			break;
+#endif /* TIZEN_FEATURE_IP_OVER_EAPOL */
 		default:
 			WDP_LOGE("Unknown parameter [%d:%s]", infos[i].index, infos[i].string);
 			break;
@@ -1969,15 +1999,25 @@ static int _parsing_event_info(char *ifname, char *msg, wfd_oem_event_s *data)
 			/* Interface address of connected peer will come up */
 			_ws_txt_to_mac(info_str, data->intf_addr);
 
-			char *temp_mac = NULL;
-			res = _extract_value_str(info_str, "p2p_dev_addr", &temp_mac);
+			char *temp = NULL;
+			res = _extract_value_str(info_str, "p2p_dev_addr", &temp);
 			if (res < 0) {
 				WDP_LOGE("Failed to extract interface address");
 				break;
 			}
-			_ws_txt_to_mac(temp_mac, data->dev_addr);
-			if (temp_mac)
-				g_free(temp_mac);
+			_ws_txt_to_mac(temp, data->dev_addr);
+			if (temp)
+				free(temp);
+#ifdef TIZEN_FEATURE_IP_OVER_EAPOL
+			res = _extract_value_str(info_str, "ip_addr", &temp);
+			if(res > 0 && temp) {
+				unsigned int addr = 0;
+				WDP_LOGD("Extracted peer ip = %s", temp);
+				res = inet_aton(temp, (struct in_addr *)&addr);
+				if(res == 1)
+					memcpy(&(data->ip_addr_peer), &addr, sizeof(data->ip_addr_peer));
+			}
+#endif /* TIZEN_FEATURE_IP_OVER_EAPOL */
 			data->edata_type = WFD_OEM_EDATA_TYPE_NONE;
 		}
 		break;
@@ -2743,6 +2783,91 @@ failed:
 	return 1;
 }
 
+#ifdef TIZEN_FEATURE_IP_OVER_EAPOL
+int _ws_set_default_eapol_over_ip()
+{
+	__WDP_LOG_FUNC_ENTER__;
+
+	ws_sock_data_s *sock = g_pd->common;
+	char cmd[80] = {0, };
+	char reply[1024]={0,};
+	int res;
+
+	if (!sock) {
+		WDP_LOGE("Socket is NULL");
+		return -1;
+	}
+
+	g_snprintf(cmd, sizeof(cmd), WS_CMD_SET "ip_addr_go %s",
+			DEFAULT_IP_GO);
+
+	res = _ws_send_cmd(sock->ctrl_sock, cmd, (char*) reply, sizeof(reply));
+	if (res < 0) {
+		WDP_LOGE("Failed to send command to wpa_supplicant");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	if (strstr(reply, "FAIL")) {
+		WDP_LOGE("Failed to set go intent");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	g_snprintf(cmd, sizeof(cmd), WS_CMD_SET "ip_addr_mask %s",
+			DEFAULT_IP_MASK);
+
+	res = _ws_send_cmd(sock->ctrl_sock, cmd, (char*) reply, sizeof(reply));
+	if (res < 0) {
+		WDP_LOGE("Failed to send command to wpa_supplicant");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	if (strstr(reply, "FAIL")) {
+		WDP_LOGE("Failed to set go intent");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	g_snprintf(cmd, sizeof(cmd), WS_CMD_SET "ip_addr_start %s",
+			DEFAULT_IP_START);
+
+	res = _ws_send_cmd(sock->ctrl_sock, cmd, (char*) reply, sizeof(reply));
+	if (res < 0) {
+		WDP_LOGE("Failed to send command to wpa_supplicant");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	if (strstr(reply, "FAIL")) {
+		WDP_LOGE("Failed to set go intent");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	g_snprintf(cmd, sizeof(cmd), WS_CMD_SET "ip_addr_end %s",
+			DEFAULT_IP_END);
+
+	res = _ws_send_cmd(sock->ctrl_sock, cmd, (char*) reply, sizeof(reply));
+	if (res < 0) {
+		WDP_LOGE("Failed to send command to wpa_supplicant");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	if (strstr(reply, "FAIL")) {
+		WDP_LOGE("Failed to set go intent");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+	WDP_LOGD("Succeeded to set default EAPol over IP");
+
+	__WDP_LOG_FUNC_EXIT__;
+	return 0;
+}
+#endif /* TIZEN_FEATURE_IP_OVER_EAPOL */
+
 int ws_activate(int concurrent)
 {
 	__WDP_LOG_FUNC_ENTER__;
@@ -2804,6 +2929,9 @@ int ws_activate(int concurrent)
 	g_pd->activated = TRUE;
 
 	_ws_update_local_dev_addr();
+#ifdef TIZEN_FEATURE_IP_OVER_EAPOL
+	_ws_set_default_eapol_over_ip();
+#endif /* TIZEN_FEATURE_IP_OVER_EAPOL */
 
 	__WDP_LOG_FUNC_EXIT__;
 	return 0;
