@@ -3539,7 +3539,7 @@ int ws_get_supported_wps_mode()
 	return 0;
 }
 
-int ws_create_group(int persistent, int freq, const char *passphrase)
+int ws_create_group(wfd_oem_group_param_s *param)
 {
 	__WDP_LOG_FUNC_ENTER__;
 	ws_sock_data_s *sock = g_pd->common;
@@ -3553,12 +3553,16 @@ int ws_create_group(int persistent, int freq, const char *passphrase)
 		return -1;
 	}
 
-	if (persistent) {
-		snprintf(cmd, sizeof(cmd), WS_CMD_P2P_GROUP_ADD WS_STR_PERSISTENT);
+	if (param->persistent) {
+		if(param->persistent == 2)
+			sprintf(cmd, sizeof(cmd), WS_CMD_P2P_GROUP_ADD WS_STR_PERSISTENT "=%d",
+					param->persistent_group_id);
+		else
+			snprintf(cmd, sizeof(cmd), WS_CMD_P2P_GROUP_ADD WS_STR_PERSISTENT);
 	} else {
 		if (passphrase[0] != '\0') {
 
-			g_snprintf(cmd, sizeof(cmd), WS_CMD_P2P_GROUP_ADD " passphrase=%s", passphrase);
+			g_snprintf(cmd, sizeof(cmd), WS_CMD_P2P_GROUP_ADD " passphrase=%s", param->passphrase);
 
 		}else{
 			g_snprintf(cmd, sizeof(cmd), WS_CMD_P2P_GROUP_ADD);
@@ -3566,7 +3570,7 @@ int ws_create_group(int persistent, int freq, const char *passphrase)
 	}
 
 	if (freq > 0) {
-		g_snprintf(freq_str, sizeof(freq_str), WS_STR_FREQ "%d", freq);
+		g_snprintf(freq_str, sizeof(freq_str), WS_STR_FREQ "%d", param->freq);
 		strncat(cmd, freq_str, sizeof(freq_str));
 	} else {
 		strncat(cmd, WS_STR_FREQ_2G, 8);

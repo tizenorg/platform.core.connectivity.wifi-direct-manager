@@ -245,7 +245,7 @@ int ws_get_supported_wps_mode()
 	return -1;
 }
 
-int ws_create_group(int persistent, int freq, const char *passphrase)
+int ws_create_group(wfd_oem_group_param_s *param)
 {
 	__WDP_LOG_FUNC_ENTER__;
 

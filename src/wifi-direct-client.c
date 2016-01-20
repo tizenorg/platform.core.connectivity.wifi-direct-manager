@@ -1418,15 +1418,18 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 		break;
 	case WIFI_DIRECT_CMD_CREATE_GROUP:	// group
 		{
-			int persistent = 0;
 			wfd_group_s *group = manager->group;
+			wfd_oem_group_param_s param;
 			if (group || manager->state < WIFI_DIRECT_STATE_ACTIVATED) {
 				WDS_LOGE("Group already exist or not a proper state");
 				rsp.result = WIFI_DIRECT_ERROR_NOT_PERMITTED;
 				break;
 			}
-
+#ifdef TIZEN_WLAN_BOARD_SPRD
+			group = wfd_create_pending_group(manager, manager->local->dev_addr);
+#else
 			group = wfd_create_pending_group(manager, manager->local->intf_addr);
+#endif
 			if (!group) {
 				WDS_LOGE("Failed to create pending group");
 				rsp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
@@ -1436,9 +1439,16 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 			manager->group = group;
 			WDS_LOGD("Succeeded to create pending group");
 
-			persistent = (manager->local->group_flags & WFD_GROUP_FLAG_PERSISTENT);
+			memset(&param, 0x0, sizeof(param));
 
-			res = wfd_oem_create_group(manager->oem_ops, persistent, 0, manager->local->passphrase);
+			param.persistent = (manager->local->group_flags &
+					WFD_GROUP_FLAG_PERSISTENT);
+			memcpy(&(param.passphrase), manager->local->passphrase,
+					sizeof(param.passphrase));
+#ifndef TIZEN_WLAN_BOARD_SPRD
+			param.freq = WFD_FREQ_2G;
+#endif
+			res = wfd_oem_create_group(manager->oem_ops, &param);
 			if (res < 0) {
 				WDS_LOGE("Failed to create group");
 				wfd_destroy_group(manager, GROUP_IFNAME);

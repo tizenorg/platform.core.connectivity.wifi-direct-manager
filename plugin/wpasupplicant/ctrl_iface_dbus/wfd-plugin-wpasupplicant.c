@@ -3478,13 +3478,14 @@ static void __store_group_iface_path(GVariant *value, void *user_data) {
 	/* subscribe interface p2p signal */
 }
 
-int ws_create_group(int persistent, int freq, const char *passphrase)
+int ws_create_group(wfd_oem_group_param_s *param)
 {
 	__WDP_LOG_FUNC_ENTER__;
 	GDBusConnection *g_dbus = NULL;
 	GVariantBuilder *builder = NULL;
 	GVariant *value = NULL;
 	dbus_method_param_s params;
+	char persistent_group_obj_path[OBJECT_PATH_MAX] = {0,};
 	int res = 0;
 
 	if (!g_pd) {
@@ -3503,20 +3504,29 @@ int ws_create_group(int persistent, int freq, const char *passphrase)
 
 	builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}") );
 
-	if (persistent)
+	if (param->persistent > 0) {
 		g_variant_builder_add(builder, "{sv}", "persistent",
 				g_variant_new_boolean(TRUE));
-	else
+		if(param->persistent == 2) {
+			g_snprintf(persistent_group_obj_path, OBJECT_PATH_MAX,
+					"%s/" SUPPLICANT_PERSISTENT_GROUPS_PART "/%d",
+					g_pd->iface_path, param->persistent_group_id);
+			g_variant_builder_add(builder, "{sv}", "persistent_group_object",
+					g_variant_new_object_path(persistent_group_obj_path));
+		}
+
+	} else {
 		g_variant_builder_add(builder, "{sv}", "persistent",
 				g_variant_new_boolean(FALSE));
+	}
 
-	if (passphrase && strlen(passphrase) > 0)
+	if (param->passphrase && strlen(param->passphrase) > 0)
 		g_variant_builder_add(builder, "{sv}", "passphrase",
-				g_variant_new_string(passphrase));
+				g_variant_new_string(param->passphrase));
 
-	if (freq)
+	if (param->freq)
 		g_variant_builder_add(builder, "{sv}", "frequency",
-				g_variant_new_int32(freq));
+				g_variant_new_int32(param->freq));
 
 	value = g_variant_new ("(a{sv})", builder);
 	g_variant_builder_unref (builder);
