@@ -211,11 +211,24 @@ static void __wfd_process_peer_disappeared(wfd_manager_s *manager, wfd_oem_event
  	__WDS_LOG_FUNC_ENTER__;
 
  	wifi_direct_client_noti_s noti;
+	wfd_session_s *session = NULL;
+	wfd_device_s *peer = NULL;
 
 	if (event == NULL || manager == NULL) {
 		WDS_LOGE("Invalid parameter");
 		__WDS_LOG_FUNC_EXIT__;
 		return;
+	}
+
+	session = manager->session;
+	if(session != NULL && session->peer != NULL) {
+		peer = session->peer;
+		WDS_LOGD("session peer [" MACSTR "] lost peer ["  MACSTR "]", MAC2STR(peer->dev_addr),
+						MAC2STR(event->dev_addr));
+		if(memcmp(peer->dev_addr, event->dev_addr, MACADDR_LEN) == 0) {
+			WDS_LOGD("peer already in connection");
+			return;
+		}
 	}
 
 	wfd_remove_peer(manager, event->dev_addr);
