@@ -55,10 +55,8 @@
 #include "wifi-direct-client.h"
 #include "wifi-direct-util.h"
 #include "wifi-direct-oem.h"
-#ifdef CTRL_IFACE_DBUS
 #include "wifi-direct-group.h"
 #include "wifi-direct-session.h"
-#endif /* CTRL_IFACE_DBUS */
 
 #ifdef TIZEN_FEATURE_IP_OVER_EAPOL
 #include <linux/unistd.h>
@@ -771,9 +769,7 @@ static gboolean _polling_ip(gpointer user_data)
 
 	wfd_state_set(manager, WIFI_DIRECT_STATE_CONNECTED);
 	wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_CONNECTED);
-#ifdef CTRL_IFACE_DBUS
 	wfd_destroy_session(manager);
-#endif /* CTRL_IFACE_DBUS */
 
 	wifi_direct_client_noti_s noti;
 	memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));

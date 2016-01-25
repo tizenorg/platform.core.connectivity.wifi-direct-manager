@@ -867,30 +867,6 @@ int wfd_session_process_event(wfd_manager_s *manager, wfd_oem_event_s *event)
 		}
 
 		break;
-	case WFD_OEM_EVENT_CONNECTED:
-	{
-		if (!session) {
-			WDS_LOGE("Unexpected event. Session is NULL [peer: " MACSECSTR "]",
-						MAC2SECSTR(event->dev_addr));
-			break;
-		} else {
-			wfd_group_s *group = manager->group;
-			if (!group) {
-				group = wfd_create_pending_group(manager, event->intf_addr);
-				if (!group) {
-					WDS_LOGE("Failed to create pending group");
-					break;
-				}
-				manager->group = group;
-			} else {	// multiconnection, additional client connected
-				WDS_LOGE("Unexpected event. Group already exist");
-				//wfd_group_add_member(manager, event->intf_addr, peer->dev_addr);
-				break;
-			}
-			session->state = SESSION_STATE_COMPLETED;
-		}
-	}
-	break;
 	case WFD_OEM_EVENT_STA_CONNECTED:
 		if (!session) {
 			WDS_LOGE("Unexpected event. Session is NULL [peer: " MACSECSTR "]",
