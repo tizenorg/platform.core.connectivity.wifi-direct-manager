@@ -942,12 +942,10 @@ static void __wfd_process_group_destroyed(wfd_manager_s *manager, wfd_oem_event_
 		if(peer_addr != NULL)
 			g_snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
 	} else if (manager->state >= WIFI_DIRECT_STATE_CONNECTED) {
-#if defined (CTRL_IFACE_DBUS)
 		if(manager->local->dev_role != WFD_DEV_ROLE_GO)
 			noti.event = WIFI_DIRECT_CLI_EVENT_DISCONNECTION_RSP;
 		else
-#endif
-		noti.event = WIFI_DIRECT_CLI_EVENT_GROUP_DESTROY_RSP;
+			noti.event = WIFI_DIRECT_CLI_EVENT_GROUP_DESTROY_RSP;
 		noti.error = WIFI_DIRECT_ERROR_NONE;
 	} else {
 		WDS_LOGD("Unexpected event(GROUP_DESTROYED). Ignore it");
@@ -1241,166 +1239,9 @@ static void __wfd_process_sta_disconnected(wfd_manager_s *manager, wfd_oem_event
 	wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
 	wfd_destroy_session(manager);
 
- 	__WDS_LOG_FUNC_EXIT__;
- 	return;
- }
-
- static void __wfd_process_connected(wfd_manager_s *manager, wfd_oem_event_s *event)
- {
- 	__WDS_LOG_FUNC_ENTER__;
-
- 	wfd_session_s *session = NULL;
- 	wfd_device_s *peer = NULL;
- 	wfd_group_s *group = NULL;
-
-	if (event == NULL || manager == NULL) {
-		WDS_LOGE("Invalid parameter");
-		__WDS_LOG_FUNC_EXIT__;
-		return;
-	}
-
-	// FIXME: Move this code to plugin
-	if (!memcmp(event->intf_addr, manager->local->intf_addr, MACADDR_LEN)) {
-		WDS_LOGD("Ignore this event");
-		__WDS_LOG_FUNC_EXIT__;
-		return;
-	}
-
-	session = (wfd_session_s*) manager->session;
-	if (!session) {
-		WDS_LOGD("Unexpected event. Session is NULL [peer: " MACSECSTR "]",
-									MAC2SECSTR(event->dev_addr));
-		wfd_oem_destroy_group(manager->oem_ops, GROUP_IFNAME);
-		wfd_destroy_group(manager, GROUP_IFNAME);
-		wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
-		wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
-		__WDS_LOG_FUNC_EXIT__;
-		return;
-	}
-
-	peer = wfd_session_get_peer(session);
-	if (!peer) {
-		WDS_LOGE("Peer not found");
-		__WDS_LOG_FUNC_EXIT__;
-		return;
-	}
-
-	group = (wfd_group_s*) manager->group;
-	if (!group) {
-		group = wfd_create_pending_group(manager, event->intf_addr);
-		if (!group) {
-			WDS_LOGE("Failed to create pending group");
-			__WDS_LOG_FUNC_EXIT__;
-			return;
-		}
-		manager->group = group;
-	}
-	wfd_group_add_member(group, peer->dev_addr);
-
-	session->state = SESSION_STATE_COMPLETED;
-#ifndef CTRL_IFACE_DBUS
-	memcpy(peer->intf_addr, event->intf_addr, MACADDR_LEN);
-#endif /* CTRL_IFACE_DBUS */
-	peer->state = WFD_PEER_STATE_CONNECTED;
-
- 	__WDS_LOG_FUNC_EXIT__;
- 	return;
- }
-
- static void __wfd_process_disconnected(wfd_manager_s *manager, wfd_oem_event_s *event)
- {
- 	__WDS_LOG_FUNC_ENTER__;
-
-	wfd_group_s *group = NULL;
-	wfd_device_s *peer = NULL;
-	wifi_direct_client_noti_s noti;
-	unsigned char peer_addr[MACADDR_LEN] = {0, };
-
-	if (event == NULL || manager == NULL) {
-		WDS_LOGE("Invalid parameter");
-		__WDS_LOG_FUNC_EXIT__;
-		return;
-	}
-
-	group = (wfd_group_s*) manager->group;
-	if (!group) {
-		WDS_LOGE("Group not found");
-		__WDS_LOG_FUNC_EXIT__;
-		return;
-	}
-
-#ifdef CTRL_IFACE_DBUS
-	peer = wfd_group_find_member_by_addr(group, event->dev_addr);
-#else /* CTRL_IFACE_DBUS */
-	peer = wfd_group_find_member_by_addr(group, event->intf_addr);
-#endif /* DBUS_IFACE */
-	if (!peer) {
-		WDS_LOGE("Failed to find connected peer");
-		peer = wfd_session_get_peer(manager->session);
-		if (!peer) {
-			WDS_LOGE("Failed to find connecting peer");
-			__WDS_LOG_FUNC_EXIT__;
-			return;
-		}
-	}
-	memcpy(peer_addr, peer->dev_addr, MACADDR_LEN);
-	memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
-
-	/* If state is not DISCONNECTING, connection is finished by peer */
-	if (manager->state >= WIFI_DIRECT_STATE_CONNECTED) {
-		wfd_group_remove_member(group, peer_addr);
-		if (group->member_count)
-			noti.event = WIFI_DIRECT_CLI_EVENT_DISASSOCIATION_IND;
-		else
-			noti.event = WIFI_DIRECT_CLI_EVENT_DISCONNECTION_IND;
-		noti.error = WIFI_DIRECT_ERROR_NONE;
-		g_snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
-		/* If there is no member, GO should be destroyed */
-#ifdef TIZEN_TV
-		/* If GO is Auto GO, then it should not be removed when no member left */
-		if (!group->member_count && (wfd_group_is_autonomous(group) == FALSE)) {
-#else /* TIZEN_TV */
-		if (!group->member_count) {
-#endif /* TIZEN_TV */
-			wfd_oem_destroy_group(manager->oem_ops, group->ifname);
-			wfd_destroy_group(manager, group->ifname);
-		}
-	} else if (manager->state == WIFI_DIRECT_STATE_DISCONNECTING) {
-		noti.event = WIFI_DIRECT_CLI_EVENT_DISCONNECTION_RSP;
-		noti.error = WIFI_DIRECT_ERROR_NONE;
-		g_snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
-	} else if (manager->state == WIFI_DIRECT_STATE_CONNECTING &&
-			/* Some devices(GO) send disconnection message before connection completed.
-			 * This message should be ignored when device is not GO */
-			manager->local->dev_role == WFD_DEV_ROLE_GO) {
-		if (WFD_PEER_STATE_CONNECTED == peer->state) {
-			WDS_LOGD("Peer is already Connected !!!");
-			noti.event = WIFI_DIRECT_CLI_EVENT_DISASSOCIATION_IND;
-			noti.error = WIFI_DIRECT_ERROR_NONE;
-		} else if (WFD_PEER_STATE_CONNECTING == peer->state) {
-			WDS_LOGD("Peer is Connecting...");
-			noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
-			noti.error = WIFI_DIRECT_ERROR_CONNECTION_FAILED;
-		} else {
-			WDS_LOGE("Unexpected Peer State. Ignore it");
-			return;
-		}
-		g_snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
-	} else {
-		WDS_LOGE("Unexpected event. Ignore it");
-		__WDS_LOG_FUNC_EXIT__;
-		return;
-	}
-	wfd_client_send_event(manager, &noti);
-
-	wfd_destroy_group(manager, GROUP_IFNAME);
-	wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
-	wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
-	wfd_destroy_session(manager);
-
- 	__WDS_LOG_FUNC_EXIT__;
- 	return;
- }
+	__WDS_LOG_FUNC_EXIT__;
+	return;
+}
 
  static void __wfd_process_terminating(wfd_manager_s *manager, wfd_oem_event_s *event)
  {
@@ -1488,6 +1329,10 @@ static struct {
  const int event_id;
  void (*function) (wfd_manager_s *manager, wfd_oem_event_s *event);
 } wfd_oem_event_map[] = {
+	{
+		WFD_OEM_EVENT_NONE,
+		NULL
+	},
 	{
 		WFD_OEM_EVENT_DEACTIVATED,
 		__wfd_process_deactivated
@@ -1577,14 +1422,6 @@ static struct {
 		__wfd_process_sta_disconnected
 	},
 	{
-		WFD_OEM_EVENT_CONNECTED,
-		__wfd_process_connected
-	},
-	{
-		WFD_OEM_EVENT_DISCONNECTED,
-		__wfd_process_disconnected
-	},
-	{
 		WFD_OEM_EVENT_TERMINATING,
 		__wfd_process_terminating
 	},
@@ -1609,22 +1446,23 @@ static struct {
 	__WDS_LOG_FUNC_ENTER__;
 	wfd_manager_s *manager = NULL;
 	wfd_oem_event_s *event = NULL;
-	int i = 0;
 
-	if (!user_data || !data) {
+	manager = (wfd_manager_s*) user_data;
+	event = (wfd_oem_event_s*) data;
+	if (!manager || !event) {
 		WDS_LOGE("Invalid parameter");
 		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
-	manager = (wfd_manager_s*) user_data;
-	event = (wfd_oem_event_s*) data;
 	WDS_LOGD("Event[%d] from " MACSECSTR, event->event_id,
 						MAC2SECSTR(event->dev_addr));
-	for(i = 0; wfd_oem_event_map[i].function != NULL; i++) {
-		if(event->event_id == wfd_oem_event_map[i].event_id)
-		 wfd_oem_event_map[i].function(manager, event);
-	}
+
+	if(event->event_id > WFD_OEM_EVENT_NONE &&
+			event->event_id < WFD_OEM_EVENT_MAX)
+		 wfd_oem_event_map[event->event_id].function(manager, event);
+	else
+		WDS_LOGE("Invalid event ID");
 
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;

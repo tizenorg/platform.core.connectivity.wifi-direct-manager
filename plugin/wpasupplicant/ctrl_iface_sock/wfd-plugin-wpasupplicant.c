@@ -78,14 +78,12 @@ ws_string_s ws_event_strs[] = {
 	{"WPS-REG-SUCCESS", WS_EVENT_WPS_REG_SUCCESS},
 	{"P2P-GROUP-FORMATION-SUCCESS", WS_EVENT_GROUP_FORMATION_SUCCESS},
 
-	{"CTRL-EVENT-CONNECTED", WS_EVENT_CONNECTED},
 	{"AP-STA-CONNECTED", WS_EVENT_STA_CONNECTED},
 
 	// invite
 	{"P2P-INVITATION-RECEIVED", WS_EVENT_INVITATION_RECEIVED},
 	{"P2P-INVITATION-RESULT", WS_EVENT_INVITATION_RESULT},
 
-	{"CTRL-EVENT-DISCONNECTED", WS_EVENT_DISCONNECTED},
 	{"AP-STA-DISCONNECTED", WS_EVENT_STA_DISCONNECTED},
 
 	// group
@@ -1951,48 +1949,6 @@ static int _parsing_event_info(char *ifname, char *msg, wfd_oem_event_s *data)
 	case WS_EVENT_WPS_REG_SUCCESS:	// "intf_addr"
 		/* Interface address of peer will come up */
 		break;
-	case WS_EVENT_CONNECTED:	// intf_addr(to)
-		{
-			/* Interface address of connected peer will come up */
-			char *temp_mac = NULL;
-			char *intf = NULL;
-			res = _extract_value_str(info_str, "ifname", &intf);
-			if (res < 0) {
-				WDP_LOGE("Failed to extract interface name");
-				break;
-			}
-			if (intf) {
-				strcpy(data->ifname, intf);
-				free(intf);
-			}
-			WDP_LOGD("Connected event from interface: %s", data->ifname);
-			res = _extract_value_str(info_str, "to", &temp_mac);
-			if (res < 0) {
-				WDP_LOGE("Failed to extract interface address");
-				break;
-			}
-			if (temp_mac) {
-				_ws_txt_to_mac(temp_mac, data->intf_addr);
-				g_free(temp_mac);
-			}
-			data->edata_type = WFD_OEM_EDATA_TYPE_NONE;
-		}
-		break;
-	case WS_EVENT_DISCONNECTED:
-		{
-			/* Interface address of disconnected peer will come up */
-			char *temp_mac = NULL;
-			res = _extract_value_str(info_str, "bssid", &temp_mac);
-			if (res < 0) {
-				WDP_LOGE("Failed to extract interface address");
-				break;
-			}
-			_ws_txt_to_mac(temp_mac, data->intf_addr);
-			if (temp_mac)
-				free(temp_mac);
-			data->edata_type = WFD_OEM_EDATA_TYPE_NONE;
-		}
-		break;
 	case WS_EVENT_STA_CONNECTED:	// "intf_addr", dev_addr(dev_addr)
 	case WS_EVENT_STA_DISCONNECTED:
 		{
@@ -2299,11 +2255,6 @@ static gboolean ws_event_handler(GIOChannel *source,
 		event_id = WFD_OEM_EVENT_WPS_DONE;
 		// TODO: connect to supplicant via group interface
 		break;
-	case WS_EVENT_CONNECTED:
-		if (!memcmp(event.intf_addr, null_mac, OEM_MACADDR_LEN))
-			goto done;
-		event_id = WFD_OEM_EVENT_CONNECTED;
-		break;
 	case WS_EVENT_STA_CONNECTED:
 		event_id = WFD_OEM_EVENT_STA_CONNECTED;
 		break;
@@ -2332,11 +2283,6 @@ static gboolean ws_event_handler(GIOChannel *source,
 		break;
 	case WS_EVENT_INVITATION_RESULT:
 		event_id = WFD_OEM_EVENT_INVITATION_RES;
-		break;
-	case WS_EVENT_DISCONNECTED:
-		if (!memcmp(event.intf_addr, null_mac, OEM_MACADDR_LEN))
-			goto done;
-		event_id = WFD_OEM_EVENT_DISCONNECTED;
 		break;
 	case WS_EVENT_STA_DISCONNECTED:
 		event_id = WFD_OEM_EVENT_STA_DISCONNECTED;
