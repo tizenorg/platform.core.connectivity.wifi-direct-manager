@@ -1233,8 +1233,14 @@ static void __wfd_process_sta_disconnected(wfd_manager_s *manager, wfd_oem_event
 	}
 	wfd_client_send_event(manager, &noti);
 
-	wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
-	wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
+	if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
+		wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
+		wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
+	} else {
+		wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
+		wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
+	}
+
 	wfd_destroy_session(manager);
 
 	__WDS_LOG_FUNC_EXIT__;
