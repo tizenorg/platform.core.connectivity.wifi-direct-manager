@@ -1040,6 +1040,12 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 				break;
 			}
 
+			if (req.data.int1 && (manager->local->dev_role == WFD_DEV_ROLE_GO)) {
+				WDS_LOGW("Wi-Fi Direct device is already visible, do not start listen");
+				rsp.result = WIFI_DIRECT_ERROR_NONE;
+				break;
+			}
+
 			wfd_oem_scan_param_s param;
 			memset(&param, 0x0, sizeof(wfd_oem_scan_param_s));
 			if (req.data.int1)	// listen_only
