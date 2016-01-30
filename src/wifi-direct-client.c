@@ -1146,7 +1146,9 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 			rsp.result = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 			break;
 		}
-		WDS_LOGI("Succeeded to stop scan");
+
+		manager->scan_mode = WFD_SCAN_MODE_NONE;
+		WDS_LOGE("Succeeded to stop scan");
 
 		noti.event = WIFI_DIRECT_CLI_EVENT_DISCOVER_END;
 		noti.error = WIFI_DIRECT_ERROR_NONE;
