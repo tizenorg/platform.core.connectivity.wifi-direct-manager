@@ -1193,17 +1193,6 @@ static void __wfd_process_sta_disconnected(wfd_manager_s *manager, wfd_oem_event
 			noti.event = WIFI_DIRECT_CLI_EVENT_DISCONNECTION_IND;
 		noti.error = WIFI_DIRECT_ERROR_NONE;
 		g_snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
-		/* If there is no member, GO should be destroyed */
-#ifdef TIZEN_TV
-		/* If GO is Auto GO, then it should not be removed when no member left */
-		if (!group->member_count && (wfd_group_is_autonomous(group) == FALSE)) {
-#else /* TIZEN_TV */
-		if (!group->member_count) {
-#endif /* TIZEN_TV */
-			wfd_oem_destroy_group(manager->oem_ops, group->ifname);
-			wfd_destroy_group(manager, group->ifname);
-			wfd_peer_clear_all(manager);
-		}
 	} else if (manager->state == WIFI_DIRECT_STATE_DISCONNECTING) {
 		noti.event = WIFI_DIRECT_CLI_EVENT_DISCONNECTION_RSP;
 		noti.error = WIFI_DIRECT_ERROR_NONE;
@@ -1214,6 +1203,7 @@ static void __wfd_process_sta_disconnected(wfd_manager_s *manager, wfd_oem_event
 			manager->local->dev_role == WFD_DEV_ROLE_GO) {
 		if (WFD_PEER_STATE_CONNECTED == peer->state) {
 			WDS_LOGD("Peer is already Connected !!!");
+			wfd_group_remove_member(group, peer_addr);
 			noti.event = WIFI_DIRECT_CLI_EVENT_DISASSOCIATION_IND;
 			noti.error = WIFI_DIRECT_ERROR_NONE;
 		} else if (WFD_PEER_STATE_CONNECTING == peer->state) {
@@ -1239,6 +1229,18 @@ static void __wfd_process_sta_disconnected(wfd_manager_s *manager, wfd_oem_event
 	} else {
 		wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
 		wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
+	}
+
+	/* If there is no member, GO should be destroyed */
+#ifdef TIZEN_TV
+	/* If GO is Auto GO, then it should not be removed when no member left */
+	if (!group->member_count && (wfd_group_is_autonomous(group) == FALSE)) {
+#else /* TIZEN_TV */
+	if (!group->member_count) {
+#endif /* TIZEN_TV */
+		wfd_oem_destroy_group(manager->oem_ops, group->ifname);
+		wfd_destroy_group(manager, group->ifname);
+		wfd_peer_clear_all(manager);
 	}
 
 	wfd_destroy_session(manager);
