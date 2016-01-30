@@ -1029,6 +1029,7 @@ void __ws_extract_servicediscoveryresponse_details(const char *key, GVariant *va
 		memset(service_hex, 0x0, WS_MAX_SERVICE_LEN);
 		while (g_variant_iter_loop (iter, "y", &service_hex[byte_length]))
 			byte_length++;
+		g_variant_iter_free(iter);
 
 		__ws_extract_peer_service(event, service_hex, byte_length);
 	}
@@ -1950,6 +1951,7 @@ static void __ws_parse_peer_joined(char *peer_path,
 
 	for(i = 0; i < OEM_IPADDR_LEN; i++)
 		g_variant_iter_loop (iter, "y", &ip_addr[i]);
+	g_variant_iter_free(iter);
 
 	WDP_LOGD("peer ip [" IPSTR "]", IP2STR(ip_addr));
 
@@ -4054,9 +4056,10 @@ void __ws_extract_p2pdevice_details(const char *key, GVariant *value, void *user
 					SUPPLICANT_P2P_PERSISTENTGROUP, __parsing_networks, &networks[num]);
 			num++;
 		}
+
 		networks[0].total = num;
 		WDP_LOGE("total number [%d]", num);
-
+		g_variant_iter_free(iter);
 	}
 	__WDP_LOG_FUNC_EXIT__;
 }
