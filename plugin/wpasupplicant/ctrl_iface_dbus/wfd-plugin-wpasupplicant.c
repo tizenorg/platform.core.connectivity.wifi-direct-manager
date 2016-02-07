@@ -3167,17 +3167,20 @@ int ws_prov_disc_req(unsigned char *peer_addr, wfd_oem_wps_mode_e wps_mode, int 
 
 	if (!peer_addr) {
 		WDP_LOGE("Invalid parameter");
+		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
 	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
 	g_dbus = g_pd->g_dbus;
 	if (!g_dbus) {
 		WDP_LOGE("DBus connection is NULL");
+		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
 	memset(&params, 0x0, sizeof(dbus_method_param_s));
@@ -3217,17 +3220,20 @@ int ws_connect(unsigned char *peer_addr, wfd_oem_conn_param_s *param)
 
 	if (!peer_addr || !param) {
 		WDP_LOGE("Invalid parameter");
+		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
 	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
 	g_dbus = g_pd->g_dbus;
 	if (!g_dbus) {
 		WDP_LOGE("DBus connection is NULL");
+		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
 	memset(&params, 0x0, sizeof(dbus_method_param_s));
@@ -3488,14 +3494,22 @@ int ws_create_group(wfd_oem_group_param_s *param)
 	char persistent_group_obj_path[OBJECT_PATH_MAX] = {0,};
 	int res = 0;
 
+	if (!param) {
+		WDP_LOGE("Invalid parameter");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
 	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
 	g_dbus = g_pd->g_dbus;
 	if (!g_dbus) {
 		WDP_LOGE("DBus connection is NULL");
+		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
 	memset(&params, 0x0, sizeof(dbus_method_param_s));
