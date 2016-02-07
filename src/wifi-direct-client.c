@@ -245,6 +245,7 @@ static wfd_client_s *_wfd_client_find_by_id(GList *clients, int client_id)
 
 	if (!clients || client_id < 0) {
 		WDS_LOGE("Invalid parameter(client_id:%d)", client_id);
+		__WDS_LOG_FUNC_EXIT__;
 		return NULL;
 	}
 
@@ -265,6 +266,7 @@ static wfd_client_s *_wfd_client_find_by_id(GList *clients, int client_id)
 
 static int _wfd_client_check_socket(int sock)
 {
+	__WDS_LOG_FUNC_ENTER__;
 	struct pollfd p_fd;
 	int res = 0;
 
@@ -274,31 +276,39 @@ static int _wfd_client_check_socket(int sock)
 
 	if (res < 0) {
 		WDS_LOGE("Polling error from socket[%d]. [%s]", sock, strerror(errno));
+		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	} else if (res == 0) {
 		WDS_LOGD( "poll timeout. socket is busy\n");
+		__WDS_LOG_FUNC_EXIT__;
 		return 1;
 	} else {
 
 		if (p_fd.revents & POLLERR) {
 			WDS_LOGE("Error! POLLERR from socket[%d]", sock);
+			__WDS_LOG_FUNC_EXIT__;
 			return -1;
 		} else if (p_fd.revents & POLLHUP) {
 			WDS_LOGE("Error! POLLHUP from socket[%d]", sock);
+			__WDS_LOG_FUNC_EXIT__;
 			return -1;
 		} else if (p_fd.revents & POLLNVAL) {
 			WDS_LOGE("Error! POLLNVAL from socket[%d]", sock);
+			__WDS_LOG_FUNC_EXIT__;
 			return -1;
 		} else if (p_fd.revents & POLLIN) {
 			WDS_LOGD("POLLIN from socket [%d]", sock);
+			__WDS_LOG_FUNC_EXIT__;
 			return 0;
 		} else if (p_fd.revents & POLLOUT) {
 			WDS_LOGD("POLLOUT from socket [%d]", sock);
+			__WDS_LOG_FUNC_EXIT__;
 			return 0;
 		}
 	}
 
 	WDS_LOGD("Unknown poll event [%d]", p_fd.revents);
+	__WDS_LOG_FUNC_EXIT__;
 	return -1;
 }
 
@@ -359,15 +369,18 @@ static int _wfd_read_from_client(int sock, char *data, int data_len)
 
 	if(sock < SOCK_FD_MIN || !data || data_len <= 0) {
 		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
 	res = _wfd_client_check_socket(sock);
 	if (res < 0) {
 		WDS_LOGE("Socket error");
+		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	} else if (res > 0) {
 		WDS_LOGE("Socket is busy");
+		__WDS_LOG_FUNC_EXIT__;
 		return -2;
 	}
 
@@ -466,6 +479,7 @@ static int _wfd_register_client(void *data, int sock)
 		client = (wfd_client_s*) g_try_malloc0(sizeof(wfd_client_s));
 		if (!client) {
 			WDS_LOGE("Failed to allocate memory");
+			__WDS_LOG_FUNC_EXIT__;
 			return -1;
 		}
 		client->client_id = sock;
@@ -531,11 +545,13 @@ static int _wfd_deregister_client(void *data, int client_id)
 	client =  _wfd_client_find_by_id(manager->clients, client_id);
 	if (!client) {
 		WDS_LOGE("Failed to find client[%d]", client_id);
+		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
 	if (client->asock == WFD_CLIENT_PENDING_SOCKET) {
 		WDS_LOGE("This client[%d] is initializing(pending)...", client->client_id);
+		__WDS_LOG_FUNC_EXIT__;
 		return 1;
 	}
 
@@ -568,6 +584,7 @@ static int _wfd_create_server_socket(wfd_manager_s *manager)
 
 	if (!manager) {
 		WDS_LOGE("Invalid parameter(NULL)");
+		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
@@ -589,6 +606,7 @@ static int _wfd_create_server_socket(wfd_manager_s *manager)
 	if (res == -1) {
 		WDS_LOGE("Failed to set socket option. [%s]", strerror(errno));
 		close(sock);
+		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
@@ -642,6 +660,7 @@ static gboolean _wfd_accept_client(GIOChannel *source,
 
 	if (!manager || manager->serv_sock < 0) {
 		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
 		return FALSE;
 	}
 
@@ -649,6 +668,7 @@ static gboolean _wfd_accept_client(GIOChannel *source,
 	cli_sock = accept(manager->serv_sock, NULL, &cli_len);
 	if (cli_sock == -1) {
 		WDS_LOGE("Failed to accept client. [%s]", strerror(errno));
+		__WDS_LOG_FUNC_EXIT__;
 		return FALSE;
 	}
 
@@ -656,6 +676,7 @@ static gboolean _wfd_accept_client(GIOChannel *source,
 	if (res < 0) {
 		WDS_LOGE("Failed to register client.");
 		close(cli_sock);
+		__WDS_LOG_FUNC_EXIT__;
 		return TRUE;
 	}
 
@@ -679,12 +700,14 @@ int wfd_client_handler_init(wfd_manager_s *manager)
 		WDS_LOGD("cynara handle is successfully initialized.");
 	} else {
 		WDS_LOGE("Failed to initialize cynara handle");
+		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
 	res = _wfd_create_server_socket(manager);
 	if (res < 0) {
 		WDS_LOGE("Failed to create server socket");
+		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
@@ -756,6 +779,7 @@ static int __wfd_cynara_check(int client_sock, const char *privilege)
 		WDS_LOGD("PID is [%d].", pid);
 	} else {
 		WDS_LOGE("Failed to get pid");
+		__WDS_LOG_FUNC_EXIT__;
 		return ret;
 	}
 
@@ -764,6 +788,7 @@ static int __wfd_cynara_check(int client_sock, const char *privilege)
 		WDS_LOGD("cynara cred is [%s].", clientSmack);
 	} else {
 		WDS_LOGE("Failed to initialize cynara cred");
+		__WDS_LOG_FUNC_EXIT__;
 		return ret;
 	}
 
@@ -773,6 +798,7 @@ static int __wfd_cynara_check(int client_sock, const char *privilege)
 	} else {
 		WDS_LOGE("Failed to initialize cynara UID");
 		free(clientSmack);
+		__WDS_LOG_FUNC_EXIT__;
 		return ret;
 	}
 
@@ -787,7 +813,7 @@ static int __wfd_cynara_check(int client_sock, const char *privilege)
 	g_free(uid);
 	g_free(clientSmack);
 	g_free(client_session);
-
+	__WDS_LOG_FUNC_EXIT__;
 	return ret;
 }
 
@@ -887,17 +913,21 @@ static int _wfd_check_client_privilege(int client_sock, int cmd)
 		break;
 	default:
 		WDS_LOGE("Unknown command[%d]", cmd);
+		__WDS_LOG_FUNC_EXIT__;
 		return WIFI_DIRECT_ERROR_AUTH_FAILED;
 	}
 
 	if(ret == CYNARA_API_ACCESS_ALLOWED) {
 		WDS_LOGD("Cynara: API Access Validation Success");
+		__WDS_LOG_FUNC_EXIT__;
 		return WIFI_DIRECT_ERROR_NONE;
 	} else if(ret == CYNARA_API_ACCESS_DENIED) {
 		WDS_LOGE("Access denied to client id [%d]", client_sock);
+		__WDS_LOG_FUNC_EXIT__;
 		return WIFI_DIRECT_ERROR_PERMISSION_DENIED;
 	} else {
 		WDS_LOGE("Cynara, exception[%d]", ret);
+		__WDS_LOG_FUNC_EXIT__;
 		return WIFI_DIRECT_ERROR_AUTH_FAILED;
 	}
 }
@@ -932,6 +962,7 @@ static gboolean wfd_client_process_request(GIOChannel *source,
 		return FALSE;
 	} else if (res == 0) {
 		WDS_LOGE("Client socket busy");
+		__WDS_LOG_FUNC_EXIT__;
 		return TRUE;
 	}
 	WDS_LOGI("Client request [%d:%s], %d bytes read from socket[%d]", req.cmd, wfd_server_print_cmd(req.cmd), res, sock);
