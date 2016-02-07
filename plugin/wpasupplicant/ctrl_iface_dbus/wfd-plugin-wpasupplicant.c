@@ -4591,14 +4591,22 @@ int ws_start_service_discovery(unsigned char *mac_addr, int service_type)
 	int i = 0;
 	int res = 0;
 
+	if (!mac_addr ) {
+		WDP_LOGE("Invalid parameter");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
 	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
 	g_dbus = g_pd->g_dbus;
 	if (!g_dbus) {
 		WDP_LOGE("DBus connection is NULL");
+		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
 	memset(&params, 0x0, sizeof(dbus_method_param_s));
@@ -4673,14 +4681,22 @@ int ws_cancel_service_discovery(unsigned char *mac_addr, int service_type)
 
 	int res = 0;
 
+	if (!mac_addr ) {
+		WDP_LOGE("Invalid parameter");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
 	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
 	g_dbus = g_pd->g_dbus;
 	if (!g_dbus) {
 		WDP_LOGE("DBus connection is NULL");
+		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
@@ -4702,8 +4718,8 @@ int ws_cancel_service_discovery(unsigned char *mac_addr, int service_type)
 			strncpy(s_type, SERV_DISC_REQ_UPNP, OEM_SERVICE_TYPE_LEN);
 		break;
 		default:
-			__WDP_LOG_FUNC_EXIT__;
 			WDP_LOGE("Invalid Service type");
+			__WDP_LOG_FUNC_EXIT__;
 			return -1;
 	}
 
@@ -4711,9 +4727,10 @@ int ws_cancel_service_discovery(unsigned char *mac_addr, int service_type)
 	WDP_LOGD("Cancel service discovery s_type [%s]", s_type);
 
 	data = _remove_service_query(s_type, mac_str, query_id);
-	if (NULL == data)
+	if (NULL == data) {
+		__WDP_LOG_FUNC_EXIT__;
 		return -1;
-
+	}
 	memset(&params, 0x0, sizeof(dbus_method_param_s));
 
 	dbus_set_method_param(&params, "ServiceDiscoveryCancelRequest", g_pd->iface_path, g_dbus);
