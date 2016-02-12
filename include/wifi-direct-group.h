@@ -30,6 +30,10 @@
 
 #define IFACE_NAME_LEN 16
 
+#ifndef TIZEN_WLAN_BOARD_SPRD
+#define WFD_FREQ_2G 2
+#endif
+
 typedef enum {
 	WFD_GROUP_FLAG_NONE,
 	WFD_GROUP_FLAG_PERSISTENT,
