@@ -39,8 +39,21 @@
 		if (key)\
 			WDP_LOGD("Key : [%s]", key);\
 		if (value) {\
-			WDP_LOGD("value [%s]", g_variant_print(value,TRUE));\
+			gchar *value_debug_str = NULL;\
+			value_debug_str = g_variant_print(value, TRUE);\
+			WDP_LOGD("value [%s]", value_debug_str ? value_debug_str : "NULL");\
+			g_free(value_debug_str);\
 			WDP_LOGD("value type [%s]", g_variant_get_type_string(value));\
+		}\
+	} while (0)
+
+#define DEBUG_PARAMS(parameters) \
+	do {\
+		gchar *parameters_debug_str = NULL;\
+		if (parameters)\
+			parameters_debug_str = g_variant_print(parameters, TRUE);\
+		WDP_LOGD("signal params [%s]", parameters_debug_str ? parameters_debug_str : "NULL");\
+		g_free(parameters_debug_str);\
 		}\
 	} while (0)
 
@@ -50,7 +63,7 @@
 		WDP_LOGD("signal object path [%s]", object_path);\
 		WDP_LOGD("signal interface name [%s]", interface_name);\
 		WDP_LOGD("signal signal name [%s]", signal_name);\
-		WDP_LOGD("signal params [%s]", g_variant_print(parameters, TRUE));\
+		DEBUG_PARAMS(parameters)\
 		WDP_LOGD("signal params type [%s]", g_variant_get_type_string(parameters));\
 	} while (0)
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
