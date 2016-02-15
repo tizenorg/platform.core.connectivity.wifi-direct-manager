@@ -1578,8 +1578,8 @@ static void _ws_process_go_neg_request(GDBusConnection *connection,
 
 	g_variant_get(parameters, "(&oq)", &path, &dev_pwd_id);
 	g_strlcpy(peer_path, path, DBUS_OBJECT_PATH_MAX);
-	WDP_LOGD("Retrive peer path [%s]", peer_path);
 
+	WDP_LOGD("Retrive peer path [%s]", peer_path);
 	WDP_LOGD("Retrive dev_passwd_id [%d]", dev_pwd_id);
 
 	if (dev_pwd_id == WS_DEV_PASSWD_ID_PUSH_BUTTON)
@@ -1590,10 +1590,6 @@ static void _ws_process_go_neg_request(GDBusConnection *connection,
 		event.wps_mode = WFD_OEM_WPS_MODE_KEYPAD;
 	else
 		event.wps_mode = WFD_OEM_WPS_MODE_NONE;
-
-	g_variant_get(parameters, "(&o)", &path);
-	g_strlcpy(peer_path, path, DBUS_OBJECT_PATH_MAX);
-	WDP_LOGD("Retrive Added path [%s]", peer_path);
 
 	loc = strrchr(peer_path,'/');
 	if(loc != NULL)
