@@ -71,7 +71,7 @@ wfd_group_s *wfd_create_group(void *data, wfd_oem_event_s *group_info)
 	}
 
 	errno = 0;
-	group = (wfd_group_s*) calloc(1, sizeof(wfd_group_s));
+	group = (wfd_group_s*) g_try_malloc0(sizeof(wfd_group_s));
 	if (!group) {
 		WDS_LOGE("Failed to allocate memory for group. [%s]", strerror(errno));
 		__WDS_LOG_FUNC_EXIT__;
