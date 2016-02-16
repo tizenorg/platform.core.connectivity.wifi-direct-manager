@@ -1257,6 +1257,40 @@ static void __wfd_process_sta_disconnected(wfd_manager_s *manager, wfd_oem_event
 	return;
  }
 
+static void __wfd_process_group_formation_failure(wfd_manager_s *manager, wfd_oem_event_s *event)
+{
+	__WDS_LOG_FUNC_ENTER__;
+
+	wfd_session_s *session = (wfd_session_s*) manager->session;
+	if (!session) {
+		WDS_LOGE("Unexpected event. Session not exist");
+		__WDS_LOG_FUNC_EXIT__;
+		return;
+	}
+
+	unsigned char *peer_addr = wfd_session_get_peer_addr(session);
+	if (!peer_addr) {
+		WDS_LOGE("Session do not has peer");
+		__WDS_LOG_FUNC_EXIT__;
+		return;
+	}
+
+	wifi_direct_client_noti_s noti;
+	memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
+	noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
+	noti.error = WIFI_DIRECT_ERROR_CONNECTION_FAILED;
+	snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
+	wfd_client_send_event(manager, &noti);
+	wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
+	wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
+	wfd_destroy_session(manager);
+	manager->local->dev_role = WFD_DEV_ROLE_NONE;
+
+	wfd_oem_refresh(manager->oem_ops);
+
+	__WDS_LOG_FUNC_EXIT__;
+	return;
+}
 #ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
 static void __wfd_process_serv_disc_resp(wfd_manager_s *manager, wfd_oem_event_s *event)
 {
@@ -1431,6 +1465,7 @@ static struct {
 		WFD_OEM_EVENT_TERMINATING,
 		__wfd_process_terminating
 	},
+
 #ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
 	{
 		WFD_OEM_EVENT_SERV_DISC_RESP,
@@ -1441,6 +1476,10 @@ static struct {
 		__wfd_process_serv_disc_started
 	},
 #endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
+	{
+		WFD_OEM_EVENT_GROUP_FORMATION_FAILURE,
+		__wfd_process_group_formation_failure
+	},
 	{
 		WFD_OEM_EVENT_MAX,
 		NULL

@@ -1775,7 +1775,7 @@ static void _ws_process_group_formation_failure(GDBusConnection *connection,
 
 	memset(&event, 0x0, sizeof(wfd_oem_event_s));
 
-	event.event_id = WFD_OEM_EVENT_WPS_FAIL;
+	event.event_id = WFD_OEM_EVENT_GROUP_FORMATION_FAILURE;
 	event.edata_type = WFD_OEM_EDATA_TYPE_NONE;
 
 	g_pd->callback(g_pd->user_data, &event);
