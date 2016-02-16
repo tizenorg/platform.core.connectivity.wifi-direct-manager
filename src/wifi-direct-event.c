@@ -1232,12 +1232,7 @@ static void __wfd_process_sta_disconnected(wfd_manager_s *manager, wfd_oem_event
 	}
 
 	/* If there is no member, GO should be destroyed */
-#ifdef TIZEN_TV
-	/* If GO is Auto GO, then it should not be removed when no member left */
-	if (!group->member_count && (wfd_group_is_autonomous(group) == FALSE)) {
-#else /* TIZEN_TV */
 	if (!group->member_count) {
-#endif /* TIZEN_TV */
 		wfd_oem_destroy_group(manager->oem_ops, group->ifname);
 		wfd_destroy_group(manager, group->ifname);
 		wfd_peer_clear_all(manager);
