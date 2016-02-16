@@ -30,15 +30,13 @@
 
 #if defined TIZEN_MOBILE
 #define DEFAULT_MAC_FILE_PATH "/opt/etc/.mac.info"
-#endif
+#endif /* TIZEN_MOBILE */
 
-#if defined TIZEN_WIFI_MODULE_BUNDLE
-#define DEFAULT_MAC_FILE_PATH "/sys/class/net/wlan0/address"
-#endif
-
-#if defined TIZEN_TV_BOARD_PRD
-#define DEFAULT_MAC_FILE_PATH "/sys/class/net/p2p0/address"
-#endif
+#if defined TIZEN_TV
+#	if defined TIZEN_WIFI_MODULE_BUNDLE
+#		define DEFAULT_MAC_FILE_PATH "/sys/class/net/wlan0/address"
+#	endif /* TIZEN_WIFI_MODULE_BUNDLE */
+#endif /* TIZEN_TV */
 
 #ifndef DEFAULT_MAC_FILE_PATH
 #define DEFAULT_MAC_FILE_PATH "/sys/class/net/p2p0/address"
