@@ -31,32 +31,31 @@
 #define DEFAULT_DEVICE_NAME "Tizen_Device"
 
 #if defined TIZEN_MOBILE
-#if defined TIZEN_WLAN_BOARD_SPRD
-#define DEFAULT_IFNAME "p2p0"
-#define GROUP_IFNAME "p2p0"
-#else /* TIZEN_WLAN_BOARD_SPRD */
-#define DEFAULT_IFNAME "wlan0"
-#define GROUP_IFNAME "p2p-wlan0-0"
-#endif /* TIZEN_WLAN_BOARD_SPRD */
-#endif
+#	if defined TIZEN_WLAN_BOARD_SPRD
+#		define DEFAULT_IFNAME "p2p0"
+#		define GROUP_IFNAME "p2p0"
+#	else /* TIZEN_WLAN_BOARD_SPRD */
+#		define DEFAULT_IFNAME "wlan0"
+#		define GROUP_IFNAME "p2p-wlan0-0"
+#	endif /* TIZEN_WLAN_BOARD_SPRD */
+#endif /* TIZEN_MOBILE */
 
-#if defined TIZEN_WIFI_MODULE_BUNDLE
-#define DEFAULT_IFNAME "wlan0"
-#define GROUP_IFNAME "wlan0"
-#endif
-
-#if defined TIZEN_TV_BOARD_PRD
-#define DEFAULT_IFNAME "p2p0"
-#define GROUP_IFNAME "p2p0"
-#endif
-
+#if defined TIZEN_TV
+#	if defined TIZEN_WIFI_MODULE_BUNDLE
+#		define DEFAULT_IFNAME "wlan0"
+#		define GROUP_IFNAME "wlan0"
+#	else /* TIZEN_WIFI_MODULE_BUNDLE */
+#		define DEFAULT_IFNAME "p2p0"
+#		define GROUP_IFNAME "p2p0"
+#	endif /* TIZEN_WIFI_MODULE_BUNDLE */
+#endif /* TIZEN_TV */
 
 #ifndef DEFAULT_IFNAME
-#define DEFAULT_IFNAME "p2p0"
+#	define DEFAULT_IFNAME "p2p0"
 #endif
 
 #ifndef GROUP_IFNAME
-#define GROUP_IFNAME "p2p0"
+#	define GROUP_IFNAME "p2p0"
 #endif
 
 #define WFD_MAX_CLIENT 16
