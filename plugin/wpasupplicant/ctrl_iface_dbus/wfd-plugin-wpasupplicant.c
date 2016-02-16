@@ -762,7 +762,7 @@ void __ws_extract_invitation_details(const char *key, GVariant *value, void *use
 		if (__ws_unpack_ay(invitation->sa, value, WS_MACADDR_LEN))
 			WDP_LOGD("SA [" MACSTR "]", MAC2STR(invitation->sa));
 
-	} else if (g_strcmp0(key, "go_dev_add") == 0) {
+	} else if (g_strcmp0(key, "go_dev_addr") == 0) {
 		if (__ws_unpack_ay(invitation->go_dev_addr, value, WS_MACADDR_LEN))
 					WDP_LOGD("GO device address [" MACSTR "]", MAC2STR(invitation->go_dev_addr));
 
@@ -774,9 +774,9 @@ void __ws_extract_invitation_details(const char *key, GVariant *value, void *use
 		g_variant_get(value, "i", &(invitation->persistent_id));
 		WDP_LOGD("persistent id [%d]", invitation->persistent_id);
 
-	} else if (g_strcmp0(key, "oper_freq") == 0) {
+	} else if (g_strcmp0(key, "op_freq") == 0) {
 		g_variant_get(value, "i", &(invitation->oper_freq));
-		WDP_LOGD("oper freq [%d]", invitation->oper_freq);
+		WDP_LOGD("op freq [%d]", invitation->oper_freq);
 	} else {
 		WDP_LOGE("Unknown value");
 	}
