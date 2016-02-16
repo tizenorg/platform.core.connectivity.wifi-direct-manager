@@ -3491,6 +3491,7 @@ int ws_create_group(wfd_oem_group_param_s *param)
 	ws_sock_data_s *sock = g_pd->common;
 	char cmd[44] = {0, };
 	char freq_str[11] = {0, };
+	char passphrase[21] = {0, };
 	char reply[1024]={0,};
 	int res = 0;
 
@@ -3501,25 +3502,24 @@ int ws_create_group(wfd_oem_group_param_s *param)
 
 	if (param->persistent) {
 		if(param->persistent == 2)
-			sprintf(cmd, sizeof(cmd), WS_CMD_P2P_GROUP_ADD WS_STR_PERSISTENT "=%d",
+			snprintf(cmd, sizeof(cmd), WS_CMD_P2P_GROUP_ADD WS_STR_PERSISTENT "=%d",
 					param->persistent_group_id);
 		else
 			snprintf(cmd, sizeof(cmd), WS_CMD_P2P_GROUP_ADD WS_STR_PERSISTENT);
-	} else {
-		if (passphrase[0] != '\0') {
-
-			g_snprintf(cmd, sizeof(cmd), WS_CMD_P2P_GROUP_ADD " passphrase=%s", param->passphrase);
-
-		}else{
-			g_snprintf(cmd, sizeof(cmd), WS_CMD_P2P_GROUP_ADD);
-		}
 	}
 
-	if (freq > 0) {
+	if (param->freq > 0) {
 		g_snprintf(freq_str, sizeof(freq_str), WS_STR_FREQ "%d", param->freq);
 		strncat(cmd, freq_str, sizeof(freq_str));
 	} else {
+#ifndef TIZEN_WLAN_BOARD_SPRD
 		strncat(cmd, WS_STR_FREQ_2G, 8);
+#endif /* TIZEN_WLAN_BOARD_SPRD */
+	}
+
+	if (param->passphrase[0] != '\0') {
+		g_snprintf(passphrase, sizeof(passphrase), WS_STR_PASSPHRASE "%s", param->passphrase);
+		strncat(cmd, passphrase, sizeof(passphrase));
 	}
 
 	res = _ws_send_cmd(sock->ctrl_sock, cmd, reply, sizeof(reply));

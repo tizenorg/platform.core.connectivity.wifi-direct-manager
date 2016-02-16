@@ -170,6 +170,7 @@
 #define WS_STR_JOIN " join"
 #define WS_STR_AUTH " auth"
 #define WS_STR_PERSISTENT " persistent"
+#define WS_STR_PASSPHRASE " passphrase="
 #define WS_STR_FREQ " freq="
 #define WS_STR_FREQ_2G " freq=2"
 
