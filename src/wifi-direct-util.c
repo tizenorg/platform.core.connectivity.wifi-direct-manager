@@ -549,7 +549,6 @@ int wfd_util_get_local_dev_mac(unsigned char *dev_mac)
 		return -1;
 	}
 
-	dev_mac[0] |= 0x2;
 	WDS_LOGD("Local Device MAC address [" MACSECSTR "]", MAC2SECSTR(dev_mac));
 
 	fclose(fd);
