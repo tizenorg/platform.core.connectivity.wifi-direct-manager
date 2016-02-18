@@ -152,6 +152,7 @@ static int __ws_txt_to_mac(unsigned char *txt, unsigned char *mac)
 	if (i != WS_MACADDR_LEN)
 		return -1;
 
+	WDP_LOGD("Converted MAC address [" MACSECSTR "]", MAC2SECSTR(mac));
 	return 0;
 }
 
@@ -429,6 +430,48 @@ static int __parsing_wfd_info(unsigned char *wfd_dev_info,
 	return 0;
 }
 #endif /* TIZEN_FEATURE_WIFI_DISPLAY */
+
+static int _ws_get_local_dev_mac(unsigned char *dev_mac)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	FILE *fd = NULL;
+	unsigned char local_mac[WS_MACSTR_LEN] = {0, };
+	char *ptr = NULL;
+	int res = 0;
+
+	errno = 0;
+	fd = fopen(DEFAULT_MAC_FILE_PATH, "r");
+	if (!fd) {
+		WDP_LOGE("Failed to open MAC info file (%s)", strerror(errno));
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	errno = 0;
+	ptr = fgets((char *)local_mac, WS_MACSTR_LEN, fd);
+	if (!ptr) {
+		WDP_LOGE("Failed to read file or no data read(%s)", strerror(errno));
+		fclose(fd);
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+	WDP_SECLOGD("Local MAC address [%s]", ptr);
+	WDP_SECLOGD("Local MAC address [%s]", local_mac);
+
+	res = __ws_txt_to_mac(local_mac, dev_mac);
+	if (res < 0) {
+		WDP_LOGE("Failed to convert text to MAC address");
+		fclose(fd);
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	WDP_LOGD("Local Device MAC address [" MACSECSTR "]", MAC2SECSTR(dev_mac));
+
+	fclose(fd);
+	__WDP_LOG_FUNC_EXIT__;
+	return 0;
+}
 
 static void _supplicant_signal_cb(GDBusConnection *connection,
 		const gchar *sender, const gchar *object_path, const gchar *interface,
@@ -3465,6 +3508,47 @@ int ws_get_supported_wps_mode()
 	return 0;
 }
 
+int _ws_get_persistent_net_id(int *persistent_network_id, const unsigned char *go_dev_mac)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	int persistent_group_count = 0;
+	int counter = 0;
+	int res = 0;
+
+	wfd_oem_persistent_group_s *plist = NULL;
+
+	res = ws_get_persistent_groups(&plist, &persistent_group_count);
+	if (res < 0) {
+		WDP_LOGE("failed to get persistent groups");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	if (persistent_group_count > WS_MAX_PERSISTENT_COUNT) {
+		WDP_LOGE("persistent group count greater than max Persistent count");
+		persistent_group_count = WS_MAX_PERSISTENT_COUNT;
+	}
+
+	WDP_LOGD("Persistent Group Count=%d", persistent_group_count);
+
+	for (counter = 0; counter < persistent_group_count ; counter++) {
+		if(!memcmp(go_dev_mac, plist[counter].go_mac_address, WS_MACADDR_LEN)) {
+			*persistent_network_id = plist[counter].network_id;
+			break;
+		} else {
+			WDP_LOGD("Invite: Persistent GO[" MACSTR "], GO Addr[" MACSTR "]",
+					MAC2STR(plist[counter].go_mac_address), MAC2STR(go_dev_mac));
+		}
+	}
+
+	g_free(plist);
+	plist = NULL;
+	WDP_LOGD("persistent network ID : [%d]", *persistent_network_id);
+
+	__WDP_LOG_FUNC_EXIT__;
+	return 0;
+}
+
 static void __store_group_iface_path(GVariant *value, void *user_data) {
 	__WDP_LOG_FUNC_ENTER__;
 	ws_dbus_plugin_data_s * pd_data;
@@ -3519,12 +3603,31 @@ int ws_create_group(wfd_oem_group_param_s *param)
 	builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}") );
 
 	if (param->persistent > 0) {
+		unsigned char mac_address[WS_MACADDR_LEN] = {0x00, };
+		int persistent_group_id = -1;
+
+		res = _ws_get_local_dev_mac(mac_address);
+		if (res < 0) {
+			WDP_LOGE("failed to get local mac address");
+			__WDP_LOG_FUNC_EXIT__;
+			return -1;
+		}
+
+		res = _ws_get_persistent_net_id(&persistent_group_id, mac_address);
+		if(res < 0) {
+			WDP_LOGE("failed to get persistent group ID");
+			__WDP_LOG_FUNC_EXIT__;
+			return -1;
+		}
+
+		WDP_LOGD("persistent network ID : [%d]", persistent_group_id);
+
 		g_variant_builder_add(builder, "{sv}", "persistent",
 				g_variant_new_boolean(TRUE));
-		if(param->persistent == 2) {
+		if(persistent_group_id > 0) {
 			g_snprintf(persistent_group_obj_path, OBJECT_PATH_MAX,
 					"%s/" SUPPLICANT_PERSISTENT_GROUPS_PART "/%d",
-					g_pd->iface_path, param->persistent_group_id);
+					g_pd->iface_path, persistent_group_id);
 			g_variant_builder_add(builder, "{sv}", "persistent_group_object",
 					g_variant_new_object_path(persistent_group_obj_path));
 		}
@@ -3907,15 +4010,14 @@ int ws_get_go_intent(int *go_intent)
 		return -1;
 	}
 
-	if(reply != NULL){
+	if (reply != NULL) {
 		g_variant_get(reply, "(a{sv})", &iter);
 
-		if(iter != NULL){
-
+		if (iter != NULL) {
 			gchar *key = NULL;
 			GVariant *value = NULL;
 
-			while(g_variant_iter_loop(iter, "{sv}", &key, &value)) {
+			while (g_variant_iter_loop(iter, "{sv}", &key, &value)) {
 #if defined (TIZEN_DEBUG_DBUS_VALUE)
 				CHECK_KEY_VALUE(key, value);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
@@ -4159,10 +4261,17 @@ void __ws_extract_p2pdevice_details(const char *key, GVariant *value, void *user
 
 		g_variant_get(value, "ao", &iter);
 		while(g_variant_iter_loop(iter, "&o", &path)) {
+			char *loc = NULL;
+
 			if(num >= WS_MAX_PERSISTENT_COUNT)
 				break;
+
 			WDP_LOGD("Retrive persistent path [%s]", path);
 			g_strlcpy(networks[num].persistent_path, path, DBUS_OBJECT_PATH_MAX);
+
+			loc = strrchr(networks[num].persistent_path, '/');
+			networks[num].network_id = strtoul(loc+1, NULL, 10);
+
 			WDP_LOGD("Retrive persistent path [%s]", networks[num].persistent_path);
 			dbus_property_get_all(networks[num].persistent_path, g_pd->g_dbus,
 					SUPPLICANT_P2P_PERSISTENTGROUP, __parsing_networks, &networks[num]);
