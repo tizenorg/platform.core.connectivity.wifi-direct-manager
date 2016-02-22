@@ -1180,7 +1180,7 @@ static int _parsing_wfd_info(char *msg, wfd_oem_display_s *display )
 	if (wfd_info & WS_WFD_INFO_SECONDARY_SINK)
 		display->type |= WS_WFD_INFO_SECONDARY_SINK;
 
-	display->availability = (wfd_info & WS_WFD_INFO_AVAILABLITY) >> 4;
+	display->availability = (wfd_info & WS_WFD_INFO_AVAILABILITY) >> 4;
 	display->hdcp_support = (wfd_info & WS_WFD_INFO_HDCP_SUPPORT) >> 8;
 
 	strncpy(ctrl_port_msg, msg+4, 4);
@@ -1208,6 +1208,7 @@ static int _parsing_peer_info(char *msg, wfd_oem_device_s *peer)
 
 	if (!msg || !peer) {
 		WDP_LOGE("Invalid parameter");
+		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
@@ -1224,6 +1225,7 @@ static int _parsing_peer_info(char *msg, wfd_oem_device_s *peer)
 	}
 	if (info_cnt == 0) {
 		WDP_LOGD("Device info ids have no valid information");
+		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
