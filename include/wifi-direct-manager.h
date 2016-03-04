@@ -70,17 +70,6 @@
 #define PASSPHRASE_LEN_MAX 63
 #define PASSPHRASE_LEN_MIN 8
 
-#if 0
-typedef enum {
-	WFD_STATE_DEACTIVATED,
-	WFD_STATE_ACTIVATED,
-	WFD_STATE_IDLE,			// passive scaning
-	WFD_STATE_SCANNING,		// active scanning
-	WFD_STATE_CONNECTING,
-	WFD_STATE_CONNECTED,
-} wfd_state_e;
-#endif
-
 typedef enum {
 	WFD_WPS_MODE_NONE,
 	WFD_WPS_MODE_PBC = 0x1,
@@ -114,7 +103,6 @@ typedef enum {
 } wfd_ip_type_e;
 
 #ifdef TIZEN_FEATURE_WIFI_DISPLAY
-
 typedef enum {
 	WFD_DISPLAY_TYPE_SOURCE,
 	WFD_DISPLAY_TYPE_PRISINK,
@@ -246,5 +234,7 @@ wfd_device_s *wfd_manager_get_peer_by_addr(wfd_manager_s *manager, unsigned char
 int wfd_manager_set_display_device(int type, int port, int hdcp);
 int wfd_manager_set_session_availability(int availability);
 #endif /* TIZEN_FEATURE_WIFI_DISPLAY */
+int wfd_manager_start_discovery(wfd_manager_s *manager, int mode, int timeout, const char* type, int channel);
+int wfd_manager_cancel_discovery(wfd_manager_s *manager);
 
 #endif /* __WIFI_DIRECT_MANAGER_H__ */

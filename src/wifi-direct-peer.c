@@ -39,6 +39,7 @@
 #include "wifi-direct-util.h"
 #include "wifi-direct-peer.h"
 #include "wifi-direct-session.h"
+#include "wifi-direct-log.h"
 
 
 wfd_device_s *wfd_add_peer(void *data, unsigned char *dev_addr, char *dev_name)

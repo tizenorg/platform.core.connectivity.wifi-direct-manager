@@ -52,11 +52,13 @@
 #include "wifi-direct-ipc.h"
 #include "wifi-direct-manager.h"
 #include "wifi-direct-state.h"
-#include "wifi-direct-client.h"
 #include "wifi-direct-util.h"
 #include "wifi-direct-oem.h"
 #include "wifi-direct-group.h"
 #include "wifi-direct-session.h"
+#include "wifi-direct-error.h"
+#include "wifi-direct-log.h"
+#include "wifi-direct-dbus.h"
 
 #ifdef TIZEN_FEATURE_IP_OVER_EAPOL
 #include <linux/unistd.h>
@@ -432,12 +434,15 @@ int wfd_util_wifi_direct_activatable()
 	res_wifi = wfd_util_check_wifi_state();
 	if (res_wifi < 0) {
 		WDS_LOGE("Failed to check Wi-Fi state");
+		__WDS_LOG_FUNC_EXIT__;
 		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
 	} else if (res_wifi > 0) {
 		WDS_LOGE("Wi-Fi is On");
+		__WDS_LOG_FUNC_EXIT__;
 		return WIFI_DIRECT_ERROR_WIFI_USED;
 	} else {
 		WDS_LOGE("Wi-Fi is Off");
+		__WDS_LOG_FUNC_EXIT__;
 		return WIFI_DIRECT_ERROR_NONE;
 	}
 #endif
@@ -448,16 +453,20 @@ int wfd_util_wifi_direct_activatable()
 	res_mobap = wfd_util_check_mobile_ap_state();
 	if (res_mobap < 0) {
 		WDS_LOGE("Failed to check Mobile AP state");
+		__WDS_LOG_FUNC_EXIT__;
 		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
 	} else if (res_mobap > 0) {
 		WDS_LOGE("Mobile AP is On");
+		__WDS_LOG_FUNC_EXIT__;
 		return WIFI_DIRECT_ERROR_MOBILE_AP_USED;
 	} else {
 		WDS_LOGE("Mobile AP is Off");
+		__WDS_LOG_FUNC_EXIT__;
 		return WIFI_DIRECT_ERROR_NONE;
 	}
 #endif
 
+	__WDS_LOG_FUNC_EXIT__;
 	return WIFI_DIRECT_ERROR_NONE;
 }
 
@@ -549,7 +558,6 @@ int wfd_util_get_local_dev_mac(unsigned char *dev_mac)
 		return -1;
 	}
 
-	dev_mac[0] |= 0x2;
 	WDS_LOGD("Local Device MAC address [" MACSECSTR "]", MAC2SECSTR(dev_mac));
 
 	fclose(fd);
@@ -662,14 +670,14 @@ int _connect_remote_device(char *ip_str)
 static void _dhcps_ip_leased_cb(keynode_t *key, void* data)
 {
 	__WDS_LOG_FUNC_ENTER__;
-	wfd_manager_s *manager = wfd_get_manager();
 	wfd_device_s *peer = (wfd_device_s*) data;
-	wifi_direct_client_noti_s noti;
 	FILE *fp = NULL;
 	char buf[MAX_DHCP_DUMP_SIZE];
 	char ip_str[IPSTR_LEN] = {0, };
 	char intf_str[MACSTR_LEN];
 	unsigned char intf_addr[MACADDR_LEN];
+	char peer_mac_address[MACSTR_LEN+1] = {0,};
+	char assigned_ip_address[IPSTR_LEN+1] = {0,};
 	int n = 0;
 
 	if (!peer) {
@@ -677,7 +685,6 @@ static void _dhcps_ip_leased_cb(keynode_t *key, void* data)
 		return;
 	}
 	WDS_LOGD("DHCP server: IP leased");
-	memset(&noti, 0, sizeof(wifi_direct_client_noti_s));
 
 	errno = 0;
 	fp = fopen(DHCP_DUMP_FILE, "r");
@@ -698,10 +705,12 @@ static void _dhcps_ip_leased_cb(keynode_t *key, void* data)
 			WDS_LOGD("Peer intf mac found");
 			_txt_to_ip(ip_str, peer->ip_addr);
 			_connect_remote_device(ip_str);
-			noti.event = WIFI_DIRECT_CLI_EVENT_IP_LEASED_IND;
-			snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer->dev_addr));
-			snprintf(noti.param2, IPSTR_LEN, IPSTR, IP2STR(peer->ip_addr));
-			wfd_client_send_event(manager, &noti);
+			g_snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(peer->dev_addr));
+			g_snprintf(assigned_ip_address, IPSTR_LEN, IPSTR, IP2STR(peer->ip_addr));
+			wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+						     "PeerIPAssigned",
+						     g_variant_new("(ss)", peer_mac_address,
+									   assigned_ip_address));
 			break;
 		} else {
 			WDS_LOGD("Different interface address peer[" MACSECSTR "] vs dhcp[" MACSECSTR "]",
@@ -771,12 +780,14 @@ static gboolean _polling_ip(gpointer user_data)
 	wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_CONNECTED);
 	wfd_destroy_session(manager);
 
-	wifi_direct_client_noti_s noti;
-	memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
-	noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
-	noti.error = WIFI_DIRECT_ERROR_NONE;
-	snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer->dev_addr));
-	wfd_client_send_event(manager, &noti);
+	char peer_mac_address[MACSTR_LEN+1] = {0, };
+
+	g_snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(peer->dev_addr));
+	wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+				     "Connection",
+				     g_variant_new("(iis)", WIFI_DIRECT_ERROR_NONE,
+							    WFD_EVENT_CONNECTION_RSP,
+							    peer_mac_address));
 
 	__WDS_LOG_FUNC_EXIT__;
 	return FALSE;
@@ -1132,7 +1143,7 @@ int wfd_util_static_ip_unset(const char *ifname)
 	__WDS_LOG_FUNC_ENTER__;
 	int res = 0;
 	unsigned char ip_addr[IPADDR_LEN];
-	char error_buf[MAX_SIZE_ERROR_BUFFER] = {};
+	char error_buf[MAX_SIZE_ERROR_BUFFER] = {0, };
 
 	int if_index;
 	int nl_sock = -1;

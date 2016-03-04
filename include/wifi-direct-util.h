@@ -63,42 +63,6 @@
 
 #define SOCK_FD_MIN 3
 
-#ifdef USE_DLOG
-#include <dlog.h>
-
-#undef LOG_TAG
-#define LOG_TAG "WIFI_DIRECT_MANAGER"
-
-#define WDS_LOGV(format, args...) LOGV(format, ##args)
-#define WDS_LOGD(format, args...) LOGD(format, ##args)
-#define WDS_LOGI(format, args...) LOGI(format, ##args)
-#define WDS_LOGW(format, args...) LOGW(format, ##args)
-#define WDS_LOGE(format, args...) LOGE(format, ##args)
-#define WDS_LOGF(format, args...) LOGF(format, ##args)
-
-#define __WDS_LOG_FUNC_ENTER__ LOGD("Enter")
-#define __WDS_LOG_FUNC_EXIT__ LOGD("Quit")
-
-#define WDS_SECLOGI(format, args...) SECURE_LOG(LOG_INFO, LOG_TAG, format, ##args)
-#define WDS_SECLOGD(format, args...) SECURE_LOG(LOG_DEBUG, LOG_TAG, format, ##args)
-
-#else /* USE_DLOG */
-
-#define WDS_LOGV(format, args...)
-#define WDS_LOGD(format, args...)
-#define WDS_LOGI(format, args...)
-#define WDS_LOGW(format, args...)
-#define WDS_LOGE(format, args...)
-#define WDS_LOGF(format, args...)
-
-#define __WDS_LOG_FUNC_ENTER__
-#define __WDS_LOG_FUNC_EXIT__
-
-#define WDS_SECLOGI(format, args...)
-#define WDS_SECLOGD(format, args...)
-
-#endif /* USE_DLOG */
-
 #if !(__GNUC__ <= 4 && __GNUC_MINOR__ < 8)
 int wfd_util_get_current_time(unsigned long *cur_time);
 #endif

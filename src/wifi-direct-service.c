@@ -12,6 +12,7 @@
 #include "wifi-direct-oem.h"
 #include "wifi-direct-service.h"
 #include "wifi-direct-util.h"
+#include "wifi-direct-log.h"
 
 
 int wfd_service_add(int type, char *info_str, int *service_id)
