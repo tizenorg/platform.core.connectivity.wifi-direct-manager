@@ -22,6 +22,8 @@
 #ifndef __WIFI_DIRECT_IPC_H__
 #define __WIFI_DIRECT_IPC_H__
 
+#include "wifi-direct-error.h"
+
 #define true 1
 #define false 0
 
@@ -59,142 +61,128 @@ typedef unsigned int ipv4_addr_t;
 #define VCONFKEY_SUBNET_MASK "memory/private/wifi_direct_manager/p2p_subnet_mask"
 #define VCONFKEY_GATEWAY "memory/private/wifi_direct_manager/p2p_gateway"
 
-typedef enum
-{
-	WIFI_DIRECT_CMD_INVALID,
-	WIFI_DIRECT_CMD_REGISTER,
-	WIFI_DIRECT_CMD_INIT_ASYNC_SOCKET,
-	WIFI_DIRECT_CMD_DEREGISTER,
-	WIFI_DIRECT_CMD_GET_LINK_STATUS,
-	WIFI_DIRECT_CMD_ACTIVATE,
-	WIFI_DIRECT_CMD_DEACTIVATE,
-	WIFI_DIRECT_CMD_START_DISCOVERY,
-	WIFI_DIRECT_CMD_START_DISCOVERY_SPECIFIC_CHANNEL,
-	WIFI_DIRECT_CMD_CANCEL_DISCOVERY,
-	WIFI_DIRECT_CMD_IS_LISTENING_ONLY,	// 10
-	WIFI_DIRECT_CMD_GET_DISCOVERY_RESULT,
-
-	WIFI_DIRECT_CMD_CONNECT,
-	WIFI_DIRECT_CMD_SEND_CONNECT_REQ,
-	WIFI_DIRECT_CMD_CANCEL_CONNECT,	// deprecated
-	WIFI_DIRECT_CMD_CANCEL_CONNECTION,
-	WIFI_DIRECT_CMD_REJECT_CONNECTION,
-	WIFI_DIRECT_CMD_DISCONNECT,
-	WIFI_DIRECT_CMD_DISCONNECT_ALL,
-	WIFI_DIRECT_CMD_GET_CONNECTED_PEERS_INFO,
-
-	WIFI_DIRECT_CMD_CREATE_GROUP,	// 20
-	WIFI_DIRECT_CMD_DESTROY_GROUP,
-	WIFI_DIRECT_CMD_IS_GROUPOWNER,
-	WIFI_DIRECT_CMD_IS_AUTONOMOUS_GROUP,
-
-	WIFI_DIRECT_CMD_GET_SSID,
-	WIFI_DIRECT_CMD_SET_SSID,
-	WIFI_DIRECT_CMD_GET_IP_ADDR,
-	WIFI_DIRECT_CMD_GET_MAC_ADDR,
-	WIFI_DIRECT_CMD_GET_CONFIG,
-	WIFI_DIRECT_CMD_SET_CONFIG,
-
-	WIFI_DIRECT_CMD_ACTIVATE_PUSHBUTTON,	// 30
-	WIFI_DIRECT_CMD_SET_WPS_PIN,
-	WIFI_DIRECT_CMD_GET_WPS_PIN,
-	WIFI_DIRECT_CMD_GENERATE_WPS_PIN,
-	WIFI_DIRECT_CMD_SET_WPA,
-	WIFI_DIRECT_CMD_GET_SUPPORTED_WPS_MODE,
-	WIFI_DIRECT_CMD_GET_LOCAL_WPS_MODE,
-	WIFI_DIRECT_CMD_GET_REQ_WPS_MODE,
-	WIFI_DIRECT_CMD_SET_REQ_WPS_MODE,
-
-	WIFI_DIRECT_CMD_SET_GO_INTENT,
-	WIFI_DIRECT_CMD_GET_GO_INTENT,	// 40
-	WIFI_DIRECT_CMD_SET_MAX_CLIENT,
-	WIFI_DIRECT_CMD_GET_MAX_CLIENT,
-	WIFI_DIRECT_CMD_SET_AUTOCONNECTION_MODE,
-	WIFI_DIRECT_CMD_IS_AUTOCONNECTION_MODE,
-	WIFI_DIRECT_CMD_IS_DISCOVERABLE,
-
-	WIFI_DIRECT_CMD_GET_OPERATING_CHANNEL,
-	WIFI_DIRECT_CMD_ACTIVATE_PERSISTENT_GROUP,
-	WIFI_DIRECT_CMD_DEACTIVATE_PERSISTENT_GROUP,
-	WIFI_DIRECT_CMD_IS_PERSISTENT_GROUP_ACTIVATED,
-	WIFI_DIRECT_CMD_GET_PERSISTENT_GROUP_INFO,	// 50
-	WIFI_DIRECT_CMD_REMOVE_PERSISTENT_GROUP,
-	WIFI_DIRECT_CMD_GET_DEVICE_NAME,
-	WIFI_DIRECT_CMD_SET_DEVICE_NAME,
-
-	WIFI_DIRECT_CMD_SET_OEM_LOGLEVEL,
-	WIFI_DIRECT_CMD_GET_PEER_INFO,
-	WIFI_DIRECT_CMD_SET_PASSPHRASE,
-	WIFI_DIRECT_CMD_GET_PASSPHRASE,
-	WIFI_DIRECT_CMD_SET_AUTOCONNECTION_PEER,
-
-#ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
-	WIFI_DIRECT_CMD_REGISTER_LOCAL_SERVICE,
-	WIFI_DIRECT_CMD_DEREGISTER_LOCAL_SERVICE,
-	WIFI_DIRECT_CMD_START_SERVICE_DISCOVERY,
-	WIFI_DIRECT_CMD_CANCEL_SERVICE_DISCOVERY,	//60
-
-	WIFI_DIRECT_CMD_REGISTER_SERVICE,
-	WIFI_DIRECT_CMD_DEREGISTER_SERVICE,
-#endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
-
-#ifdef TIZEN_FEATURE_WIFI_DISPLAY
-	WIFI_DIRECT_CMD_INIT_MIRACAST,
-	WIFI_DIRECT_CMD_INIT_DISPLAY,
-	WIFI_DIRECT_CMD_DEINIT_DISPLAY,
-	WIFI_DIRECT_CMD_SET_DISPLAY,
-	WIFI_DIRECT_CMD_SET_DISPLAY_AVAILABILITY,
-	WIFI_DIRECT_CMD_GET_PEER_DISPLAY_TYPE,
-	WIFI_DIRECT_CMD_GET_PEER_DISPLAY_AVAILABILITY,
-	WIFI_DIRECT_CMD_GET_PEER_DISPLAY_HDCP,
-	WIFI_DIRECT_CMD_GET_PEER_DISPLAY_PORT,
-	WIFI_DIRECT_CMD_GET_PEER_DISPLAY_THROUGHPUT,
-#endif /* TIZEN_FEATURE_WIFI_DISPLAY */
-
-
-
-	WIFI_DIRECT_CMD_MAX
-} wifi_direct_cmd_e;
+/**
+ * Wi-Fi Direct connection state
+ */
+typedef enum {
+	WFD_EVENT_CONNECTION_REQ,  /**< Connection is requested */
+	WFD_EVENT_CONNECTION_WPS_REQ,  /**< WPS is requested */
+	WFD_EVENT_CONNECTION_IN_PROGRESS,  /**< Connection in progress */
+	WFD_EVENT_CONNECTION_RSP,  /**< Connected */
+	WFD_EVENT_DISASSOCIATION_IND,  /**< Disconnected by remote Group Client */
+	WFD_EVENT_DISCONNECTION_RSP,  /**< Disconnected by local device */
+	WFD_EVENT_DISCONNECTION_IND,  /**< Disconnected by remote Group Owner */
+	WFD_EVENT_GROUP_CREATED,  /**< Group is created */
+	WFD_EVENT_GROUP_DESTROYED,  /**< Group is destroyed */
+} wfd_connection_event_e;
 
 /**
- * Wi-Fi Direct client event for IPC
+ * @brief Enumeration for Wi-Fi Direct secondary device type.
+ * @since_tizen 2.3
  */
-typedef enum
-{
-	WIFI_DIRECT_CLI_EVENT_INVALID = -1,					/**< */
+typedef enum {
+	WFD_SECONDARY_DEVICE_TYPE_COMPUTER_PC = 1,  /**< PC */
+	WFD_SECONDARY_DEVICE_TYPE_COMPUTER_SERVER = 2,  /**< Server */
+	WFD_SECONDARY_DEVICE_TYPE_COMPUTER_MEDIA_CENTER = 3,  /**< Media Center */
+	WFD_SECONDARY_DEVICE_TYPE_COMPUTER_UMPC = 4,  /**< UMPC */
+	WFD_SECONDARY_DEVICE_TYPE_COMPUTER_NOTEBOOK = 5,  /**< Notebook */
+	WFD_SECONDARY_DEVICE_TYPE_COMPUTER_DESKTOP = 6,  /**< Desktop */
+	WFD_SECONDARY_DEVICE_TYPE_COMPUTER_MID = 7,  /**< MID */
+	WFD_SECONDARY_DEVICE_TYPE_COMPUTER_NETBOOK = 8,  /**< Netbook */
+	WFD_SECONDARY_DEVICE_TYPE_INPUT_KEYBOARD = 1,  /**< Keyboard */
+	WFD_SECONDARY_DEVICE_TYPE_INPUT_MOUSE = 2,  /**< Mouse */
+	WFD_SECONDARY_DEVICE_TYPE_INPUT_JOYSTICK = 3,  /**< Joystick */
+	WFD_SECONDARY_DEVICE_TYPE_INPUT_TRACKBALL = 4,  /**< Trackball */
+	WFD_SECONDARY_DEVICE_TYPE_INPUT_CONTROLLER = 5,  /**< Controller */
+	WFD_SECONDARY_DEVICE_TYPE_INPUT_REMOTE = 6,  /**< Remote */
+	WFD_SECONDARY_DEVICE_TYPE_INPUT_TOUCHSCREEN = 7,  /**< Touchscreen */
+	WFD_SECONDARY_DEVICE_TYPE_INPUT_BIOMETRIC_READER = 8,  /**< Biometric reader */
+	WFD_SECONDARY_DEVICE_TYPE_INPUT_BARCODE_READER = 9,  /**< Barcode reader */
+	WFD_SECONDARY_DEVICE_TYPE_PRINTER_PRINTER = 1,  /**< Printer */
+	WFD_SECONDARY_DEVICE_TYPE_PRINTER_SCANNER = 2,  /**< Scanner */
+	WFD_SECONDARY_DEVICE_TYPE_PRINTER_FAX = 3,  /**< Fax */
+	WFD_SECONDARY_DEVICE_TYPE_PRINTER_COPIER = 4,  /**< Copier */
+	WFD_SECONDARY_DEVICE_TYPE_PRINTER_ALL_IN_ONE = 5,  /**< All-in-one */
+	WFD_SECONDARY_DEVICE_TYPE_CAMERA_DIGITAL_STILL = 1,  /**< Digital still camera */
+	WFD_SECONDARY_DEVICE_TYPE_CAMERA_VIDEO = 2,  /**< Video camera */
+	WFD_SECONDARY_DEVICE_TYPE_CAMERA_WEBCAM = 3,  /**< Webcam */
+	WFD_SECONDARY_DEVICE_TYPE_CAMERA_SECURITY = 4,     /**< Security camera */
+	WFD_SECONDARY_DEVICE_TYPE_STORAGE_NAS = 1,  /**< NAS */
+	WFD_SECONDARY_DEVICE_TYPE_NETWORK_INFRA_AP = 1,  /**< AP */
+	WFD_SECONDARY_DEVICE_TYPE_NETWORK_INFRA_ROUTER = 2,  /**< Router */
+	WFD_SECONDARY_DEVICE_TYPE_NETWORK_INFRA_SWITCH = 3,  /**< Switch */
+	WFD_SECONDARY_DEVICE_TYPE_NETWORK_INFRA_GATEWAY = 4,  /**< Gateway */
+	WFD_SECONDARY_DEVICE_TYPE_DISPLAY_TV = 1,  /**< TV */
+	WFD_SECONDARY_DEVICE_TYPE_DISPLAY_PIC_FRAME = 2,  /**< Picture frame */
+	WFD_SECONDARY_DEVICE_TYPE_DISPLAY_PROJECTOR = 3,  /**< Projector */
+	WFD_SECONDARY_DEVICE_TYPE_DISPLAY_MONITOR = 4,  /**< Monitor */
+	WFD_SECONDARY_DEVICE_TYPE_MULTIMEDIA_DAR = 1,  /**< DAR */
+	WFD_SECONDARY_DEVICE_TYPE_MULTIMEDIA_PVR = 2,  /**< PVR */
+	WFD_SECONDARY_DEVICE_TYPE_MULTIMEDIA_MCX = 3,  /**< MCX */
+	WFD_SECONDARY_DEVICE_TYPE_MULTIMEDIA_STB = 4,  /**< Set-top box */
+	WFD_SECONDARY_DEVICE_TYPE_MULTIMEDIA_MS_MA_ME = 5,  /**< Media Server / Media Adapter / Media Extender */
+	WFD_SECONDARY_DEVICE_TYPE_MULTIMEDIA_PVP = 6,  /**< Portable video player */
+	WFD_SECONDARY_DEVICE_TYPE_GAME_XBOX = 1,  /**< Xbox */
+	WFD_SECONDARY_DEVICE_TYPE_GAME_XBOX_360 = 2,  /**< Xbox 360 */
+	WFD_SECONDARY_DEVICE_TYPE_GAME_PS = 3,  /**< Playstation */
+	WFD_SECONDARY_DEVICE_TYPE_GAME_CONSOLE = 4,  /**< Console */
+	WFD_SECONDARY_DEVICE_TYPE_GAME_PORTABLE = 5,  /**< Portable */
+	WFD_SECONDARY_DEVICE_TYPE_TELEPHONE_WINDOWS_MOBILE = 1,  /**< Windows Mobile */
+	WFD_SECONDARY_DEVICE_TYPE_TELEPHONE_PHONE_SINGLE = 2,  /**< Phone - single mode */
+	WFD_SECONDARY_DEVICE_TYPE_TELEPHONE_PHONE_DUAL = 3,  /**< Phone - dual mode */
+	WFD_SECONDARY_DEVICE_TYPE_TELEPHONE_SMARTPHONE_SINGLE = 4,  /**< Smart Phone - single mode */
+	WFD_SECONDARY_DEVICE_TYPE_TELEPHONE_SMARTPHONE_DUAL = 5,  /**< Smart Phone - dual mode */
+	WFD_SECONDARY_DEVICE_TYPE_AUDIO_TUNER = 1,  /**< Tuner */
+	WFD_SECONDARY_DEVICE_TYPE_AUDIO_SPEAKER = 2,  /**< Speaker */
+	WFD_SECONDARY_DEVICE_TYPE_AUDIO_PMP = 3, /**< Portable Music Player */
+	WFD_SECONDARY_DEVICE_TYPE_AUDIO_HEADSET = 4,  /**< Headset */
+	WFD_SECONDARY_DEVICE_TYPE_AUDIO_HEADPHONE = 5,  /**< Headphone */
+	WFD_SECONDARY_DEVICE_TYPE_AUDIO_MIC = 6,  /**< Microphone */
+} wfd_secondary_device_type_e;
 
-	WIFI_DIRECT_CLI_EVENT_ACTIVATION,						/**< */
-	WIFI_DIRECT_CLI_EVENT_DEACTIVATION,					/**< */
+/**
+ * @brief Enumeration for Wi-Fi Direct primary device type.
+ * @since_tizen 2.3
+ */
+typedef enum {
+	WFD_PRIMARY_DEVICE_TYPE_COMPUTER = 1,  /**< Computer */
+	WFD_PRIMARY_DEVICE_TYPE_INPUT_DEVICE = 2,  /**< Input device */
+	WFD_PRIMARY_DEVICE_TYPE_PRINTER = 3,  /**< Printer */
+	WFD_PRIMARY_DEVICE_TYPE_CAMERA = 4,  /**< Camera */
+	WFD_PRIMARY_DEVICE_TYPE_STORAGE = 5,  /**< Storage */
+	WFD_PRIMARY_DEVICE_TYPE_NETWORK_INFRA = 6,  /**< Network Infrastructure */
+	WFD_PRIMARY_DEVICE_TYPE_DISPLAY = 7,  /**< Display */
+	WFD_PRIMARY_DEVICE_TYPE_MULTIMEDIA_DEVICE = 8,  /**< Multimedia device */
+	WFD_PRIMARY_DEVICE_TYPE_GAME_DEVICE = 9,  /**< Game device */
+	WFD_PRIMARY_DEVICE_TYPE_TELEPHONE = 10,  /**< Telephone */
+	WFD_PRIMARY_DEVICE_TYPE_AUDIO = 11,  /**< Audio */
+	WFD_PRIMARY_DEVICE_TYPE_OTHER =  255  /**< Others */
+} wfd_primary_device_type_e;
 
-	WIFI_DIRECT_CLI_EVENT_DISCOVER_START,				/**< 80211 scan*/
-	WIFI_DIRECT_CLI_EVENT_DISCOVER_START_LISTEN_ONLY,	/**< listen only mode*/
-	WIFI_DIRECT_CLI_EVENT_DISCOVER_START_SEARCH_LISTEN,	/**< search, listen*/
-	WIFI_DIRECT_CLI_EVENT_DISCOVER_END,					/**< */
-	WIFI_DIRECT_CLI_EVENT_DISCOVER_FOUND_PEERS,			/**< */
-	WIFI_DIRECT_CLI_EVENT_DISCOVER_LOST_PEERS,			/**< */
+/**
+ * @brief Enumeration for Wi-Fi WPS type.
+ * @since_tizen 2.3
+ */
+typedef enum {
+	WFD_WPS_TYPE_NONE = 0x00,  /**< No WPS type */
+	WFD_WPS_TYPE_PBC = 0x01,  /**< Push Button Configuration */
+	WFD_WPS_TYPE_PIN_DISPLAY = 0x02,  /**< Display PIN code */
+	WFD_WPS_TYPE_PIN_KEYPAD = 0x04,  /**< Provide the keypad to input the PIN */
+} wfd_wps_type_e;
 
-	WIFI_DIRECT_CLI_EVENT_CONNECTION_START,				/**< */
-	WIFI_DIRECT_CLI_EVENT_CONNECTION_REQ,				/**< */
-	WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP,				/**< */
-	WIFI_DIRECT_CLI_EVENT_CONNECTION_WPS_REQ,			/**< */
 
-	WIFI_DIRECT_CLI_EVENT_DISCONNECTION_RSP,				/**< */
-	WIFI_DIRECT_CLI_EVENT_DISCONNECTION_IND,				/**< */
-	WIFI_DIRECT_CLI_EVENT_DISASSOCIATION_IND,				/**< */
+/**
+ * @brief Enumeration for Wi-Fi Direct Discovery Channel.
+ * @since_tizen 2.3
+ */
+typedef enum {
+	WFD_DISCOVERY_FULL_SCAN = 0,  /**< Scan full channel*/
+	WFD_DISCOVERY_SOCIAL_CHANNEL = 1611,  /**< Scan social channel*/
+	WFD_DISCOVERY_CHANNEL1 = 1,  /**< Scan channel 1*/
+	WFD_DISCOVERY_CHANNEL6 = 6,  /**< Scan channel 6*/
+	WFD_DISCOVERY_CHANNEL11 = 11,  /**< Scan channel 11*/
+} wfd_discovery_channel_e;
 
-	WIFI_DIRECT_CLI_EVENT_GROUP_CREATE_RSP,				/**< */
-	WIFI_DIRECT_CLI_EVENT_GROUP_DESTROY_RSP,				/**< */
-
-	WIFI_DIRECT_CLI_EVENT_IP_LEASED_IND,				/**< */
-
-#ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
-	WIFI_DIRECT_CLI_EVENT_SERVICE_DISCOVERY_STARTED,
-	WIFI_DIRECT_CLI_EVENT_SERVICE_DISCOVERY_FOUND,
-	WIFI_DIRECT_CLI_EVENT_SERVICE_DISCOVERY_FINISHED,
-#endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
-
-	WIFI_DIRECT_CLI_EVENT_MAX,
-} wfd_client_event_e;
 
 /**
  * Wi-Fi Direct configuration data structure for IPC
@@ -203,15 +191,15 @@ typedef struct
 {
 	char device_name[WIFI_DIRECT_MAX_DEVICE_NAME_LEN + 1];
 	int channel;
-	wifi_direct_wps_type_e wps_config;
+	wfd_wps_type_e wps_config;
 	int max_clients;
-	bool hide_SSID;
+	gboolean hide_SSID;
 	int group_owner_intent;
-	bool want_persistent_group;
-	bool listen_only;
-	bool auto_connection;
-	wifi_direct_primary_device_type_e primary_dev_type;
-	wifi_direct_secondary_device_type_e secondary_dev_type;
+	gboolean want_persistent_group;
+	gboolean listen_only;
+	gboolean auto_connection;
+	wfd_primary_device_type_e primary_dev_type;
+	wfd_secondary_device_type_e secondary_dev_type;
 } wfd_config_data_s;
 
 
@@ -224,19 +212,15 @@ typedef struct
 	unsigned char mac_address[6];
 	unsigned char intf_address[6];
 	int channel;
-	bool is_connected;
-	bool is_group_owner;
-	bool is_persistent_go;
+	gboolean is_connected;
+	gboolean is_group_owner;
+	gboolean is_persistent_go;
 	unsigned int category;
 	unsigned int subcategory;
-
 	unsigned int services;
-
 	unsigned int wps_device_pwd_id;
 	unsigned int wps_cfg_methods;
-
-	bool is_wfd_device;
-
+	gboolean is_wfd_device;
 } wfd_discovery_entry_s;
 
 
@@ -250,15 +234,13 @@ typedef struct
 	unsigned char mac_address[6];
 	unsigned char intf_address[6];
 	int channel;
-	bool is_p2p;
+	gboolean is_p2p;
 	unsigned short category;
 	unsigned short subcategory;
-
 	unsigned int services;
-
-	bool is_wfd_device;
-
+	gboolean is_wfd_device;
 } wfd_connected_peer_info_s;
+
 
 typedef struct
 {
@@ -266,43 +248,5 @@ typedef struct
 	char ssid[WIFI_DIRECT_MAX_SSID_LEN + 1];
 	unsigned char go_mac_address[6];
 } wfd_persistent_group_info_s;
-
-typedef struct
-{
-	int int1;
-	int int2;
-	int int3;
-	unsigned char mac_addr[6];
-} wifi_direct_client_request_data_s;
-
-
-typedef struct
-{
-	wifi_direct_cmd_e cmd;
-	int client_id;
-	unsigned int cmd_data_len;
-	wifi_direct_client_request_data_s data;
-} wifi_direct_client_request_s;
-
-typedef struct
-{
-	wifi_direct_cmd_e cmd;
-	wifi_direct_error_e result;
-	int client_id;
-	int param1;
-	char param2[64];
-	char param3[32];
-	int data_length;
-} wifi_direct_client_response_s;
-
-typedef struct
-{
-	wfd_client_event_e event;
-	wifi_direct_error_e error;
-	int type;
-	char param1[64];
-	char param2[256];
-} wifi_direct_client_noti_s;
-
 
 #endif	/* __WIFI_DIRECT_IPC_H__ */

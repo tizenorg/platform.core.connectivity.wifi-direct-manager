@@ -43,9 +43,11 @@
 #include "wifi-direct-group.h"
 #include "wifi-direct-session.h"
 #include "wifi-direct-event.h"
-#include "wifi-direct-client.h"
 #include "wifi-direct-state.h"
 #include "wifi-direct-util.h"
+#include "wifi-direct-error.h"
+#include "wifi-direct-log.h"
+#include "wifi-direct-dbus.h"
 
 
 static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *data)
@@ -135,18 +137,9 @@ static void __wfd_process_deactivated(wfd_manager_s *manager, wfd_oem_event_s *e
 {
  	__WDS_LOG_FUNC_ENTER__;
 
-	wifi_direct_client_noti_s noti;
-
-	if (event == NULL || manager == NULL) {
-		WDS_LOGE("Invalid parameter");
-		__WDS_LOG_FUNC_EXIT__;
-		return;
-	}
-
-	memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
-	noti.event = WIFI_DIRECT_CLI_EVENT_DEACTIVATION;
-	noti.error = WIFI_DIRECT_ERROR_NONE;
-	wfd_client_send_event(manager, &noti);
+	wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+				     "Deactivation",
+				     g_variant_new("(i)", WIFI_DIRECT_ERROR_NONE));
 
 	wfd_destroy_group(manager, GROUP_IFNAME);
 	wfd_destroy_session(manager);
@@ -169,14 +162,7 @@ static void __wfd_process_peer_found(wfd_manager_s *manager, wfd_oem_event_s *ev
 	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_oem_dev_data_s *edata = NULL;
-	wifi_direct_client_noti_s noti;
 	int res = 0;
-
-	if (event == NULL || manager == NULL) {
-		WDS_LOGE("Invalid parameter");
-		__WDS_LOG_FUNC_EXIT__;
-		return;
-	}
 
 	edata = (wfd_oem_dev_data_s*) event->edata;
 	if (!edata || event->edata_type != WFD_OEM_EDATA_TYPE_DEVICE) {
@@ -195,11 +181,11 @@ static void __wfd_process_peer_found(wfd_manager_s *manager, wfd_oem_event_s *ev
 	if (manager->state > WIFI_DIRECT_STATE_ACTIVATING &&
 			manager->state != WIFI_DIRECT_STATE_CONNECTING &&
 			manager->state != WIFI_DIRECT_STATE_DISCONNECTING) {
-		memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
-		snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(edata->p2p_dev_addr));
-		noti.event = WIFI_DIRECT_CLI_EVENT_DISCOVER_FOUND_PEERS;
-		noti.error = WIFI_DIRECT_ERROR_NONE;
-		wfd_client_send_event(manager, &noti);
+		char peer_mac_address[MACSTR_LEN+1] = {0, };
+		snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(edata->p2p_dev_addr));
+		wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+					     "PeerFound",
+					     g_variant_new("(s)", peer_mac_address));
 	}
 
  	__WDS_LOG_FUNC_EXIT__;
@@ -210,15 +196,9 @@ static void __wfd_process_peer_disappeared(wfd_manager_s *manager, wfd_oem_event
 {
  	__WDS_LOG_FUNC_ENTER__;
 
- 	wifi_direct_client_noti_s noti;
 	wfd_session_s *session = NULL;
 	wfd_device_s *peer = NULL;
-
-	if (event == NULL || manager == NULL) {
-		WDS_LOGE("Invalid parameter");
-		__WDS_LOG_FUNC_EXIT__;
-		return;
-	}
+	char peer_mac_address[MACSTR_LEN+1] = {0, };
 
 	session = manager->session;
 	if(session != NULL && session->peer != NULL) {
@@ -233,11 +213,10 @@ static void __wfd_process_peer_disappeared(wfd_manager_s *manager, wfd_oem_event
 
 	wfd_remove_peer(manager, event->dev_addr);
 
-	memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
-	snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(event->dev_addr));
-	noti.event = WIFI_DIRECT_CLI_EVENT_DISCOVER_LOST_PEERS;
-	noti.error = WIFI_DIRECT_ERROR_NONE;
-	wfd_client_send_event(manager, &noti);
+	snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(event->dev_addr));
+	wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+				     "PeerLost",
+				     g_variant_new("(s)", peer_mac_address));
 
  	__WDS_LOG_FUNC_EXIT__;
  	return;
@@ -246,14 +225,6 @@ static void __wfd_process_peer_disappeared(wfd_manager_s *manager, wfd_oem_event
 static void __wfd_process_discovery_finished(wfd_manager_s *manager, wfd_oem_event_s *event)
 {
  	__WDS_LOG_FUNC_ENTER__;
-
- 	wifi_direct_client_noti_s noti;
-
-	if (event == NULL || manager == NULL) {
-		WDS_LOGE("Invalid parameter");
-		__WDS_LOG_FUNC_EXIT__;
-		return;
-	}
 
 	if (manager->state != WIFI_DIRECT_STATE_DISCOVERING &&
 			manager->state != WIFI_DIRECT_STATE_ACTIVATED) {
@@ -277,10 +248,9 @@ static void __wfd_process_discovery_finished(wfd_manager_s *manager, wfd_oem_eve
 	}
 	manager->scan_mode = WFD_SCAN_MODE_NONE;
 
-	memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
-	noti.event = WIFI_DIRECT_CLI_EVENT_DISCOVER_END;
-	noti.error = WIFI_DIRECT_ERROR_NONE;
-	wfd_client_send_event(manager, &noti);
+	wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+				     "DiscoveryFinished",
+				     NULL);
 
 	__WDS_LOG_FUNC_EXIT__;
 	return;
@@ -292,14 +262,8 @@ static void __wfd_process_prov_disc_req(wfd_manager_s *manager, wfd_oem_event_s 
 
 	wfd_device_s *peer = NULL;
  	int res = 0;
-
-	if (event == NULL || manager == NULL) {
-		WDS_LOGE("Invalid parameter");
-		__WDS_LOG_FUNC_EXIT__;
-		return;
-	}
-
 	wfd_group_s *group = (wfd_group_s*) manager->group;
+
 	if (group && group->role == WFD_DEV_ROLE_GC &&
 						event->event_id == WFD_OEM_EVENT_PROV_DISC_REQ) {
 		WDS_LOGD("Device has GC role - ignore this provision request");
@@ -352,12 +316,6 @@ static void __wfd_process_prov_disc_resp(wfd_manager_s *manager, wfd_oem_event_s
 	wfd_device_s *peer = NULL;
 	int res = 0;
 
-	if (event == NULL || manager == NULL) {
-		WDS_LOGE("Invalid parameter");
-		__WDS_LOG_FUNC_EXIT__;
-		return;
-	}
-
 #ifdef CTRL_IFACE_DBUS
 	wfd_oem_dev_data_s *edata = NULL;
 
@@ -401,14 +359,8 @@ static void __wfd_process_prov_disc_fail(wfd_manager_s *manager, wfd_oem_event_s
 	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_session_s *session = NULL;
-	wifi_direct_client_noti_s noti;
 	unsigned char *peer_addr = NULL;
-
-	if (event == NULL || manager == NULL) {
-		WDS_LOGE("Invalid parameter");
-		__WDS_LOG_FUNC_EXIT__;
-		return;
-	}
+	char peer_mac_address[MACSTR_LEN+1] = {0, };
 
 	session = (wfd_session_s*) manager->session;
 	if (!session) {
@@ -424,11 +376,12 @@ static void __wfd_process_prov_disc_fail(wfd_manager_s *manager, wfd_oem_event_s
 		return;
 	}
 
-	memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
-	noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
-	noti.error = WIFI_DIRECT_ERROR_CONNECTION_FAILED;
-	snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
-	wfd_client_send_event(manager, &noti);
+	snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
+	wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+				     "Connection",
+				     g_variant_new("(iis)", WIFI_DIRECT_ERROR_CONNECTION_FAILED,
+							    WFD_EVENT_CONNECTION_RSP,
+							    peer_mac_address));
 
 	if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
 		wfd_group_s *group = (wfd_group_s*) manager->group;
@@ -468,14 +421,6 @@ static void __wfd_process_go_neg_req(wfd_manager_s *manager, wfd_oem_event_s *ev
 	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_session_s *session = NULL;
-	wifi_direct_client_noti_s noti;
-
-	if (event == NULL || manager == NULL) {
-		WDS_LOGE("Invalid parameter");
-		__WDS_LOG_FUNC_EXIT__;
-		return;
-	}
-
 	wfd_group_s *group = (wfd_group_s*) manager->group;
 	if (group && group->role == WFD_DEV_ROLE_GC) {
 		WDS_LOGD("Device has GC role - ignore this go neg request");
@@ -544,11 +489,13 @@ static void __wfd_process_go_neg_req(wfd_manager_s *manager, wfd_oem_event_s *ev
 		wfd_session_timer(session, 1);
 		wfd_state_set(manager, WIFI_DIRECT_STATE_CONNECTING);
 
-		memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
-		noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_REQ;
-		noti.error = WIFI_DIRECT_ERROR_NONE;
-		g_snprintf(noti.param1, sizeof(noti.param1), MACSTR, MAC2STR(event->dev_addr));
-		wfd_client_send_event(manager, &noti);
+		char peer_mac_address[MACSTR_LEN+1] = {0, };
+		g_snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(event->dev_addr));
+		wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+					     "Connection",
+					     g_variant_new("(iis)", WIFI_DIRECT_ERROR_NONE,
+								    WFD_EVENT_CONNECTION_REQ,
+								    peer_mac_address));
 	} else {
 		wfd_session_process_event(manager, event);
 	}
@@ -562,14 +509,8 @@ static void __wfd_process_go_neg_req(wfd_manager_s *manager, wfd_oem_event_s *ev
 
 	wfd_session_s *session = NULL;
 	wfd_oem_conn_data_s *edata = NULL;
-	wifi_direct_client_noti_s noti;
 	unsigned char *peer_addr = NULL;
-
-	if (event == NULL || manager == NULL) {
-		WDS_LOGE("Invalid parameter");
-		__WDS_LOG_FUNC_EXIT__;
-		return;
-	}
+	char peer_mac_address[MACSTR_LEN] = {0, };
 
 	session = (wfd_session_s*) manager->session;
 	if (!session) {
@@ -603,11 +544,12 @@ static void __wfd_process_go_neg_req(wfd_manager_s *manager, wfd_oem_event_s *ev
 		return;
 	}
 
-	memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
-	noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
-	noti.error = WIFI_DIRECT_ERROR_CONNECTION_FAILED;
-	snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
-	wfd_client_send_event(manager, &noti);
+	snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
+	wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+				     "Connection",
+				     g_variant_new("(iis)", WIFI_DIRECT_ERROR_CONNECTION_FAILED,
+							    WFD_EVENT_CONNECTION_RSP,
+							    peer_mac_address));
 
 	wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
 	wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
@@ -627,12 +569,6 @@ static void __wfd_process_go_neg_done(wfd_manager_s *manager, wfd_oem_event_s *e
 	wfd_session_s *session = NULL;
 	wfd_oem_conn_data_s *edata = NULL;
 	wfd_device_s *peer = NULL;
-
-	if (event == NULL || manager == NULL) {
-		WDS_LOGE("Invalid parameter");
-		__WDS_LOG_FUNC_EXIT__;
-		return;
-	}
 
 	edata = (wfd_oem_conn_data_s*) event->edata;
 	if (edata == NULL) {
@@ -658,14 +594,7 @@ static void __wfd_process_wps_fail(wfd_manager_s *manager, wfd_oem_event_s *even
 	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_session_s *session = NULL;
-	wifi_direct_client_noti_s noti;
 	unsigned char *peer_addr = NULL;
-
-	if (event == NULL || manager == NULL) {
-		WDS_LOGE("Invalid parameter");
-		__WDS_LOG_FUNC_EXIT__;
-		return;
-	}
 
 	session = (wfd_session_s*) manager->session;
 	if (!session) {
@@ -681,11 +610,13 @@ static void __wfd_process_wps_fail(wfd_manager_s *manager, wfd_oem_event_s *even
 		return;
 	}
 
-	memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
-	noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
-	noti.error = WIFI_DIRECT_ERROR_CONNECTION_FAILED;
-	snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
-	wfd_client_send_event(manager, &noti);
+	char peer_mac_address[MACSTR_LEN+1] = {0, };
+	g_snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
+	wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+				     "Connection",
+				     g_variant_new("(iis)", WIFI_DIRECT_ERROR_CONNECTION_FAILED,
+							    WFD_EVENT_CONNECTION_RSP,
+							    peer_mac_address));
 
 	if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
 		wfd_group_s *group = (wfd_group_s*) manager->group;
@@ -720,29 +651,23 @@ static void __wfd_process_wps_fail(wfd_manager_s *manager, wfd_oem_event_s *even
 	return;
 }
 
- static void __wfd_process_wps_done(wfd_manager_s *manager, wfd_oem_event_s *event)
- {
+static void __wfd_process_wps_done(wfd_manager_s *manager, wfd_oem_event_s *event)
+{
 	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_session_process_event(manager, event);
 
 	__WDS_LOG_FUNC_EXIT__;
 	return;
- }
+}
 
 static void __wfd_process_key_neg_fail(wfd_manager_s *manager, wfd_oem_event_s *event)
 {
 	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_session_s *session = NULL;
-	wifi_direct_client_noti_s noti;
 	unsigned char *peer_addr = NULL;
-
-	if (event == NULL || manager == NULL) {
-		WDS_LOGE("Invalid parameter");
-		__WDS_LOG_FUNC_EXIT__;
-		return;
-	}
+	char peer_mac_address[MACSTR_LEN+1] = {0, };
 
 	session = (wfd_session_s*) manager->session;
 	if (!session) {
@@ -758,11 +683,12 @@ static void __wfd_process_key_neg_fail(wfd_manager_s *manager, wfd_oem_event_s *
 		return;
 	}
 
-	memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
-	noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
-	noti.error = WIFI_DIRECT_ERROR_CONNECTION_FAILED;
-	snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
-	wfd_client_send_event(manager, &noti);
+	g_snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
+	wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+				     "Connection",
+				     g_variant_new("(iis)", WIFI_DIRECT_ERROR_CONNECTION_FAILED,
+							    WFD_EVENT_CONNECTION_RSP,
+							    peer_mac_address));
 
 	if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
 		wfd_group_s *group = (wfd_group_s*) manager->group;
@@ -827,13 +753,6 @@ static void __wfd_process_group_created(wfd_manager_s *manager, wfd_oem_event_s 
 
 	wfd_group_s *group = NULL;
 	wfd_session_s *session = NULL;
-	wifi_direct_client_noti_s noti;
-
-	if (event == NULL || manager == NULL) {
-		WDS_LOGE("Invalid parameter");
-		__WDS_LOG_FUNC_EXIT__;
-		return;
-	}
 
 	group = (wfd_group_s*) manager->group;
 	session = (wfd_session_s*)manager->session;
@@ -880,7 +799,6 @@ static void __wfd_process_group_created(wfd_manager_s *manager, wfd_oem_event_s 
 		}
 	}
 
-	memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
 	if (group->role == WFD_DEV_ROLE_GC && session) {
 #ifdef TIZEN_FEATURE_IP_OVER_EAPOL
 		wfd_device_s *peer = session->peer;
@@ -892,13 +810,16 @@ static void __wfd_process_group_created(wfd_manager_s *manager, wfd_oem_event_s 
 		wfd_update_peer(manager, peer);
 
 		if(peer->ip_type == WFD_IP_TYPE_OVER_EAPOL) {
+			char peer_mac_address[MACSTR_LEN+1] = {0, };
 
 			wfd_util_ip_over_eap_assign(peer, event->ifname);
 
-			noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
-			noti.error = WIFI_DIRECT_ERROR_NONE;
-			snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer->dev_addr));
-			wfd_client_send_event(manager, &noti);
+			g_snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(peer->dev_addr));
+			wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+						     "Connection",
+						     g_variant_new("(iis)", WIFI_DIRECT_ERROR_NONE,
+									    WFD_EVENT_CONNECTION_RSP,
+									    peer_mac_address));
 
 			wfd_state_set(manager, WIFI_DIRECT_STATE_CONNECTED);
 			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_CONNECTED);
@@ -909,8 +830,8 @@ static void __wfd_process_group_created(wfd_manager_s *manager, wfd_oem_event_s 
 		wfd_peer_clear_all(manager);
 	} else {
 		if (group->flags & WFD_GROUP_FLAG_AUTONOMOUS) {
-			noti.event = WIFI_DIRECT_CLI_EVENT_GROUP_CREATE_RSP;
-			wfd_client_send_event(manager, &noti);
+			wfd_manager_dbus_emit_signal(WFD_MANAGER_GROUP_INTERFACE,
+						     "Created", NULL);
 			wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
 			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
 		}
@@ -923,36 +844,44 @@ static void __wfd_process_group_destroyed(wfd_manager_s *manager, wfd_oem_event_
 {
 	__WDS_LOG_FUNC_ENTER__;
 
-	wifi_direct_client_noti_s noti;
+	char peer_mac_address[MACSTR_LEN+1] = {0, };
+	unsigned char *peer_addr = wfd_session_get_peer_addr(manager->session);
 
-	if (event == NULL || manager == NULL) {
-		WDS_LOGE("Invalid parameter");
-		__WDS_LOG_FUNC_EXIT__;
-		return;
-	}
+	if (peer_addr != NULL)
+		g_snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
+	else
+		g_snprintf(peer_mac_address, MACSTR_LEN, "%s", "");
 
-	memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
 	if (manager->state == WIFI_DIRECT_STATE_DISCONNECTING) {
-		noti.event = WIFI_DIRECT_CLI_EVENT_DISCONNECTION_RSP;
-		noti.error = WIFI_DIRECT_ERROR_NONE;
+		wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+					     "Disconnection",
+					     g_variant_new("(iis)", WIFI_DIRECT_ERROR_NONE,
+								    WFD_EVENT_DISCONNECTION_RSP,
+								    peer_mac_address));
+
 	} else if (manager->state == WIFI_DIRECT_STATE_CONNECTING && manager->session){
-		noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
-		noti.error = WIFI_DIRECT_ERROR_CONNECTION_FAILED;
-		unsigned char *peer_addr = wfd_session_get_peer_addr(manager->session);
-		if(peer_addr != NULL)
-			g_snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
+		wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+					     "Connection",
+					     g_variant_new("(iis)", WIFI_DIRECT_ERROR_CONNECTION_FAILED,
+								    WFD_EVENT_CONNECTION_RSP,
+								    peer_mac_address));
+
 	} else if (manager->state >= WIFI_DIRECT_STATE_CONNECTED) {
-		if(manager->local->dev_role != WFD_DEV_ROLE_GO)
-			noti.event = WIFI_DIRECT_CLI_EVENT_DISCONNECTION_RSP;
-		else
-			noti.event = WIFI_DIRECT_CLI_EVENT_GROUP_DESTROY_RSP;
-		noti.error = WIFI_DIRECT_ERROR_NONE;
+		if (manager->local->dev_role != WFD_DEV_ROLE_GO) {
+			wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+						     "Disconnection",
+						     g_variant_new("(iis)", WIFI_DIRECT_ERROR_NONE,
+									    WFD_EVENT_DISCONNECTION_RSP,
+									    peer_mac_address));
+		} else {
+			wfd_manager_dbus_emit_signal(WFD_MANAGER_GROUP_INTERFACE,
+						     "Destroyed", NULL);
+		}
 	} else {
 		WDS_LOGD("Unexpected event(GROUP_DESTROYED). Ignore it");
 		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
-	wfd_client_send_event(manager, &noti);
 
 	wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
 	wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
@@ -971,14 +900,8 @@ static void __wfd_process_invitation_req(wfd_manager_s *manager, wfd_oem_event_s
 	wfd_device_s *peer = NULL;
 	wfd_session_s *session = NULL;
 	wfd_oem_invite_data_s *edata = NULL;
-	wifi_direct_client_noti_s noti;
 	int res = 0;
-
-	if (event == NULL || manager == NULL) {
-		WDS_LOGE("Invalid parameter");
-		__WDS_LOG_FUNC_EXIT__;
-		return;
-	}
+	char peer_mac_address[MACSTR_LEN+1] = {0, };
 
 	peer = wfd_peer_find_by_dev_addr(manager, event->dev_addr);
 	if (!peer) {
@@ -1015,11 +938,12 @@ static void __wfd_process_invitation_req(wfd_manager_s *manager, wfd_oem_event_s
 		return;
 	}
 
-	memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
-	noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_REQ;
-	noti.error = WIFI_DIRECT_ERROR_NONE;
-	snprintf(noti.param1, sizeof(noti.param1), MACSTR, MAC2STR(event->dev_addr));
-	wfd_client_send_event(manager, &noti);
+	g_snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(event->dev_addr));
+	wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+				     "Connection",
+				     g_variant_new("(iis)", WIFI_DIRECT_ERROR_NONE,
+							    WFD_EVENT_CONNECTION_REQ,
+							    peer_mac_address));
 
 	__WDS_LOG_FUNC_EXIT__;
 	return;
@@ -1040,13 +964,7 @@ static void __wfd_process_sta_connected(wfd_manager_s *manager, wfd_oem_event_s 
 	wfd_session_s *session = NULL;
 	wfd_device_s *peer = NULL;
 	wfd_group_s *group = NULL;
-	wifi_direct_client_noti_s noti;
-
-	if (event == NULL || manager == NULL) {
-		WDS_LOGE("Invalid parameter");
-		__WDS_LOG_FUNC_EXIT__;
-		return;
-	}
+	char peer_mac_address[MACSTR_LEN+1] = {0, };
 
 	// FIXME: Move this code to plugin
 	if (!memcmp(event->intf_addr, manager->local->intf_addr, MACADDR_LEN)) {
@@ -1095,11 +1013,13 @@ static void __wfd_process_sta_connected(wfd_manager_s *manager, wfd_oem_event_s 
 	wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
 	wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
 
-	memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
-	noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
-	noti.error = WIFI_DIRECT_ERROR_NONE;
-	snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer->dev_addr));
-	wfd_client_send_event(manager, &noti);
+	g_snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(peer->dev_addr));
+	wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+				     "Connection",
+				     g_variant_new("(iis)", WIFI_DIRECT_ERROR_NONE,
+							    WFD_EVENT_CONNECTION_RSP,
+							    peer_mac_address));
+
 #ifdef CTRL_IFACE_DBUS
 	wfd_update_peer(manager, peer);
 #endif /* CTRL_IFACE_DBUS */
@@ -1112,15 +1032,17 @@ static void __wfd_process_sta_connected(wfd_manager_s *manager, wfd_oem_event_s 
 		WDS_LOGE("Peer's GO IP [" IPSTR "]", IP2STR((char*) &peer->go_ip_addr));
 	}
 	if(peer->ip_type == WFD_IP_TYPE_OVER_EAPOL) {
+		char peer_mac_address[MACSTR_LEN+1] = {0,};
+		char assigned_ip_address[IPSTR_LEN+1] = {0,};
+
 		memcpy(peer->ip_addr, peer->client_ip_addr, IPADDR_LEN);
 
-		wifi_direct_client_noti_s noti;
-		memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
-		noti.event = WIFI_DIRECT_CLI_EVENT_IP_LEASED_IND;
-		noti.error = WIFI_DIRECT_ERROR_NONE;
-		snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer->dev_addr));
-		snprintf(noti.param2, IPSTR_LEN, IPSTR, IP2STR(peer->ip_addr));
-		wfd_client_send_event(manager, &noti);
+		g_snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(peer->dev_addr));
+		g_snprintf(assigned_ip_address, IPSTR_LEN, IPSTR, IP2STR(peer->ip_addr));
+		wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+				     "PeerIPAssigned",
+				     g_variant_new("(ss)", peer_mac_address,
+							   assigned_ip_address));
 	} else
 #endif /* TIZEN_FEATURE_IP_OVER_EAPOL */
 	wfd_util_dhcps_wait_ip_leased(peer);
@@ -1136,14 +1058,8 @@ static void __wfd_process_sta_disconnected(wfd_manager_s *manager, wfd_oem_event
 
 	wfd_group_s *group = NULL;
 	wfd_device_s *peer = NULL;
-	wifi_direct_client_noti_s noti;
 	unsigned char peer_addr[MACADDR_LEN] = {0, };
-
-	if (event == NULL || manager == NULL) {
-		WDS_LOGE("Invalid parameter");
-		__WDS_LOG_FUNC_EXIT__;
-		return;
-	}
+	char peer_mac_address[MACSTR_LEN+1] = {0, };
 
 	group = (wfd_group_s*) manager->group;
 	if (!group) {
@@ -1182,21 +1098,33 @@ static void __wfd_process_sta_disconnected(wfd_manager_s *manager, wfd_oem_event
 #endif /* CTRL_DBUS_IFACE */
 	}
 	memcpy(peer_addr, peer->dev_addr, MACADDR_LEN);
-	memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
 
 	/* If state is not DISCONNECTING, connection is finished by peer */
 	if (manager->state >= WIFI_DIRECT_STATE_CONNECTED) {
 		wfd_group_remove_member(group, peer_addr);
-		if (group->member_count)
-			noti.event = WIFI_DIRECT_CLI_EVENT_DISASSOCIATION_IND;
-		else
-			noti.event = WIFI_DIRECT_CLI_EVENT_DISCONNECTION_IND;
-		noti.error = WIFI_DIRECT_ERROR_NONE;
-		g_snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
+		g_snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
+		if (group->member_count) {
+			wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+						     "Disconnection",
+						     g_variant_new("(iis)", WIFI_DIRECT_ERROR_NONE,
+									    WFD_EVENT_DISASSOCIATION_IND,
+									    peer_mac_address));
+		} else {
+			wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+						     "Disconnection",
+						     g_variant_new("(iis)", WIFI_DIRECT_ERROR_NONE,
+									    WFD_EVENT_DISCONNECTION_IND,
+									    peer_mac_address));
+		}
+
 	} else if (manager->state == WIFI_DIRECT_STATE_DISCONNECTING) {
-		noti.event = WIFI_DIRECT_CLI_EVENT_DISCONNECTION_RSP;
-		noti.error = WIFI_DIRECT_ERROR_NONE;
-		g_snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
+		g_snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
+		wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+					     "Disconnection",
+					     g_variant_new("(iis)", WIFI_DIRECT_ERROR_NONE,
+								    WFD_EVENT_DISCONNECTION_RSP,
+								    peer_mac_address));
+
 	} else if (manager->state == WIFI_DIRECT_STATE_CONNECTING &&
 			/* Some devices(GO) send disconnection message before connection completed.
 			 * This message should be ignored when device is not GO */
@@ -1204,24 +1132,31 @@ static void __wfd_process_sta_disconnected(wfd_manager_s *manager, wfd_oem_event
 		if (WFD_PEER_STATE_CONNECTED == peer->state) {
 			WDS_LOGD("Peer is already Connected !!!");
 			wfd_group_remove_member(group, peer_addr);
-			noti.event = WIFI_DIRECT_CLI_EVENT_DISASSOCIATION_IND;
-			noti.error = WIFI_DIRECT_ERROR_NONE;
+			g_snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
+			wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+						     "Disconnection",
+						     g_variant_new("(iis)", WIFI_DIRECT_ERROR_NONE,
+									    WFD_EVENT_DISASSOCIATION_IND,
+									    peer_mac_address));
+
 		} else if (WFD_PEER_STATE_CONNECTING == peer->state) {
 			WDS_LOGD("Peer is Connecting...");
-			noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
-			noti.error = WIFI_DIRECT_ERROR_CONNECTION_FAILED;
+			g_snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
+			wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+						     "Connection",
+						     g_variant_new("(iis)", WIFI_DIRECT_ERROR_CONNECTION_FAILED,
+									    WFD_EVENT_CONNECTION_RSP,
+									    peer_mac_address));
 		} else {
 			WDS_LOGE("Unexpected Peer State. Ignore it");
 			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
-		g_snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
 	} else {
 		WDS_LOGE("Unexpected event. Ignore it");
 		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
-	wfd_client_send_event(manager, &noti);
 
 	if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
 		wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
@@ -1244,13 +1179,13 @@ static void __wfd_process_sta_disconnected(wfd_manager_s *manager, wfd_oem_event
 	return;
 }
 
- static void __wfd_process_terminating(wfd_manager_s *manager, wfd_oem_event_s *event)
- {
+static void __wfd_process_terminating(wfd_manager_s *manager, wfd_oem_event_s *event)
+{
 	__WDS_LOG_FUNC_ENTER__;
 
 	__WDS_LOG_FUNC_EXIT__;
 	return;
- }
+}
 
 static void __wfd_process_group_formation_failure(wfd_manager_s *manager, wfd_oem_event_s *event)
 {
@@ -1270,12 +1205,14 @@ static void __wfd_process_group_formation_failure(wfd_manager_s *manager, wfd_oe
 		return;
 	}
 
-	wifi_direct_client_noti_s noti;
-	memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
-	noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
-	noti.error = WIFI_DIRECT_ERROR_CONNECTION_FAILED;
-	snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
-	wfd_client_send_event(manager, &noti);
+	char peer_mac_address[MACSTR_LEN+1] = {0, };
+	g_snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
+	wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+				     "Connection",
+				     g_variant_new("(iis)", WIFI_DIRECT_ERROR_CONNECTION_FAILED,
+							    WFD_EVENT_CONNECTION_RSP,
+							    peer_mac_address));
+
 	wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
 	wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
 	wfd_destroy_session(manager);
@@ -1290,14 +1227,9 @@ static void __wfd_process_group_formation_failure(wfd_manager_s *manager, wfd_oe
 static void __wfd_process_serv_disc_resp(wfd_manager_s *manager, wfd_oem_event_s *event)
 {
 	__WDS_LOG_FUNC_ENTER__;
-
-	wifi_direct_client_noti_s noti;
-
-	if (event == NULL || manager == NULL) {
-		WDS_LOGE("Invalid parameter");
-		__WDS_LOG_FUNC_EXIT__;
-		return;
-	}
+	int service_type;
+	char response_data[256] = {0, };
+	char peer_mac_address[MACSTR_LEN+1] = {0, };
 
 	wfd_update_peer_time(manager, event->dev_addr);
 
@@ -1312,19 +1244,22 @@ static void __wfd_process_serv_disc_resp(wfd_manager_s *manager, wfd_oem_event_s
 		temp = g_list_first(services);
 		while(temp && count < event->dev_role) {
 			service = (wfd_oem_new_service_s*) temp->data;
-			memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
-			noti.event = WIFI_DIRECT_CLI_EVENT_SERVICE_DISCOVERY_FOUND;
-			noti.type = service->protocol;
+			service_type = service->protocol;
 			if (service->protocol == WFD_OEM_SERVICE_TYPE_BONJOUR) {
-				g_snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(event->dev_addr));
-				g_snprintf(noti.param2, 256, "%s|%s", service->data.bonjour.query, service->data.bonjour.rdata);
+				g_snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(event->dev_addr));
+				g_snprintf(response_data, 256, "%s|%s", service->data.bonjour.query, service->data.bonjour.rdata);
 				WDS_LOGD("Found service: [%d: %s] - [" MACSECSTR "]", service->protocol,
 							service->data.bonjour.query, MAC2SECSTR(event->dev_addr));
 			} else {
 				WDS_LOGD("Found service is not supported");
 				goto next;
 			}
-			wfd_client_send_event(manager, &noti);
+
+			wfd_manager_dbus_emit_signal(WFD_MANAGER_SERVICE_INTERFACE,
+						     "DiscoveryFound",
+						     g_variant_new("(iss)", service_type,
+									    response_data,
+									    peer_mac_address));
 next:
 			temp = g_list_next(temp);
 			service = NULL;
@@ -1333,18 +1268,21 @@ next:
 	} else if (event->edata_type == WFD_OEM_EDATA_TYPE_SERVICE) {
 		wfd_oem_service_data_s *edata = (wfd_oem_service_data_s*) event->edata;
 
-		memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
-		noti.event = WIFI_DIRECT_CLI_EVENT_SERVICE_DISCOVERY_FOUND;
 		if(!edata) {
-			noti.type = -1;
+			service_type = -1;
 		} else {
-			noti.type = edata->type;
-			g_snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(event->dev_addr));
+			service_type = edata->type;
+			g_snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(event->dev_addr));
 			switch(edata->type) {
 				WDS_LOGE("Unknown type [type ID: %d]", edata->type);
 			}
 		}
-		wfd_client_send_event(manager, &noti);
+
+		wfd_manager_dbus_emit_signal(WFD_MANAGER_SERVICE_INTERFACE,
+					     "DiscoveryFound",
+					     g_variant_new("(iss)", service_type,
+								    response_data,
+								    peer_mac_address));
 	}
 
 	__WDS_LOG_FUNC_EXIT__;

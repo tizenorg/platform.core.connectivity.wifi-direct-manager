@@ -33,6 +33,8 @@
 #include "wifi-direct-manager.h"
 #include "wifi-direct-state.h"
 #include "wifi-direct-util.h"
+#include "wifi-direct-log.h"
+
 
 static char *_wfd_state_string(int state)
 {

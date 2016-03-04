@@ -1,7 +1,7 @@
 /*
  * Network Configuration Module
  *
- * Copyright (c) 2012 Samsung Electronics Co., Ltd. All rights reserved.
+ * Copyright (c) 2015 Samsung Electronics Co., Ltd. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,17 +18,25 @@
  */
 
 /**
- * This file declares wifi direct client functions.
+ * This file declares wifi direct dbus interface management functions.
  *
- * @file		wifi-direct-state.h
- * @author	Gibyoung Kim (lastkgb.kim@samsung.com)
- * @version	0.7
+ * @file        wifi-direct-iface.h
+ * @author      Nishant Chaprana (n.chaprana@samsung.com)
+ * @version     0.1
  */
 
-#ifndef __WIFI_DIRECT_STATE_H__
-#define __WIFI_DIRECT_STATE_H__
+#ifndef __WIFI_DIRECT_IFACE_H__
+#define __WIFI_DIRECT_IFACE_H__
 
-int wfd_state_set(wfd_manager_s *manager, int state);
-int wfd_state_get(wfd_manager_s *manager, int *state);
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#endif /* __WIFI_DIRECT_STATE_H__ */
+gboolean wfd_manager_dbus_register(void);
+void wfd_manager_dbus_unregister(void);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* __WIFI_DIRECT_IFACE_H__ */

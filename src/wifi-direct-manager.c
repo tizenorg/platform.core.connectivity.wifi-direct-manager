@@ -44,41 +44,18 @@
 #include "wifi-direct-group.h"
 #include "wifi-direct-peer.h"
 #include "wifi-direct-state.h"
-#include "wifi-direct-client.h"
 #include "wifi-direct-event.h"
 #include "wifi-direct-util.h"
+#include "wifi-direct-log.h"
+#include "wifi-direct-error.h"
+#include "wifi-direct-iface.h"
+
 
 wfd_manager_s *g_manager;
 
 wfd_manager_s *wfd_get_manager()
 {
 	return g_manager;
-}
-
-static gboolean _wfd_exit_timeout_cb(void *user_data)
-{
-	__WDS_LOG_FUNC_ENTER__;
-	wfd_manager_s *manager = (wfd_manager_s*) user_data;
-
-	if (!manager) {
-		WDS_LOGE("Invalid parameter");
-		return TRUE;
-	}
-
-	if (manager->client_count > 0) {
-		WDS_LOGD("Client count [%d]", manager->client_count);
-		return TRUE;
-	}
-
-	if (manager->state == WIFI_DIRECT_STATE_DEACTIVATED) {
-		WDS_LOGD("Terminate Wi-Fi Direct Manager");
-		g_main_quit(manager->main_loop);
-	}
-	manager->exit_timer = 0;
-	WDS_LOGD( "Stop exit timer. State [%d]", manager->state);
-
-	__WDS_LOG_FUNC_EXIT__;
-	return FALSE;
 }
 
 static int _wfd_local_init_device(wfd_manager_s *manager)
@@ -519,6 +496,15 @@ int wfd_manager_activate(wfd_manager_s *manager)
 		return 1;
 	}
 
+	if (manager->state == WIFI_DIRECT_STATE_ACTIVATING) {
+		WDS_LOGE("In progress");
+		return WIFI_DIRECT_ERROR_NOT_PERMITTED;
+	}
+
+	res = wfd_util_wifi_direct_activatable();
+	if (res < 0)
+		return WIFI_DIRECT_ERROR_NOT_PERMITTED;
+
 	wfd_state_get(manager, &prev_state);
 	wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATING);
 #if defined(TIZEN_WLAN_CONCURRENT_ENABLE) && defined(TIZEN_MOBILE)
@@ -653,9 +639,23 @@ int wfd_manager_connect(wfd_manager_s *manager, unsigned char *peer_addr)
 		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
 	}
 
+	if (manager->state != WIFI_DIRECT_STATE_ACTIVATED &&
+			manager->state != WIFI_DIRECT_STATE_DISCOVERING &&
+			manager->state != WIFI_DIRECT_STATE_GROUP_OWNER) {
+		__WDS_LOG_FUNC_EXIT__;
+		return WIFI_DIRECT_ERROR_NOT_PERMITTED;
+	}
+
+	wfd_group_s *group = (wfd_group_s*) manager->group;
+	if (group && group->member_count >= manager->max_station) {
+		__WDS_LOG_FUNC_EXIT__;
+		return WIFI_DIRECT_ERROR_TOO_MANY_CLIENT;
+	}
+
 	session = (wfd_session_s*) manager->session;
 	if (session && session->type != SESSION_TYPE_INVITE) {
 		WDS_LOGE("Session already exist and it's not an invitation session");
+		__WDS_LOG_FUNC_EXIT__;
 		return WIFI_DIRECT_ERROR_NOT_PERMITTED;
 	}
 
@@ -664,6 +664,7 @@ int wfd_manager_connect(wfd_manager_s *manager, unsigned char *peer_addr)
 					manager->req_wps_mode, SESSION_DIRECTION_OUTGOING);
 		if (!session) {
 			WDS_LOGE("Failed to create new session");
+			__WDS_LOG_FUNC_EXIT__;
 			return WIFI_DIRECT_ERROR_OPERATION_FAILED;
 		}
 	}
@@ -678,6 +679,7 @@ int wfd_manager_connect(wfd_manager_s *manager, unsigned char *peer_addr)
 	if (res < 0) {
 		WDS_LOGE("Failed to start session");
 		wfd_destroy_session(manager);
+		__WDS_LOG_FUNC_EXIT__;
 		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
 	}
 	wfd_state_set(manager, WIFI_DIRECT_STATE_CONNECTING);
@@ -769,6 +771,11 @@ int wfd_manager_cancel_connection(wfd_manager_s *manager, unsigned char *peer_ad
 		return WIFI_DIRECT_ERROR_INVALID_PARAMETER;
 	}
 
+	if (!manager->session && manager->state != WIFI_DIRECT_STATE_CONNECTING) {
+		WDS_LOGE("It's not CONNECTING state");
+		return WIFI_DIRECT_ERROR_NOT_PERMITTED;
+	}
+
 	res = wfd_session_cancel(manager->session, peer_addr);
 	if (res < 0) {
 		WDS_LOGE("Failed to cancel session");
@@ -820,6 +827,16 @@ int wfd_manager_reject_connection(wfd_manager_s *manager, unsigned char *peer_ad
 		return WIFI_DIRECT_ERROR_NOT_PERMITTED;
 	}
 
+	if (manager->state != WIFI_DIRECT_STATE_CONNECTING) {
+		WDS_LOGE("It's not permitted with this state [%d]", manager->state);
+		return WIFI_DIRECT_ERROR_NOT_PERMITTED;
+	}
+
+	if (session->direction != SESSION_DIRECTION_INCOMING) {
+		WDS_LOGE("Only incomming session can be rejected");
+		return WIFI_DIRECT_ERROR_NOT_PERMITTED;
+	}
+
 	res = wfd_session_reject(session, peer_addr);
 	if (res < 0) {
 		WDS_LOGE("Failed to reject connection");
@@ -855,6 +872,28 @@ int wfd_manager_disconnect(wfd_manager_s *manager, unsigned char *peer_addr)
 	if (!peer_addr) {
 		WDS_LOGE("Invalid parameter");
 		return WIFI_DIRECT_ERROR_INVALID_PARAMETER;
+	}
+
+	if (!manager->group || manager->state < WIFI_DIRECT_STATE_CONNECTED) {
+		if (WIFI_DIRECT_STATE_DISCOVERING == manager->state) {
+			res = wfd_oem_stop_scan(manager->oem_ops);
+			if (res < 0) {
+				WDS_LOGE("Failed to stop scan");
+				return WIFI_DIRECT_ERROR_OPERATION_FAILED;
+			}
+			WDS_LOGI("Succeeded to stop scan");
+
+			if (WFD_DEV_ROLE_GO == manager->local->dev_role) {
+				wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
+				wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
+			} else {
+				wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
+				wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
+			}
+		} else {
+			WDS_LOGE("It's not permitted with this state [%d]", manager->state);
+			return WIFI_DIRECT_ERROR_NOT_PERMITTED;
+		}
 	}
 
 	group = (wfd_group_s*) manager->group;
@@ -1344,6 +1383,97 @@ int wfd_manager_set_session_availability(int availability)
 
 #endif /* TIZEN_FEATURE_WIFI_DISPLAY */
 
+int wfd_manager_start_discovery(wfd_manager_s *manager, int mode, int timeout,
+				const char* type, int channel)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	int res = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+	wfd_oem_scan_param_s param;
+	memset(&param, 0x0, sizeof(wfd_oem_scan_param_s));
+
+	WDS_LOGI("Mode: [%d], Timeout: [%d], type: [%s]", mode, timeout, type, channel);
+
+	if (manager->local->dev_role == WFD_DEV_ROLE_GO)
+		param.scan_type = WFD_OEM_SCAN_TYPE_SOCIAL;
+
+	if (channel == WFD_DISCOVERY_FULL_SCAN) {
+		param.scan_type = WFD_OEM_SCAN_TYPE_FULL;
+	} else if (channel == WFD_DISCOVERY_SOCIAL_CHANNEL) {
+		param.scan_type = WFD_OEM_SCAN_TYPE_SOCIAL;
+	} else if (channel == WFD_DISCOVERY_CHANNEL1) {
+		param.scan_type = WFD_OEM_SCAN_TYPE_CHANNEL1;
+		param.freq = 2412;
+	} else if (channel == WFD_DISCOVERY_CHANNEL6) {
+		param.scan_type = WFD_OEM_SCAN_TYPE_CHANNEL6;
+		param.freq = 2437;
+	} else if (channel == WFD_DISCOVERY_CHANNEL11) {
+		param.scan_type = WFD_OEM_SCAN_TYPE_CHANNEL11;
+		param.freq = 2462;
+	} else {
+		param.scan_type = WFD_OEM_SCAN_TYPE_SPECIFIC;
+		param.freq = wfd_util_channel_to_freq(channel);
+	}
+
+	if (mode)
+		param.scan_mode = WFD_OEM_SCAN_MODE_PASSIVE;
+	else
+		param.scan_mode = WFD_OEM_SCAN_MODE_ACTIVE;
+
+	param.scan_time = timeout;
+
+	res = wfd_oem_start_scan(manager->oem_ops, &param);
+	if (res < 0) {
+		WDS_LOGE("Failed to start scan");
+		__WDS_LOG_FUNC_EXIT__;
+		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
+	}
+
+	if (mode)
+		manager->scan_mode = WFD_SCAN_MODE_PASSIVE;
+	else
+		manager->scan_mode = WFD_SCAN_MODE_ACTIVE;
+
+	if (manager->local->dev_role != WFD_DEV_ROLE_GO) {
+		wfd_state_set(manager, WIFI_DIRECT_STATE_DISCOVERING);
+		wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_DISCOVERING);
+	}
+
+	WDS_LOGD("Succeeded to start scan");
+	__WDS_LOG_FUNC_EXIT__;
+	return WIFI_DIRECT_ERROR_NONE;
+}
+
+int wfd_manager_cancel_discovery(wfd_manager_s *manager)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	int res = 0;
+
+	if (manager->state != WIFI_DIRECT_STATE_ACTIVATED &&
+			manager->state != WIFI_DIRECT_STATE_DISCOVERING) {
+		__WDS_LOG_FUNC_EXIT__;
+		return WIFI_DIRECT_ERROR_NOT_PERMITTED;
+	}
+
+	res = wfd_oem_stop_scan(manager->oem_ops);
+	if (res < 0) {
+		WDS_LOGE("Failed to stop scan");
+		__WDS_LOG_FUNC_EXIT__;
+		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
+	}
+
+	if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
+		wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
+		wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
+	} else {
+		wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
+		wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
+	}
+
+	WDS_LOGD("Succeeded to stop scan");
+	__WDS_LOG_FUNC_EXIT__;
+	return WIFI_DIRECT_ERROR_NONE;
+}
+
 wfd_device_s *wfd_manager_get_peer_by_addr(wfd_manager_s *manager, unsigned char *peer_addr)
 {
 	__WDS_LOG_FUNC_ENTER__;
@@ -1385,10 +1515,6 @@ static wfd_manager_s *wfd_manager_init()
 	}
 	WDS_LOGD("Succeeded to initialize local device");
 
-	manager->exit_timer = g_timeout_add(120000,
-						(GSourceFunc) _wfd_exit_timeout_cb, manager);
-	WDS_LOGD("Exit timer started");
-
 	__WDS_LOG_FUNC_EXIT__;
 	return manager;
 }
@@ -1402,10 +1528,6 @@ int wfd_manager_deinit(wfd_manager_s *manager)
 		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}
-
-	if (manager->exit_timer > 0)
-		g_source_remove(manager->exit_timer);
-	manager->exit_timer = 0;
 
 	_wfd_local_deinit_device(manager);
 
@@ -1497,7 +1619,6 @@ int main(int argc, char *argv[])
 {
 	__WDS_LOG_FUNC_ENTER__;
 	GMainLoop *main_loop = NULL;
-	int res = 0;
 
 #if !GLIB_CHECK_VERSION(2,32,0)
 	if (!g_thread_supported())
@@ -1511,6 +1632,9 @@ int main(int argc, char *argv[])
 	// TODO: Parsing argument
 	/* Wi-Fi direct connection for S-Beam can be optimized using argument */
 
+	/**
+	 * wfd-manager initialization
+	 */
 	g_manager = wfd_manager_init();
 	if (!g_manager) {
 		WDS_LOGE("Failed to initialize wifi-direct manager");
@@ -1519,6 +1643,9 @@ int main(int argc, char *argv[])
 	}
 	WDS_LOGD("Succeeded to initialize manager");
 
+	/**
+	 * wfd_manager_plugin initialization
+	 */
 	g_manager->plugin_handle = wfd_plugin_init(g_manager);
 	if (!g_manager->plugin_handle) {
 		WDS_LOGE("Failed to initialize plugin");
@@ -1528,15 +1655,7 @@ int main(int argc, char *argv[])
 	}
 	WDS_LOGD("Succeeded to load plugin");
 
-	res = wfd_client_handler_init(g_manager);
-	if (res < 0) {
-		WDS_LOGE("Failed to initialize client handler");
-		wfd_plugin_deinit(g_manager);
-		wfd_manager_deinit(g_manager);
-		__WDS_LOG_FUNC_EXIT__;
-		return -1;
-	}
-	WDS_LOGD("Succeeded to initialize client handler");
+	wfd_manager_dbus_register();
 
 	main_loop = g_main_loop_new(NULL, FALSE);
 	if (main_loop == NULL) {
@@ -1545,10 +1664,10 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 	g_manager->main_loop = main_loop;
-
 	g_main_loop_run(main_loop);
 
-	wfd_client_handler_deinit(g_manager);
+	wfd_manager_dbus_unregister();
+
 	wfd_plugin_deinit(g_manager);
 	wfd_manager_deinit(g_manager);
 

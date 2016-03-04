@@ -40,8 +40,10 @@
 #include "wifi-direct-oem.h"
 #include "wifi-direct-util.h"
 #include "wifi-direct-session.h"
-#include "wifi-direct-client.h"
 #include "wifi-direct-state.h"
+#include "wifi-direct-error.h"
+#include "wifi-direct-log.h"
+#include "wifi-direct-dbus.h"
 
 
 static gboolean _session_timeout_cb(gpointer *user_data)
@@ -49,8 +51,8 @@ static gboolean _session_timeout_cb(gpointer *user_data)
 	__WDS_LOG_FUNC_ENTER__;
 	wfd_manager_s *manager = wfd_get_manager();
 	wfd_session_s *session = (wfd_session_s*) manager->session;
-	wifi_direct_client_noti_s noti;
 	unsigned char *peer_addr = NULL;
+	char peer_mac_address[MACSTR_LEN+1] = {0, };
 
 	if (!session) {
 		WDS_LOGE("Invalid parameter");
@@ -61,13 +63,16 @@ static gboolean _session_timeout_cb(gpointer *user_data)
 	WDS_LOGD("Session timer expired");
 
 	peer_addr = wfd_session_get_peer_addr(session);
-
-	memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
-	noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
-	noti.error = WIFI_DIRECT_ERROR_CONNECTION_TIME_OUT;
 	if(peer_addr != NULL)
-		g_snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
-	wfd_client_send_event(manager, &noti);
+		g_snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
+	else
+		g_snprintf(peer_mac_address, MACSTR_LEN, "%s", "");
+
+	wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+				     "Connection",
+				     g_variant_new("(iis)", WIFI_DIRECT_ERROR_CONNECTION_TIME_OUT,
+							    WFD_EVENT_CONNECTION_RSP,
+							    peer_mac_address));
 
 	wfd_session_cancel(session, peer_addr);
 
@@ -86,11 +91,14 @@ static gboolean _session_timeout_cb(gpointer *user_data)
 static void _wfd_notify_session_failed(wfd_manager_s *manager, unsigned char *peer_addr)
 {
 	__WDS_LOG_FUNC_ENTER__;
-	wifi_direct_client_noti_s noti;
-	memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
-	noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_RSP;
-	noti.error = WIFI_DIRECT_ERROR_CONNECTION_FAILED;
-	snprintf(noti.param1, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
+	char peer_mac_address[MACSTR_LEN+1] = {0, };
+
+	snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
+	wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+				     "Connection",
+				     g_variant_new("(iis)", WIFI_DIRECT_ERROR_CONNECTION_FAILED,
+							    WFD_EVENT_CONNECTION_RSP,
+							    peer_mac_address));
 
 	if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
 		wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
@@ -100,7 +108,6 @@ static void _wfd_notify_session_failed(wfd_manager_s *manager, unsigned char *pe
 		wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
 	}
 
-	wfd_client_send_event(manager, &noti);
 	__WDS_LOG_FUNC_EXIT__;
 }
 
@@ -742,11 +749,14 @@ int wfd_session_process_event(wfd_manager_s *manager, wfd_oem_event_s *event)
 		if (session->type == SESSION_TYPE_INVITE) {
 			WDS_LOGD("Start WPS corresponding to OEM event [%d]", event->event_id);
 			if (session->wps_mode != WFD_WPS_MODE_PBC) {
-				wifi_direct_client_noti_s noti;
-				memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
-				noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_WPS_REQ;
-				g_snprintf(noti.param1, sizeof(noti.param1), MACSTR, MAC2STR(event->dev_addr));
-				wfd_client_send_event(manager, &noti);
+				char peer_mac_address[MACSTR_LEN+1] = {0, };
+
+				g_snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(event->dev_addr));
+				wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+							     "Connection",
+							     g_variant_new("(iis)", WIFI_DIRECT_ERROR_NONE,
+										    WFD_EVENT_CONNECTION_WPS_REQ,
+										    peer_mac_address));
 				if (session->wps_mode == WFD_WPS_MODE_KEYPAD) {
 					/* We have to wait until user type PIN using Keypad */
 					break;
@@ -756,12 +766,14 @@ int wfd_session_process_event(wfd_manager_s *manager, wfd_oem_event_s *event)
 			if (res < 0)
 				_wfd_notify_session_failed(manager, event->dev_addr);
 		} else {
-			wifi_direct_client_noti_s noti;
-			memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
-			noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_REQ;
-			noti.error = WIFI_DIRECT_ERROR_NONE;
-			snprintf(noti.param1, sizeof(noti.param1), MACSTR, MAC2STR(event->dev_addr));
-			wfd_client_send_event(manager, &noti);
+			char peer_mac_address[MACSTR_LEN+1] = {0, };
+
+			g_snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(event->dev_addr));
+			wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+						     "Connection",
+						     g_variant_new("(iis)", WIFI_DIRECT_ERROR_NONE,
+									    WFD_EVENT_CONNECTION_REQ,
+									    peer_mac_address));
 		}
 	}
 	break;
@@ -801,11 +813,14 @@ int wfd_session_process_event(wfd_manager_s *manager, wfd_oem_event_s *event)
 		WDS_LOGD("Local WPS mode is %d", session->wps_mode);
 
 		if (session->wps_mode != WFD_WPS_MODE_PBC) {
-			wifi_direct_client_noti_s noti;
-			memset(&noti, 0x0, sizeof(wifi_direct_client_noti_s));
-			noti.event = WIFI_DIRECT_CLI_EVENT_CONNECTION_WPS_REQ;
-			g_snprintf(noti.param1, sizeof(noti.param1), MACSTR, MAC2STR(event->dev_addr));
-			wfd_client_send_event(manager, &noti);
+			char peer_mac_address[MACSTR_LEN+1] = {0, };
+
+			g_snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(event->dev_addr));
+			wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+						     "Connection",
+						     g_variant_new("(iis)", WIFI_DIRECT_ERROR_NONE,
+									    WFD_EVENT_CONNECTION_WPS_REQ,
+									    peer_mac_address));
 			if (session->wps_mode == WFD_WPS_MODE_KEYPAD) {
 				/* We have to wait until user type PIN using Keypad */
 				break;

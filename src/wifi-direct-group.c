@@ -41,7 +41,8 @@
 #include "wifi-direct-group.h"
 #include "wifi-direct-util.h"
 #include "wifi-direct-session.h"
-#include "wifi-direct-client.h"
+#include "wifi-direct-log.h"
+
 
 // Check the group instance which has same interface name, before using this function
 wfd_group_s *wfd_create_group(void *data, wfd_oem_event_s *group_info)

@@ -1,6 +1,6 @@
 Name:		wifi-direct-manager
 Summary:	Wi-Fi Direct manger
-Version:	1.2.139
+Version:	1.2.140
 Release:	1
 Group:      Network & Connectivity/Wireless
 License:    Apache-2.0
@@ -26,7 +26,7 @@ Requires: toybox-symlinks-dhcpd
 Requires: toybox-symlinks-dhcp
 
 %description
-Wi-Fi Direct manager
+Manager for handling wifi-direct functionalities
 
 %package -n wifi-direct-plugin-wpasupplicant
 Summary:    Wifi direct plugin for wpa supplicant
@@ -34,14 +34,14 @@ Group:      Network & Connectivity/Wireless
 Requires:   %{name} = %{version}-%{release}
 
 %description -n wifi-direct-plugin-wpasupplicant
-Wifi direct plugin for wpa supplicant
+Wi-Fi direct manager plugin to abstract wpa_supplicant
 
 
 %prep
 %setup -q
+chmod 644 %{SOURCE0}
 
 %build
-
 export CFLAGS="$CFLAGS -DTIZEN_DEBUG_ENABLE"
 export CXXFLAGS="$CXXFLAGS -DTIZEN_DEBUG_ENABLE"
 export FFLAGS="$FFLAGS -DTIZEN_DEBUG_ENABLE"
@@ -104,8 +104,6 @@ make %{?_smp_mflags}
 rm -rf %{buildroot}
 
 %make_install
-#%__strip %{buildroot}%{_libdir}/wifi-direct-plugin-wpasupplicant.so
-#%__strip %{buildroot}%{_bindir}/wfd-manager
 
 #License
 mkdir -p %{buildroot}%{_datadir}/license
@@ -149,6 +147,7 @@ chmod 755 /usr/sbin/p2p_supp.sh
 /opt/etc/p2p_supp.conf
 /usr/etc/wifi-direct/ccode.conf
 /opt/etc/persistent-peer
+%config %{_sysconfdir}/dbus-1/system.d/*.conf
 %{_bindir}/dhcpd-notify.sh
 %{_bindir}/wifi-direct-server.sh
 %{_bindir}/wifi-direct-dhcp.sh
@@ -157,6 +156,7 @@ chmod 755 /usr/sbin/p2p_supp.sh
 %attr(755,-,-) %{_bindir}/wifi-direct-server.sh
 %attr(755,-,-) %{_bindir}/wifi-direct-dhcp.sh
 %attr(755,-,-) /usr/etc/wifi-direct/udhcp_script.non-autoip
+%attr(644,-,-) %{_sysconfdir}/dbus-1/system.d/*.conf
 %attr(755,-,-) %{_sbindir}/p2p_supp.sh
 %attr(644,-,-) %{_datadir}/license/%{name}
 
