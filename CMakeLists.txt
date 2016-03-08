@@ -96,7 +96,6 @@ INSTALL(FILES ${CMAKE_SOURCE_DIR}/files/common/wifi-direct-server.sh DESTINATION
 INSTALL(FILES ${CMAKE_SOURCE_DIR}/files/common/p2p_supp.sh DESTINATION sbin)
 INSTALL(FILES ${CMAKE_SOURCE_DIR}/files/common/ccode.conf DESTINATION etc/wifi-direct)
 INSTALL(FILES ${CMAKE_SOURCE_DIR}/files/common/persistent-peer DESTINATION /opt/etc)
-INSTALL(FILES ${CMAKE_SOURCE_DIR}/files/common/wfd-manager.conf DESTINATION /etc/dbus-1/system.d)
 IF(TIZEN_TV)
 	IF(TIZEN_WIFI_MODULE_BUNDLE)
 		INSTALL(FILES ${CMAKE_SOURCE_DIR}/files/bundle/p2p_supp.conf DESTINATION etc/wifi-direct)

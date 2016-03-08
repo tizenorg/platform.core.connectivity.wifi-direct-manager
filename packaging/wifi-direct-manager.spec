@@ -5,6 +5,8 @@ Release:	1
 Group:      Network & Connectivity/Wireless
 License:    Apache-2.0
 Source0:	%{name}-%{version}.tar.gz
+Source1:	dbus-wfd-manager.conf
+Source2:	net.wifidirect.service
 BuildRequires:	pkgconfig(capi-network-wifi-direct)
 BuildRequires:	pkgconfig(gio-2.0)
 BuildRequires:	pkgconfig(dlog)
@@ -40,6 +42,10 @@ Wi-Fi direct manager plugin to abstract wpa_supplicant
 %prep
 %setup -q
 chmod 644 %{SOURCE0}
+chmod 644 %{SOURCE1}
+chmod 644 %{SOURCE2}
+cp -a %{SOURCE1} ./wfd-manager.conf
+cp -a %{SOURCE2} .
 
 %build
 export CFLAGS="$CFLAGS -DTIZEN_DEBUG_ENABLE"
@@ -105,10 +111,10 @@ rm -rf %{buildroot}
 
 %make_install
 
-#License
-mkdir -p %{buildroot}%{_datadir}/license
-cp %{_builddir}/%{buildsubdir}/LICENSE.APLv2 %{buildroot}%{_datadir}/license/%{name}
-cp %{_builddir}/%{buildsubdir}/LICENSE.APLv2 %{buildroot}%{_datadir}/license/wifi-direct-plugin-wpasupplicant
+mkdir -p %{buildroot}%{_sysconfdir}/dbus-1/system.d
+cp wfd-manager.conf %{buildroot}%{_sysconfdir}/dbus-1/system.d/wfd-manager.conf
+mkdir -p %{buildroot}%{_datadir}/dbus-1/system-services/
+cp net.wifidirect.service %{buildroot}%{_datadir}/dbus-1/system-services/net.wifidirect.service
 
 %post
 chmod 644 /usr/etc/wifi-direct/dhcpd.*.conf
@@ -139,6 +145,7 @@ chmod 755 /usr/sbin/p2p_supp.sh
 
 %files
 %manifest wifi-direct-manager.manifest
+%license LICENSE
 %defattr(-,root,root,-)
 %{_bindir}/wfd-manager
 /usr/etc/wifi-direct/dhcpd.*.conf
@@ -147,7 +154,6 @@ chmod 755 /usr/sbin/p2p_supp.sh
 /opt/etc/p2p_supp.conf
 /usr/etc/wifi-direct/ccode.conf
 /opt/etc/persistent-peer
-%config %{_sysconfdir}/dbus-1/system.d/*.conf
 %{_bindir}/dhcpd-notify.sh
 %{_bindir}/wifi-direct-server.sh
 %{_bindir}/wifi-direct-dhcp.sh
@@ -156,12 +162,12 @@ chmod 755 /usr/sbin/p2p_supp.sh
 %attr(755,-,-) %{_bindir}/wifi-direct-server.sh
 %attr(755,-,-) %{_bindir}/wifi-direct-dhcp.sh
 %attr(755,-,-) /usr/etc/wifi-direct/udhcp_script.non-autoip
-%attr(644,-,-) %{_sysconfdir}/dbus-1/system.d/*.conf
+%attr(644,root,root) %{_sysconfdir}/dbus-1/system.d/*
+%attr(644,root,root) %{_datadir}/dbus-1/system-services/*
 %attr(755,-,-) %{_sbindir}/p2p_supp.sh
-%attr(644,-,-) %{_datadir}/license/%{name}
 
 %files -n wifi-direct-plugin-wpasupplicant
 %manifest wifi-direct-plugin-wpasupplicant.manifest
+%license LICENSE
 %defattr(-,root,root,-)
 %{_libdir}/wifi-direct-plugin-wpasupplicant.so
-%attr(644,-,-) %{_datadir}/license/wifi-direct-plugin-wpasupplicant
