@@ -60,7 +60,6 @@
 #include "wifi-direct-log.h"
 #include "wifi-direct-dbus.h"
 
-#ifdef TIZEN_FEATURE_IP_OVER_EAPOL
 #include <linux/unistd.h>
 #include <asm/types.h>
 #include <linux/netlink.h>
@@ -69,7 +68,6 @@
 #include <netlink/netlink.h>
 #include <netlink/socket.h>
 #include <netlink/route/neighbour.h>
-#endif /* TIZEN_FEATURE_IP_OVER_EAPOL */
 
 #define TIZEN_P2P_GO_IPADDR "192.168.49.1"
 #define MAX_SIZE_ERROR_BUFFER 256
@@ -755,7 +753,7 @@ static gboolean _polling_ip(gpointer user_data)
 		__WDS_LOG_FUNC_EXIT__;
 		return FALSE;
 	}
-	res = wfd_util_dhcpc_get_ip(ifname, local->ip_addr, 0);
+	res = wfd_util_local_get_ip(ifname, local->ip_addr, 0);
 	if (res < 0) {
 		WDS_LOGE("Failed to get local IP for interface %s(count=%d)", ifname, count++);
 		__WDS_LOG_FUNC_EXIT__;
@@ -913,7 +911,7 @@ int wfd_util_dhcpc_stop()
 	return 0;
 }
 
-int wfd_util_dhcpc_get_ip(char *ifname, unsigned char *ip_addr, int is_IPv6)
+int wfd_util_local_get_ip(char *ifname, unsigned char *ip_addr, int is_IPv6)
 {
 	__WDS_LOG_FUNC_ENTER__;
 	struct ifreq ifr;
@@ -1119,6 +1117,8 @@ static int _wfd_util_static_ip_set(const char *ifname, unsigned char *static_ip)
 int wfd_util_ip_over_eap_assign(wfd_device_s *peer, const char *ifname)
 {
 	__WDS_LOG_FUNC_ENTER__;
+	wfd_manager_s *manager = wfd_get_manager();
+	wfd_device_s *local = (wfd_device_s*) manager->local;
 
 	char ip_str[IPSTR_LEN] = {0, };
 
@@ -1129,6 +1129,7 @@ int wfd_util_ip_over_eap_assign(wfd_device_s *peer, const char *ifname)
 
 	_wfd_util_static_ip_set(ifname, peer->client_ip_addr);
 	memcpy(peer->ip_addr, peer->go_ip_addr, IPADDR_LEN);
+	memcpy(local->ip_addr, peer->client_ip_addr, IPADDR_LEN);
 
 	g_snprintf(ip_str, IPSTR_LEN, IPSTR, IP2STR(peer->ip_addr));
 	_connect_remote_device(ip_str);
@@ -1136,9 +1137,9 @@ int wfd_util_ip_over_eap_assign(wfd_device_s *peer, const char *ifname)
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
 }
+#endif /* TIZEN_FEATURE_IP_OVER_EAPOL */
 
-#ifdef TIZEN_WLAN_BOARD_SPRD
-int wfd_util_static_ip_unset(const char *ifname)
+int wfd_util_ip_unset(const char *ifname)
 {
 	__WDS_LOG_FUNC_ENTER__;
 	int res = 0;
@@ -1164,7 +1165,7 @@ int wfd_util_static_ip_unset(const char *ifname)
 		return -1;
 	}
 
-	res = wfd_util_dhcpc_get_ip((char *)ifname, ip_addr, 0);
+	res = wfd_util_local_get_ip((char *)ifname, ip_addr, 0);
 	if (res < 0) {
 		WDS_LOGE("Failed to get local IP for interface %s", ifname);
 		__WDS_LOG_FUNC_EXIT__;
@@ -1235,5 +1236,3 @@ int wfd_util_static_ip_unset(const char *ifname)
 	__WDS_LOG_FUNC_EXIT__;
 	return res;
 }
-#endif /* TIZEN_WLAN_BOARD_SPRD */
-#endif /* TIZEN_FEATURE_IP_OVER_EAPOL */

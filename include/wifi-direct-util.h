@@ -93,13 +93,10 @@ int wfd_util_dhcps_wait_ip_leased(wfd_device_s *peer);
 int wfd_util_dhcps_stop();
 int wfd_util_dhcpc_start(wfd_device_s *peer);
 int wfd_util_dhcpc_stop();
-int wfd_util_dhcpc_get_ip(char *ifname, unsigned char *ip_addr, int is_IPv6);
-int wfd_util_dhcpc_get_server_ip(unsigned char* ip_addr);
 int wfd_util_local_get_ip(char *ifname, unsigned char *ip_addr, int is_IPv6);
+int wfd_util_dhcpc_get_server_ip(unsigned char* ip_addr);
 #ifdef TIZEN_FEATURE_IP_OVER_EAPOL
 int wfd_util_ip_over_eap_assign(wfd_device_s *peer, const char *ifname);
-#ifdef TIZEN_WLAN_BOARD_SPRD
-int wfd_util_static_ip_unset(const char *ifname);
-#endif /* TIZEN_WLAN_BOARD_SPRD */
 #endif /* TIZEN_FEATURE_IP_OVER_EAPOL */
+int wfd_util_ip_unset(const char *ifname);
 #endif /* __WIFI_DIRECT_UTIL_H__ */

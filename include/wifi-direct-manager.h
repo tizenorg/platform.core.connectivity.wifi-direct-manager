@@ -67,7 +67,7 @@
 #define IPADDR_LEN 4
 #define IPSTR_LEN 16
 #define PINSTR_LEN 8
-#define PASSPHRASE_LEN_MAX 63
+#define PASSPHRASE_LEN_MAX 64
 #define PASSPHRASE_LEN_MIN 8
 
 typedef enum {

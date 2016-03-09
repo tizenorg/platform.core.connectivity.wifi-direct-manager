@@ -61,7 +61,7 @@ void wfd_manager_dbus_deinit(void);
 
 guint wfd_manager_dbus_iface_register(const gchar* iface_name,
 				      const gchar* iface_path,
-				      const gchar *xml_data,
+				      GDBusNodeInfo *node_info,
 				      const GDBusInterfaceVTable *interface_vtable);
 
 gboolean wfd_manager_dbus_iface_unregister(guint reg_id);

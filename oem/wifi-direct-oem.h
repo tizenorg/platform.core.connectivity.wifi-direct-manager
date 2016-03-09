@@ -165,6 +165,7 @@ typedef struct {
 	int dev_flags;
 	int group_flags;
 	int dev_role;
+	int device_go_intent;
 #ifdef TIZEN_FEATURE_WIFI_DISPLAY
 	wfd_oem_display_s display;
 #endif /* TIZEN_FEATURE_WIFI_DISPLAY */
