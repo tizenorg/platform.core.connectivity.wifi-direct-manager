@@ -1,6 +1,6 @@
 Name:		wifi-direct-manager
 Summary:	Wi-Fi Direct manger
-Version:	1.2.140
+Version:	1.2.141
 Release:	1
 Group:      Network & Connectivity/Wireless
 License:    Apache-2.0
@@ -150,7 +150,7 @@ chmod 755 /usr/sbin/p2p_supp.sh
 %license LICENSE
 %defattr(-,root,root,-)
 %{_bindir}/wfd-manager
-/usr/etc/wifi-direct/dhcpd.*.conf
+/usr/etc/wifi-direct/dhcpd.conf
 /usr/etc/wifi-direct/udhcp_script.non-autoip
 /usr/etc/wifi-direct/p2p_supp.conf
 /opt/etc/p2p_supp.conf

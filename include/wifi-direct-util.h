@@ -88,11 +88,11 @@ int wfd_util_start_wifi_direct_popup();
 int wfd_util_stop_wifi_direct_popup();
 #endif /* TIZEN_FEATURE_DEFAULT_CONNECTION_AGENT */
 
-int wfd_util_dhcps_start();
+int wfd_util_dhcps_start(char *ifname);
 int wfd_util_dhcps_wait_ip_leased(wfd_device_s *peer);
-int wfd_util_dhcps_stop();
-int wfd_util_dhcpc_start(wfd_device_s *peer);
-int wfd_util_dhcpc_stop();
+int wfd_util_dhcps_stop(char *ifname);
+int wfd_util_dhcpc_start(char *ifname, wfd_device_s *peer);
+int wfd_util_dhcpc_stop(char *ifname);
 int wfd_util_local_get_ip(char *ifname, unsigned char *ip_addr, int is_IPv6);
 int wfd_util_dhcpc_get_server_ip(unsigned char* ip_addr);
 #ifdef TIZEN_FEATURE_IP_OVER_EAPOL

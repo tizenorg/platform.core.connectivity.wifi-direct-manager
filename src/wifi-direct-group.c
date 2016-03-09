@@ -93,7 +93,7 @@ wfd_group_s *wfd_create_group(void *data, wfd_oem_event_s *group_info)
 	manager->group = group;
 	manager->local->dev_role = group_info->dev_role;
 
-	wfd_util_dhcps_start();
+	wfd_util_dhcps_start(group->ifname);
 	WDS_LOGD("Role is Group Owner. DHCP Server started");
 
 	__WDS_LOG_FUNC_EXIT__;
@@ -189,7 +189,7 @@ int wfd_group_complete(void *data, wfd_oem_event_s *group_info)
 	}
 
 	if (group->role == WFD_DEV_ROLE_GO) {
-		wfd_util_dhcps_start();
+		wfd_util_dhcps_start(group->ifname);
 		WDS_LOGD("Role is Group Owner. DHCP Server started");
 	} else {
 		if(!peer) {
@@ -212,7 +212,7 @@ int wfd_group_complete(void *data, wfd_oem_event_s *group_info)
 		}
 		if(peer->ip_type != WFD_IP_TYPE_OVER_EAPOL)
 #endif /* TIZEN_FEATURE_IP_OVER_EAPOL */
-		wfd_util_dhcpc_start(peer);
+		wfd_util_dhcpc_start(group->ifname, peer);
 	}
 
 	__WDS_LOG_FUNC_EXIT__;
@@ -242,10 +242,11 @@ int wfd_destroy_group(void *data, char *ifname)
 	}
 	manager->group = NULL;
 
+	wfd_util_ip_unset(group->ifname);
 	if (group->role == WFD_DEV_ROLE_GO)
-		wfd_util_dhcps_stop();
+		wfd_util_dhcps_stop(group->ifname);
 	else
-		wfd_util_dhcpc_stop();
+		wfd_util_dhcpc_stop(group->ifname);
 	memset(manager->local->ip_addr, 0x0, IPADDR_LEN);
 
 	temp = g_list_first(group->members);
