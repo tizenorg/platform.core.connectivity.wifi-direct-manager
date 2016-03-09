@@ -496,15 +496,6 @@ int wfd_manager_activate(wfd_manager_s *manager)
 		return 1;
 	}
 
-	if (manager->state == WIFI_DIRECT_STATE_ACTIVATING) {
-		WDS_LOGE("In progress");
-		return WIFI_DIRECT_ERROR_NOT_PERMITTED;
-	}
-
-	res = wfd_util_wifi_direct_activatable();
-	if (res < 0)
-		return WIFI_DIRECT_ERROR_NOT_PERMITTED;
-
 	wfd_state_get(manager, &prev_state);
 	wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATING);
 #if defined(TIZEN_WLAN_CONCURRENT_ENABLE) && defined(TIZEN_MOBILE)
@@ -564,11 +555,6 @@ int wfd_manager_deactivate(wfd_manager_s *manager)
 	if (!manager) {
 		WDS_LOGE("Invalid parameter");
 		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
-	}
-
-	if (manager->state < WIFI_DIRECT_STATE_ACTIVATING) {
-		WDS_LOGE("Already deactivated");
-		return WIFI_DIRECT_ERROR_NOT_PERMITTED;
 	}
 
 	wfd_state_get(manager, &prev_state);
@@ -872,28 +858,6 @@ int wfd_manager_disconnect(wfd_manager_s *manager, unsigned char *peer_addr)
 	if (!peer_addr) {
 		WDS_LOGE("Invalid parameter");
 		return WIFI_DIRECT_ERROR_INVALID_PARAMETER;
-	}
-
-	if (!manager->group || manager->state < WIFI_DIRECT_STATE_CONNECTED) {
-		if (WIFI_DIRECT_STATE_DISCOVERING == manager->state) {
-			res = wfd_oem_stop_scan(manager->oem_ops);
-			if (res < 0) {
-				WDS_LOGE("Failed to stop scan");
-				return WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			}
-			WDS_LOGI("Succeeded to stop scan");
-
-			if (WFD_DEV_ROLE_GO == manager->local->dev_role) {
-				wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
-				wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
-			} else {
-				wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
-				wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
-			}
-		} else {
-			WDS_LOGE("It's not permitted with this state [%d]", manager->state);
-			return WIFI_DIRECT_ERROR_NOT_PERMITTED;
-		}
 	}
 
 	group = (wfd_group_s*) manager->group;
@@ -1448,12 +1412,6 @@ int wfd_manager_cancel_discovery(wfd_manager_s *manager)
 	__WDS_LOG_FUNC_ENTER__;
 	int res = 0;
 
-	if (manager->state != WIFI_DIRECT_STATE_ACTIVATED &&
-			manager->state != WIFI_DIRECT_STATE_DISCOVERING) {
-		__WDS_LOG_FUNC_EXIT__;
-		return WIFI_DIRECT_ERROR_NOT_PERMITTED;
-	}
-
 	res = wfd_oem_stop_scan(manager->oem_ops);
 	if (res < 0) {
 		WDS_LOGE("Failed to stop scan");
@@ -1655,7 +1613,13 @@ int main(int argc, char *argv[])
 	}
 	WDS_LOGD("Succeeded to load plugin");
 
-	wfd_manager_dbus_register();
+	if (!wfd_manager_dbus_init()) {
+		WDS_LOGE("Failed to DBus");
+		wfd_plugin_deinit(g_manager);
+		wfd_manager_deinit(g_manager);
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
 
 	main_loop = g_main_loop_new(NULL, FALSE);
 	if (main_loop == NULL) {
@@ -1667,6 +1631,7 @@ int main(int argc, char *argv[])
 	g_main_loop_run(main_loop);
 
 	wfd_manager_dbus_unregister();
+	wfd_manager_dbus_deinit();
 
 	wfd_plugin_deinit(g_manager);
 	wfd_manager_deinit(g_manager);

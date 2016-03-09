@@ -25,15 +25,17 @@
  * @version     0.1
  */
 
+#include <glib.h>
+#include "wifi-direct-iface.h"
 #include "wifi-direct-dbus.h"
 #include "wifi-direct-log.h"
 
-static GDBusConnection *connection = NULL;
+static GDBusConnection *g_connection = NULL;
 static guint g_owner_id = 0;  //Name Owner ID
 
 static GDBusConnection *__dbus_get_gdbus_conn(void)
 {
-	return connection;
+	return g_connection;
 }
 
 static void __on_name_acquired(GDBusConnection *connection,
@@ -41,6 +43,7 @@ static void __on_name_acquired(GDBusConnection *connection,
 			       gpointer user_data)
 {
 	WDS_LOGD("on_name_acquired: %s", name);
+	wfd_manager_dbus_register();
 }
 
 static void __on_name_lost(GDBusConnection *connection,
@@ -52,10 +55,9 @@ static void __on_name_lost(GDBusConnection *connection,
 
 guint wfd_manager_dbus_iface_register(const gchar* iface_name,
 				      const gchar* iface_path,
-				      const gchar *xml_data,
+				      GDBusNodeInfo *node_info,
 				      const GDBusInterfaceVTable *interface_vtable)
 {
-	GDBusNodeInfo *node_info = NULL;
 	GDBusInterfaceInfo *interface_info = NULL;
 	GError *Error = NULL;
 	guint reg_id = 0;
@@ -67,15 +69,8 @@ guint wfd_manager_dbus_iface_register(const gchar* iface_name,
 		return 0;
 	}
 
-	if (!iface_name || !iface_path || !xml_data || !interface_vtable) {
+	if (!iface_name || !iface_path || !node_info || !interface_vtable) {
 		WDS_LOGE("Invalid Parameters");
-		return 0;
-	}
-
-	node_info = g_dbus_node_info_new_for_xml(xml_data, &Error);
-	if (node_info == NULL) {
-		WDS_LOGE("Failed to get node info, Error: %s", Error->message);
-		g_clear_error(&Error);
 		return 0;
 	}
 
@@ -99,7 +94,6 @@ guint wfd_manager_dbus_iface_register(const gchar* iface_name,
 
 	WDS_LOGD("Interface Registration ID [%d], Interface Name [%s]", reg_id, iface_name);
 
-	g_dbus_node_info_unref(node_info);
 	return reg_id;
 }
 
@@ -117,7 +111,6 @@ gboolean wfd_manager_dbus_iface_unregister(guint reg_id)
 		if(g_dbus_connection_unregister_object (connection, reg_id) == FALSE)
 			WDS_LOGE("netconfig network migration unregister object");
 	}
-
 	return TRUE;
 }
 
@@ -125,19 +118,19 @@ gboolean wfd_manager_dbus_init(void)
 {
 	GError *Error = NULL;
 
-	if (connection != NULL) {
+	if (g_connection != NULL) {
 		WDS_LOGE("Conenciton already present");
 		return TRUE;
 	}
 
-	connection = g_bus_get_sync(G_BUS_TYPE_SYSTEM, NULL, &Error);
-	if(connection == NULL) {
+	g_connection = g_bus_get_sync(G_BUS_TYPE_SYSTEM, NULL, &Error);
+	if(g_connection == NULL) {
 		WDS_LOGE("Failed to get connection, Error[%s]", Error->message);
 		g_error_free(Error);
 		return FALSE;
 	}
 
-	g_owner_id = g_bus_own_name_on_connection(connection,
+	g_owner_id = g_bus_own_name_on_connection(g_connection,
 						  WFD_MANAGER_SERVICE,
 						  G_BUS_NAME_OWNER_FLAGS_NONE,
 						  __on_name_acquired,
@@ -150,16 +143,15 @@ gboolean wfd_manager_dbus_init(void)
 	}
 	WDS_LOGD("DBus Owner id is [%d]", g_owner_id);
 
-	connection = connection;
 	return TRUE;
 }
 
 void wfd_manager_dbus_deinit(void)
 {
-	if (connection == NULL || g_owner_id == 0)
+	if (g_connection == NULL || g_owner_id == 0)
 		return;
 
-	g_object_unref(connection);
+	g_object_unref(g_connection);
 	g_bus_unown_name(g_owner_id);
 }
 

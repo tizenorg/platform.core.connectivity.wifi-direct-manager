@@ -1604,7 +1604,8 @@ static void _ws_process_go_neg_request(GDBusConnection *connection,
 	const char *path = NULL;
 	char * loc = NULL;
 
-	int dev_pwd_id = 0;
+	int dev_passwd_id = 0;
+	int device_go_intent = 0;
 
 	edata = (wfd_oem_dev_data_s *) g_try_malloc0(sizeof(wfd_oem_dev_data_s));
 	if (!edata) {
@@ -1619,20 +1620,22 @@ static void _ws_process_go_neg_request(GDBusConnection *connection,
 	event.edata_type = WFD_OEM_EDATA_TYPE_DEVICE;
 	event.event_id = WFD_OEM_EVENT_GO_NEG_REQ;
 
-	g_variant_get(parameters, "(&oq)", &path, &dev_pwd_id);
+	g_variant_get(parameters, "(&oqy)", &path, &dev_passwd_id, &device_go_intent);
 	g_strlcpy(peer_path, path, DBUS_OBJECT_PATH_MAX);
 
 	WDP_LOGD("Retrive peer path [%s]", peer_path);
-	WDP_LOGD("Retrive dev_passwd_id [%d]", dev_pwd_id);
+	WDP_LOGD("Retrive dev_passwd_id [%d]", dev_passwd_id);
+	WDP_LOGD("Retrive device_go_intent [%d]", device_go_intent);
 
-	if (dev_pwd_id == WS_DEV_PASSWD_ID_PUSH_BUTTON)
+	if (dev_passwd_id == WS_DEV_PASSWD_ID_PUSH_BUTTON)
 		event.wps_mode = WFD_OEM_WPS_MODE_PBC;
-	else if (dev_pwd_id == WS_DEV_PASSWD_ID_REGISTRAR_SPECIFIED)
+	else if (dev_passwd_id == WS_DEV_PASSWD_ID_REGISTRAR_SPECIFIED)
 		event.wps_mode = WFD_OEM_WPS_MODE_DISPLAY;
-	else if (dev_pwd_id == WS_DEV_PASSWD_ID_USER_SPECIFIED)
+	else if (dev_passwd_id == WS_DEV_PASSWD_ID_USER_SPECIFIED)
 		event.wps_mode = WFD_OEM_WPS_MODE_KEYPAD;
 	else
 		event.wps_mode = WFD_OEM_WPS_MODE_NONE;
+	edata->device_go_intent = device_go_intent;
 
 	loc = strrchr(peer_path,'/');
 	if(loc != NULL)

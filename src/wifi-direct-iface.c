@@ -40,9 +40,23 @@
 #include "wifi-direct-util.h"
 #include "wifi-direct-group.h"
 #include "wifi-direct-state.h"
+#include <vconf.h>
 #ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
 #include "wifi-direct-service.h"
 #endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
+
+
+#define WFD_DBUS_REPLY_RET(invocation, error) \
+	g_dbus_method_invocation_return_value((invocation), g_variant_new("(i)", (error)))
+
+#define WFD_DBUS_REPLY_PARAMS(invocation, params) \
+	g_dbus_method_invocation_return_value((invocation), (params))
+
+static guint wifidirect_iface_reg_id = 0;
+static guint wifidirect_group_iface_reg_id = 0;
+static guint wifidirect_config_iface_reg_id = 0;
+static guint wifidirect_service_iface_reg_id = 0;
+static guint wifidirect_display_iface_reg_id = 0;
 
 static int macaddr_atoe(const char *p, unsigned char mac[])
 {
@@ -275,6 +289,22 @@ const gchar wfd_manager_introspection_xml[] = {
 				"<arg type='s' name='peer_mac_address' direction='in'/>"
 				"<arg type='i' name='error_code' direction='out'/>"
 			"</method>"
+			"<method name='GetConnectingPeer'>"
+				"<arg type='i' name='error_code' direction='out'/>"
+				"<arg type='s' name='local_mac_address' direction='out'/>"
+			"</method>"
+			"<method name='GetInterfaceName'>"
+				"<arg type='i' name='error_code' direction='out'/>"
+				"<arg type='s' name='ifname' direction='out'/>"
+			"</method>"
+			"<method name='GetSubnetMask'>"
+				"<arg type='i' name='error_code' direction='out'/>"
+				"<arg type='s' name='subnet_mask' direction='out'/>"
+			"</method>"
+			"<method name='GetGateway'>"
+				"<arg type='i' name='error_code' direction='out'/>"
+				"<arg type='s' name='gateway_address' direction='out'/>"
+			"</method>"
 		"</interface>"
 #ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
 		"<interface name='net.wifidirect.service'>"
@@ -357,28 +387,53 @@ const gchar wfd_manager_introspection_xml[] = {
 	"</node>"
 };
 
-static int __wfd_manager_manage_iface_handler(const gchar *method_name,
+
+static void __wfd_manager_manage_iface_handler(const gchar *method_name,
 					      GVariant    *parameters,
-					      GVariant    **return_parameters)
+					      GDBusMethodInvocation *invocation)
 {
 	int ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 	wfd_manager_s *manager = wfd_get_manager();
+	GVariant *return_parameters = NULL;
+	WDS_LOGD("%s", method_name);
 
 	if (!g_strcmp0(method_name, "Activate")) {
+
+		if (manager->state > WIFI_DIRECT_STATE_DEACTIVATED) {
+			WDS_LOGE("In progress");
+			WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_NOT_PERMITTED);
+			return;
+		}
+
+		ret = wfd_util_wifi_direct_activatable();
+		if (ret < 0) {
+			WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_NOT_PERMITTED);
+			return;
+		}
+
+		WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_NONE);
+
 		ret = wfd_manager_activate(manager);
-		if (ret == WIFI_DIRECT_ERROR_NONE)
-			wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
-						     "Activation",
-						     g_variant_new("(i)", ret));
-		*return_parameters = g_variant_new("(i)", ret);
+		wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+					     "Activation",
+					     g_variant_new("(i)", ret));
+		return;
 
 	} else if (!g_strcmp0(method_name, "Deactivate")) {
+
+		if (manager->state < WIFI_DIRECT_STATE_ACTIVATED) {
+			WDS_LOGE("Already deactivated");
+			WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_NOT_PERMITTED);
+			return;
+		}
+
+		WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_NONE);
+
 		ret = wfd_manager_deactivate(manager);
-		if (ret == WIFI_DIRECT_ERROR_NONE)
-			wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
-						     "Deactivation",
-						     g_variant_new("(i)", ret));
-		*return_parameters = g_variant_new("(i)", ret);
+		wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+					     "Deactivation",
+					     g_variant_new("(i)", ret));
+		return;
 
 	} else if (!g_strcmp0(method_name, "StartDiscovery")) {
 		gboolean mode = FALSE;
@@ -404,6 +459,23 @@ static int __wfd_manager_manage_iface_handler(const gchar *method_name,
 		}
 		g_variant_iter_free(iter);
 
+		if (manager->state != WIFI_DIRECT_STATE_ACTIVATED &&
+				manager->state != WIFI_DIRECT_STATE_DISCOVERING &&
+				manager->state != WIFI_DIRECT_STATE_GROUP_OWNER) {
+			WDS_LOGE("Wi-Fi Direct is not available status for scanning.");
+			WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_NOT_PERMITTED);
+			return;
+		}
+
+		if (mode && (manager->local->dev_role == WFD_DEV_ROLE_GO)) {
+			WDS_LOGW("Wi-Fi Direct device is already visible, do not start listen");
+			ret = WIFI_DIRECT_ERROR_NONE;
+			WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_NONE);
+			return;
+		}
+
+		WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_NONE);
+
 		ret = wfd_manager_start_discovery(manager, mode, timeout, type, channel);
 		if (ret == WIFI_DIRECT_ERROR_NONE) {
 			if (mode == WFD_OEM_SCAN_MODE_PASSIVE) {
@@ -416,16 +488,25 @@ static int __wfd_manager_manage_iface_handler(const gchar *method_name,
 							     NULL);
 			}
 		}
-		*return_parameters = g_variant_new("(i)", ret);
+		return;
 
 	} else if (!g_strcmp0(method_name, "StopDiscovery")) {
 		int mode =  manager->scan_mode;
+		if (manager->state != WIFI_DIRECT_STATE_ACTIVATED &&
+				manager->state != WIFI_DIRECT_STATE_DISCOVERING) {
+
+			WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_NOT_PERMITTED);
+			return;
+		}
+
+		WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_NONE);
+
 		ret = wfd_manager_cancel_discovery(manager);
 		if (ret == WIFI_DIRECT_ERROR_NONE && mode == WFD_SCAN_MODE_PASSIVE)
 			wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
 						     "DiscoveryFinished",
 						     NULL);
-		*return_parameters = g_variant_new("(i)", ret);
+		return;
 
 	} else if (!g_strcmp0(method_name, "GetDiscoveredPeers")) {
 		wfd_discovery_entry_s *peers = NULL;
@@ -440,9 +521,10 @@ static int __wfd_manager_manage_iface_handler(const gchar *method_name,
 		if (peer_cnt < 0) {
 			WDS_LOGE("Failed to get scan result");
 			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			*return_parameters = g_variant_new("(iaa{sv})", ret, builder_peers);
+			return_parameters = g_variant_new("(iaa{sv})", ret, builder_peers);
 			g_variant_builder_unref(builder_peers);
-			goto done;
+			WFD_DBUS_REPLY_PARAMS(invocation, return_parameters);
+			return;
 		}
 
 		if (peer_cnt > 255)
@@ -501,12 +583,31 @@ static int __wfd_manager_manage_iface_handler(const gchar *method_name,
 		}
 
 		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(iaa{sv})", ret, builder_peers);
+		return_parameters = g_variant_new("(iaa{sv})", ret, builder_peers);
 		g_variant_builder_unref(builder_peers);
+		WFD_DBUS_REPLY_PARAMS(invocation, return_parameters);
+		return;
 
 	} else if (!g_strcmp0(method_name, "Connect")) {
 		const char *peer_mac_address = NULL;
 		unsigned char mac_addr[MACADDR_LEN] = {0, };
+
+		if (manager->state != WIFI_DIRECT_STATE_ACTIVATED &&
+				manager->state != WIFI_DIRECT_STATE_DISCOVERING &&
+				manager->state != WIFI_DIRECT_STATE_GROUP_OWNER) {
+
+			WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_NOT_PERMITTED);
+			return;
+		}
+
+		wfd_group_s *group = (wfd_group_s*) manager->group;
+		if (group && group->member_count >= manager->max_station) {
+
+			WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_TOO_MANY_CLIENT);
+			return;
+		}
+
+		WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_NONE);
 
 		g_variant_get(parameters, "(&s)", &peer_mac_address);
 		macaddr_atoe(peer_mac_address, mac_addr);
@@ -518,12 +619,35 @@ static int __wfd_manager_manage_iface_handler(const gchar *method_name,
 						     g_variant_new("(iis)", WIFI_DIRECT_ERROR_NONE,
 									    WFD_EVENT_CONNECTION_IN_PROGRESS,
 									    peer_mac_address));
-
-		*return_parameters = g_variant_new("(i)", ret);
+		return;
 
 	} else if (!g_strcmp0(method_name, "Disconnect")) {
 		const char *peer_mac_address = NULL;
 		unsigned char mac_addr[MACADDR_LEN] = {0, };
+
+		if (!manager->group || manager->state < WIFI_DIRECT_STATE_CONNECTED) {
+			if (WIFI_DIRECT_STATE_DISCOVERING == manager->state) {
+				ret = wfd_oem_stop_scan(manager->oem_ops);
+				if (ret < 0) {
+					WDS_LOGE("Failed to stop scan");
+					WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_OPERATION_FAILED);
+					return;
+				}
+				WDS_LOGI("Succeeded to stop scan");
+				if (WFD_DEV_ROLE_GO == manager->local->dev_role) {
+					wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
+					wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
+				} else {
+					wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
+					wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
+				}
+			} else {
+				WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_NOT_PERMITTED);
+				return;
+			}
+		}
+
+		WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_NONE);
 
 		g_variant_get(parameters, "(&s)", &peer_mac_address);
 		macaddr_atoe(peer_mac_address, mac_addr);
@@ -535,12 +659,19 @@ static int __wfd_manager_manage_iface_handler(const gchar *method_name,
 						     g_variant_new("(iis)", WIFI_DIRECT_ERROR_NONE,
 									    WFD_EVENT_DISCONNECTION_RSP,
 									    peer_mac_address));
-
-		*return_parameters = g_variant_new("(i)", ret);
+		return;
 
 	} else if (!g_strcmp0(method_name, "CancelConnection")) {
 		const char *peer_mac_address = NULL;
 		unsigned char mac_addr[MACADDR_LEN] = {0, };
+
+		if (!manager->session && manager->state != WIFI_DIRECT_STATE_CONNECTING) {
+			WDS_LOGE("It's not CONNECTING state");
+			WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_NOT_PERMITTED);
+			return;
+		}
+
+		WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_NONE);
 
 		g_variant_get(parameters, "(&s)", &peer_mac_address);
 		macaddr_atoe(peer_mac_address, mac_addr);
@@ -552,12 +683,26 @@ static int __wfd_manager_manage_iface_handler(const gchar *method_name,
 						     g_variant_new("(iis)", WIFI_DIRECT_ERROR_CONNECTION_CANCELED,
 									    WFD_EVENT_CONNECTION_RSP,
 									    peer_mac_address));
-
-		*return_parameters = g_variant_new("(i)", ret);
+		return;
 
 	} else if (!g_strcmp0(method_name, "AcceptConnection")) {
 		const char *peer_mac_address = NULL;
 		unsigned char mac_addr[MACADDR_LEN] = {0, };
+
+		if (manager->state != WIFI_DIRECT_STATE_CONNECTING) {
+
+			WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_NOT_PERMITTED);
+			return;
+		}
+
+		wfd_group_s *group = (wfd_group_s*) manager->group;
+		if (group && group->member_count >= manager->max_station) {
+
+			WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_TOO_MANY_CLIENT);
+			return ;
+		}
+
+		WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_NONE);
 
 		g_variant_get(parameters, "(&s)", &peer_mac_address);
 		macaddr_atoe(peer_mac_address, mac_addr);
@@ -577,11 +722,26 @@ static int __wfd_manager_manage_iface_handler(const gchar *method_name,
 									    peer_mac_address));
 		}
 
-		*return_parameters = g_variant_new("(i)", ret);
+		return;
 
 	} else if (!g_strcmp0(method_name, "RejectConnection")) {
+		wfd_session_s *session = manager->session;
 		const char *peer_mac_address = NULL;
 		unsigned char mac_addr[MACADDR_LEN] = {0, };
+
+		if (!session || manager->state != WIFI_DIRECT_STATE_CONNECTING) {
+			WDS_LOGE("It's not permitted with this state [%d]", manager->state);
+			WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_NOT_PERMITTED);
+			return;
+		}
+
+		if (session->direction != SESSION_DIRECTION_INCOMING) {
+			WDS_LOGE("Only incomming session can be rejected");
+			WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_NOT_PERMITTED);
+			return;
+		}
+
+		WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_NONE);
 
 		g_variant_get(parameters, "(&s)", &peer_mac_address);
 		macaddr_atoe(peer_mac_address, mac_addr);
@@ -593,10 +753,34 @@ static int __wfd_manager_manage_iface_handler(const gchar *method_name,
 						     g_variant_new("(iis)", WIFI_DIRECT_ERROR_CONNECTION_CANCELED,
 									    WFD_EVENT_CONNECTION_RSP,
 									    peer_mac_address));
-
-		*return_parameters = g_variant_new("(i)", ret);
+		return;
 
 	} else if (!g_strcmp0(method_name, "DisconnectAll")) {
+
+		if (!manager->group || manager->state < WIFI_DIRECT_STATE_CONNECTED) {
+			if (WIFI_DIRECT_STATE_DISCOVERING == manager->state) {
+				ret = wfd_oem_stop_scan(manager->oem_ops);
+				if (ret < 0) {
+					WDS_LOGE("Failed to stop scan");
+					WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_OPERATION_FAILED);
+					return;
+				}
+				WDS_LOGI("Succeeded to stop scan");
+				if (WFD_DEV_ROLE_GO == manager->local->dev_role) {
+					wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
+					wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
+				} else {
+					wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
+					wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
+				}
+			} else {
+				WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_NOT_PERMITTED);
+				return;
+			}
+		}
+
+		WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_NONE);
+
 		ret = wfd_manager_disconnect_all(manager);
 		if (ret == WIFI_DIRECT_ERROR_NONE)
 			wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
@@ -605,7 +789,7 @@ static int __wfd_manager_manage_iface_handler(const gchar *method_name,
 									    WFD_EVENT_DISCONNECTION_RSP,
 									    ""));
 
-		*return_parameters = g_variant_new("(i)", ret);
+		return;
 
 	} else if (!g_strcmp0(method_name, "GetConnectedPeers")) {
 		wfd_connected_peer_info_s *peers = NULL;
@@ -619,9 +803,10 @@ static int __wfd_manager_manage_iface_handler(const gchar *method_name,
 		if (!manager->group && manager->state < WIFI_DIRECT_STATE_CONNECTED) {
 			WDS_LOGD("It's not connected state [%d]", manager->state);
 			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
-			*return_parameters = g_variant_new("(iaa{sv})", ret, builder_peers);
+			return_parameters = g_variant_new("(iaa{sv})", ret, builder_peers);
 			g_variant_builder_unref(builder_peers);
-			goto done;
+			g_dbus_method_invocation_return_value(invocation, return_parameters);
+			return;
 		}
 
 		peer_cnt = wfd_manager_get_connected_peers(manager, &peers);
@@ -629,9 +814,10 @@ static int __wfd_manager_manage_iface_handler(const gchar *method_name,
 		if (peer_cnt < 0) {
 			WDS_LOGE("Failed to get scan result");
 			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			*return_parameters = g_variant_new("(iaa{sv})", ret, builder_peers);
+			return_parameters = g_variant_new("(iaa{sv})", ret, builder_peers);
 			g_variant_builder_unref(builder_peers);
-			goto done;
+			g_dbus_method_invocation_return_value(invocation, return_parameters);
+			return;
 		}
 
 		for (i = 0; i < peer_cnt; i++) {
@@ -678,18 +864,24 @@ static int __wfd_manager_manage_iface_handler(const gchar *method_name,
 		}
 
 		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(iaa{sv})", ret, builder_peers);
+		return_parameters = g_variant_new("(iaa{sv})", ret, builder_peers);
 		g_variant_builder_unref(builder_peers);
+		g_dbus_method_invocation_return_value(invocation, return_parameters);
+		return;
 
 	} else if (!g_strcmp0(method_name, "IsDiscoverable")) {
 		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(b)",
+		return_parameters = g_variant_new("(b)",
 						   (manager->state == WIFI_DIRECT_STATE_DISCOVERING ||
 						    wfd_group_is_autonomous(manager->group) == TRUE));
+		g_dbus_method_invocation_return_value(invocation, return_parameters);
+		return;
 
 	} else if (!g_strcmp0(method_name, "IsListeningOnly")) {
 		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(b)", (manager->scan_mode == WFD_SCAN_MODE_PASSIVE));
+		return_parameters = g_variant_new("(b)", (manager->scan_mode == WFD_SCAN_MODE_PASSIVE));
+		g_dbus_method_invocation_return_value(invocation, return_parameters);
+		return;
 
 	} else if (!g_strcmp0(method_name, "GetPeerInfo")) {
 		wfd_discovery_entry_s *peer = NULL;
@@ -706,9 +898,10 @@ static int __wfd_manager_manage_iface_handler(const gchar *method_name,
 		if (ret < 0 || !peer) {
 			WDS_LOGE("Failed to get peer info");
 			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			*return_parameters = g_variant_new("(ia{sv})", ret, builder_peer);
+			return_parameters = g_variant_new("(ia{sv})", ret, builder_peer);
 			g_free(peer);
-			goto done;
+			g_dbus_method_invocation_return_value(invocation, return_parameters);
+			return;
 		}
 
 		g_variant_builder_add(builder_peer, "{sv}",
@@ -756,29 +949,32 @@ static int __wfd_manager_manage_iface_handler(const gchar *method_name,
 #endif /* TIZEN_FEATURE_WIFI_DISPLAY */
 
 		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(ia{sv})", ret, builder_peer);
+		return_parameters = g_variant_new("(ia{sv})", ret, builder_peer);
 		g_variant_builder_unref(builder_peer);
 		g_free(peer);
+		g_dbus_method_invocation_return_value(invocation, return_parameters);
+		return;
 
 	} else if (!g_strcmp0(method_name, "GetState")) {
 		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(ii)", ret, manager->state);
+		return_parameters = g_variant_new("(ii)", ret, manager->state);
+		g_dbus_method_invocation_return_value(invocation, return_parameters);
+		return;
 
 	} else {
 		WDS_LOGD("method not handled");
-		ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+		WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_OPERATION_FAILED);
 	}
-
-done:
-	return ret;
+	return;
 }
 
-static int __wfd_manager_group_iface_handler(const gchar *method_name,
+static void __wfd_manager_group_iface_handler(const gchar *method_name,
 					     GVariant    *parameters,
-					     GVariant    **return_parameters)
+					     GDBusMethodInvocation *invocation)
 {
 	int ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 	wfd_manager_s *manager = wfd_get_manager();
+	GVariant *return_parameters = NULL;
 	WDS_LOGD("%s", method_name);
 
 	if (!g_strcmp0(method_name, "CreateGroup")) {
@@ -787,9 +983,8 @@ static int __wfd_manager_group_iface_handler(const gchar *method_name,
 
 		if (group || manager->state < WIFI_DIRECT_STATE_ACTIVATED) {
 			WDS_LOGE("Group already exist or not a proper state");
-			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
-			*return_parameters = g_variant_new("(i)", ret);
-			goto done;
+			WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_NOT_PERMITTED);
+			return;
 		}
 
 #ifdef TIZEN_WLAN_BOARD_SPRD
@@ -799,9 +994,8 @@ static int __wfd_manager_group_iface_handler(const gchar *method_name,
 #endif
 		if (!group) {
 			WDS_LOGE("Failed to create pending group");
-			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			*return_parameters = g_variant_new("(i)", ret);
-			goto done;
+			WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_OPERATION_FAILED);
+			return;
 		}
 		group->flags |= WFD_GROUP_FLAG_AUTONOMOUS;
 		manager->group = group;
@@ -821,30 +1015,29 @@ static int __wfd_manager_group_iface_handler(const gchar *method_name,
 		if (ret < 0) {
 			WDS_LOGE("Failed to create group");
 			wfd_destroy_group(manager, GROUP_IFNAME);
-			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			*return_parameters = g_variant_new("(i)", ret);
+			WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_OPERATION_FAILED);
+			return;
 		}
 
 		WDS_LOGD("Succeeded to create pending group");
 		memset(manager->local->passphrase, 0x0, PASSPHRASE_LEN_MAX + 1);
 		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(i)", ret);
+		WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_NONE);
+		return;
 
 	} else if (!g_strcmp0(method_name, "DestroyGroup")) {
 		wfd_group_s *group = manager->group;
 		if (!group && manager->state < WIFI_DIRECT_STATE_CONNECTED) {
 			WDS_LOGE("Group not exist");
-			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
-			*return_parameters = g_variant_new("(i)", ret);
-			goto done;
+			WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_NOT_PERMITTED);
+			return;
 		}
 
 		ret = wfd_oem_destroy_group(manager->oem_ops, group->ifname);
 		if (ret < 0) {
 			WDS_LOGE("Failed to destroy group");
-			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			*return_parameters = g_variant_new("(i)", ret);
-			goto done;
+			WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_OPERATION_FAILED);
+			return;
 		}
 
 		ret = wfd_destroy_group(manager, group->ifname);
@@ -854,48 +1047,48 @@ static int __wfd_manager_group_iface_handler(const gchar *method_name,
 		wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
 		wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
 
+		WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_NONE);
+
 		wfd_manager_dbus_emit_signal(WFD_MANAGER_GROUP_INTERFACE,
 				"Destroyed", NULL);
-		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(i)", ret);
+		return;
 
 	} else if (!g_strcmp0(method_name, "IsGroupOwner")) {
 		gboolean result;
 		wfd_device_s *local = manager->local;
 		result = local->dev_role == WFD_DEV_ROLE_GO;
 		WDS_LOGI("Is group owner : [%s]", result ? "Yes" : "No");
-		*return_parameters = g_variant_new("(b)", result);
-		ret = WIFI_DIRECT_ERROR_NONE;
+		return_parameters = g_variant_new("(b)", result);
+		WFD_DBUS_REPLY_PARAMS(invocation, return_parameters);
+		return;
 
 	} else if (!g_strcmp0(method_name, "IsAutoGroup")) {
 		int result;
 		if ((result = wfd_group_is_autonomous(manager->group)) < 0) {
-			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
-			goto done;
+			return;
 		}
 		WDS_LOGI("Is autonomous group : [%s]", result ? "Yes" : "No");
-		*return_parameters = g_variant_new("(b)", result);
-		ret = WIFI_DIRECT_ERROR_NONE;
+		return_parameters = g_variant_new("(b)", result);
+		WFD_DBUS_REPLY_PARAMS(invocation, return_parameters);
+		return;
 
 	} else if (!g_strcmp0(method_name, "ActivatePushButton")) {
 		if (manager->local->dev_role != WFD_DEV_ROLE_GO) {
 			WDS_LOGE("Wi-Fi Direct is not Group Owner.");
-			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
-			*return_parameters = g_variant_new("(i)", ret);
-			goto done;
+			WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_NOT_PERMITTED);
+			return;
 		}
 
 		ret = wfd_oem_wps_start(manager->oem_ops, NULL,
 				WFD_WPS_MODE_PBC, NULL);
 		if (ret < 0) {
 			WDS_LOGE("Failed to start wps");
-			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			*return_parameters = g_variant_new("(i)", ret);
-			goto done;
+			WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_OPERATION_FAILED);
+			return;
 		}
 
-		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(i)", ret);
+		WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_NONE);
+		return;
 
 	} else if (!g_strcmp0(method_name, "GetPersistentGroups")) {
 		int persistent_group_count = 0;
@@ -908,9 +1101,11 @@ static int __wfd_manager_group_iface_handler(const gchar *method_name,
 		if (manager->state < WIFI_DIRECT_STATE_ACTIVATED) {
 			WDS_LOGE("Wi-Fi Direct is not activated.");
 			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
-			*return_parameters = g_variant_new("(iaa{sv})", ret, builder_groups);
+			return_parameters = g_variant_new("(iaa{sv})", ret, builder_groups);
 			g_variant_builder_unref(builder_groups);
-			goto done;
+
+			WFD_DBUS_REPLY_PARAMS(invocation, return_parameters);
+			return;
 		}
 
 		ret = wfd_oem_get_persistent_groups(manager->oem_ops,
@@ -918,9 +1113,11 @@ static int __wfd_manager_group_iface_handler(const gchar *method_name,
 		if (ret < 0) {
 			WDS_LOGE("Error!! wfd_oem_get_persistent_group_info() failed..");
 			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			*return_parameters = g_variant_new("(iaa{sv})", ret, builder_groups);
+			return_parameters = g_variant_new("(iaa{sv})", ret, builder_groups);
 			g_variant_builder_unref(builder_groups);
-			goto done;
+
+			WFD_DBUS_REPLY_PARAMS(invocation, return_parameters);
+			return;
 		}
 
 		for (i = 0; i < persistent_group_count; i++) {
@@ -942,8 +1139,10 @@ static int __wfd_manager_group_iface_handler(const gchar *method_name,
 		}
 
 		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(iaa{sv})", ret, builder_groups);
+		return_parameters = g_variant_new("(iaa{sv})", ret, builder_groups);
 		g_variant_builder_unref(builder_groups);
+		WFD_DBUS_REPLY_PARAMS(invocation, return_parameters);
+		return;
 
 	} else if (!g_strcmp0(method_name, "RemovePersistentGroup")) {
 		gchar *ssid;
@@ -951,9 +1150,8 @@ static int __wfd_manager_group_iface_handler(const gchar *method_name,
 		unsigned char go_mac_address[6];
 		if (manager->state < WIFI_DIRECT_STATE_ACTIVATED) {
 			WDS_LOGE("Wi-Fi Direct is not activated.");
-			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
-			*return_parameters = g_variant_new("(i)", ret);
-			goto done;
+			WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_NOT_PERMITTED);
+			return;
 		}
 
 		g_variant_get(parameters, "(&s&s)", &mac_address, &ssid);
@@ -964,13 +1162,12 @@ static int __wfd_manager_group_iface_handler(const gchar *method_name,
 				go_mac_address);
 		if (ret < 0) {
 			WDS_LOGE("Failed to remove persistent group");
-			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			*return_parameters = g_variant_new("(i)", ret);
-			goto done;
+			WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_OPERATION_FAILED);
+			return;
 		}
 
-		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(i)", ret);
+		WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_NONE);
+		return;
 
 	} else if (!g_strcmp0(method_name, "SetPassphrase")) {
 		gchar *passphrase;
@@ -979,9 +1176,8 @@ static int __wfd_manager_group_iface_handler(const gchar *method_name,
 
 		if (group) {
 			WDS_LOGE("Group already exists");
-			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
-			*return_parameters = g_variant_new("(i)", ret);
-			goto done;
+			WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_NOT_PERMITTED);
+			return;
 		}
 
 		g_variant_get(parameters, "(&s)", &passphrase);
@@ -991,36 +1187,38 @@ static int __wfd_manager_group_iface_handler(const gchar *method_name,
 				passphrase_len > PASSPHRASE_LEN_MAX) {
 			WDS_LOGE("Passphrase length incorrect [%s]:[%d]",
 					passphrase, passphrase_len);
-			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
-			*return_parameters = g_variant_new("(i)", ret);
-			goto done;
+			WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_NOT_PERMITTED);
+			return;
 		}
 
 		g_strlcpy(manager->local->passphrase, passphrase, PASSPHRASE_LEN_MAX + 1);
 		WDS_LOGI("Passphrase string [%s]", manager->local->passphrase);
 
-		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(i)", ret);
+		WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_NONE);
+		return;
 
 	} else if (!g_strcmp0(method_name, "GetPassphrase")) {
 		wfd_group_s *group = manager->group;
 		if (!group) {
 			WDS_LOGE("Group not exist");
 			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
-			*return_parameters = g_variant_new("(is)", ret, "");
-			goto done;
+			return_parameters = g_variant_new("(is)", ret, "");
+			WFD_DBUS_REPLY_PARAMS(invocation, return_parameters);
+			return;
 		}
 
 		if (group->role == WFD_DEV_ROLE_GC) {
 			WDS_LOGE("Device is not GO");
 			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
-			*return_parameters = g_variant_new("(is)", ret, "");
-			goto done;
+			WFD_DBUS_REPLY_PARAMS(invocation, return_parameters);
+			return;
 		}
 
 		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(is)", ret, group->passphrase);
+		return_parameters = g_variant_new("(is)", ret, group->passphrase);
 		WDS_LOGI("group->pass : [%s]", group->passphrase);
+		WFD_DBUS_REPLY_PARAMS(invocation, return_parameters);
+		return;
 
 	} else if (!g_strcmp0(method_name, "SetPersistentGroupEnabled")) {
 		gboolean enabled;
@@ -1033,8 +1231,8 @@ static int __wfd_manager_group_iface_handler(const gchar *method_name,
 		else
 			manager->local->group_flags &= ~(WFD_GROUP_FLAG_PERSISTENT);
 
-		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(i)", ret);
+		WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_NONE);
+		return;
 
 	} else if (!g_strcmp0(method_name, "IsPersistentGroupEnabled")) {
 		gboolean result;
@@ -1042,24 +1240,25 @@ static int __wfd_manager_group_iface_handler(const gchar *method_name,
 					WFD_GROUP_FLAG_PERSISTENT)
 				== WFD_GROUP_FLAG_PERSISTENT);
 		WDS_LOGI("Is persistent group : [%s]", result ? "Yes" : "No");
-		*return_parameters = g_variant_new("(b)", result);
-		ret = WIFI_DIRECT_ERROR_NONE;
+		return_parameters = g_variant_new("(b)", result);
+
+		WFD_DBUS_REPLY_PARAMS(invocation, return_parameters);
+		return;
 
 	} else {
 		WDS_LOGD("method not handled");
-		ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+		WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_OPERATION_FAILED);
 	}
-
-done:
-	return ret;
+	return;
 }
 
-static int __wfd_manager_config_iface_handler(const gchar *method_name,
+static void __wfd_manager_config_iface_handler(const gchar *method_name,
 					      GVariant    *parameters,
-					      GVariant    **return_parameters)
+					      GDBusMethodInvocation *invocation)
 {
 	int ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 	wfd_manager_s *manager = wfd_get_manager();
+	GVariant *return_parameters = NULL;
 	WDS_LOGD("%s", method_name);
 
 	if (!g_strcmp0(method_name, "GetDeviceName")) {
@@ -1069,12 +1268,14 @@ static int __wfd_manager_config_iface_handler(const gchar *method_name,
 		if (ret < 0) {
 			WDS_LOGE("Failed to get device name");
 			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			*return_parameters = g_variant_new("(is)", ret, "");
-			goto done;
-		}
+			return_parameters = g_variant_new("(is)", ret, "");
+		} else {
 
-		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(is)", ret, device_name);
+			ret = WIFI_DIRECT_ERROR_NONE;
+			return_parameters = g_variant_new("(is)", ret, device_name);
+		}
+		WFD_DBUS_REPLY_PARAMS(invocation, return_parameters);
+		return;
 
 	} else if (!g_strcmp0(method_name, "SetDeviceName")) {
 		const char *device_name = NULL;
@@ -1084,31 +1285,31 @@ static int __wfd_manager_config_iface_handler(const gchar *method_name,
 		if (ret < 0) {
 			WDS_LOGE("Failed to set device name");
 			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			*return_parameters = g_variant_new("(i)", ret);
+			return_parameters = g_variant_new("(i)", ret);
 			goto done;
 		}
 
 		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(i)", ret);
+		return_parameters = g_variant_new("(i)", ret);
 
 	} else if (!g_strcmp0(method_name, "GetWpsPin")) {
 		wfd_session_s *session = (wfd_session_s*) manager->session;
 		if (!session || manager->auto_pin[0] != 0) {
 			WDS_LOGE("Session not exist");
 			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
-			*return_parameters = g_variant_new("(is)", ret, "");
+			return_parameters = g_variant_new("(is)", ret, "");
 			goto done;
 		}
 
 		if (session->wps_pin[0] == '\0') {
 			WDS_LOGE("WPS PIN is not set");
 			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			*return_parameters = g_variant_new("(is)", ret, "");
+			return_parameters = g_variant_new("(is)", ret, "");
 			goto done;
 		}
 
 		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(is)", ret, session->wps_pin);
+		return_parameters = g_variant_new("(is)", ret, session->wps_pin);
 
 	} else if (!g_strcmp0(method_name, "SetWpsPin")) {
 		const char *pin = NULL;
@@ -1124,7 +1325,7 @@ static int __wfd_manager_config_iface_handler(const gchar *method_name,
 		}
 
 		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(i)", ret);
+		return_parameters = g_variant_new("(i)", ret);
 
 	} else if (!g_strcmp0(method_name, "GetSupportedWpsMode")) {
 		int config_methods = 0;
@@ -1133,12 +1334,12 @@ static int __wfd_manager_config_iface_handler(const gchar *method_name,
 		if (ret < 0) {
 			WDS_LOGE("Failed to get supported wps mode");
 			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			*return_parameters = g_variant_new("(ii)", ret, config_methods);
+			return_parameters = g_variant_new("(ii)", ret, config_methods);
 			goto done;
 		}
 
 		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(ii)", ret, config_methods);
+		return_parameters = g_variant_new("(ii)", ret, config_methods);
 
 	} else if (!g_strcmp0(method_name, "GetReqWpsMode")) {
 		int wps_mode = 0;
@@ -1147,12 +1348,12 @@ static int __wfd_manager_config_iface_handler(const gchar *method_name,
 		if (ret < 0) {
 			WDS_LOGE("Failed to get request wps mode");
 			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			*return_parameters = g_variant_new("(ii)", ret, wps_mode);
+			return_parameters = g_variant_new("(ii)", ret, wps_mode);
 			goto done;
 		}
 
 		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(ii)", ret, wps_mode);
+		return_parameters = g_variant_new("(ii)", ret, wps_mode);
 
 	} else if (!g_strcmp0(method_name, "SetReqWpsMode")) {
 		int type = 0;
@@ -1162,12 +1363,12 @@ static int __wfd_manager_config_iface_handler(const gchar *method_name,
 		if(ret < 0) {
 			WDS_LOGE("Failed to set request wps mode");
 			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			*return_parameters = g_variant_new("(i)", ret);
+			return_parameters = g_variant_new("(i)", ret);
 			goto done;
 		}
 
 		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(i)", ret);
+		return_parameters = g_variant_new("(i)", ret);
 
 	} else if (!g_strcmp0(method_name, "GetLocalWpsMode")) {
 		int wps_mode = 0;
@@ -1176,36 +1377,32 @@ static int __wfd_manager_config_iface_handler(const gchar *method_name,
 		if (ret < 0) {
 			WDS_LOGE("Failed to get request wps mode");
 			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			*return_parameters = g_variant_new("(ii)", ret, 0);
+			return_parameters = g_variant_new("(ii)", ret, 0);
 			goto done;
 		}
 
 		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(ii)", ret, wps_mode);
+		return_parameters = g_variant_new("(ii)", ret, wps_mode);
 
 	} else if (!g_strcmp0(method_name, "GetIPAddress")) {
-		unsigned char ip_addr[IPADDR_LEN] = {0,};
 		char ip_addr_str[IPSTR_LEN+1] = {0, };
 
 		if (manager->state < WIFI_DIRECT_STATE_CONNECTED) {
 			WDS_LOGE("Device is not connected yet");
 			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
-			g_snprintf(ip_addr_str, IPSTR_LEN, IPSTR, IP2STR(ip_addr));
-			*return_parameters = g_variant_new("(is)", ret, ip_addr_str);
+			return_parameters = g_variant_new("(is)", ret, ip_addr_str);
 			goto done;
 		}
 
-		ret = wfd_local_get_ip_addr((char *)ip_addr);
+		ret = wfd_local_get_ip_addr((char *)ip_addr_str);
 		if (ret < 0) {
 			WDS_LOGE("Failed to get local IP address");
 			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			g_snprintf(ip_addr_str, IPSTR_LEN, IPSTR, IP2STR(ip_addr));
-			*return_parameters = g_variant_new("(is)", ret, ip_addr_str);
+			return_parameters = g_variant_new("(is)", ret, ip_addr_str);
 			goto done;
 		}
 
-		g_snprintf(ip_addr_str, IPSTR_LEN, IPSTR, IP2STR(ip_addr));
-		*return_parameters = g_variant_new("(is)", ret, ip_addr_str);
+		return_parameters = g_variant_new("(is)", ret, ip_addr_str);
 		WDS_LOGI("IP addr : [%s]", ip_addr_str);
 
 	} else if (!g_strcmp0(method_name, "GetMacAddress")) {
@@ -1215,12 +1412,12 @@ static int __wfd_manager_config_iface_handler(const gchar *method_name,
 		if (ret < 0) {
 			WDS_LOGE("Failed to get device mac");
 			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			*return_parameters = g_variant_new("(is)", "");
+			return_parameters = g_variant_new("(is)", "");
 			goto done;
 		}
 
 		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(is)", ret, device_mac);
+		return_parameters = g_variant_new("(is)", ret, device_mac);
 
 	} else if (!g_strcmp0(method_name, "GetGoIntent")) {
 		int go_intent = 0;
@@ -1229,12 +1426,12 @@ static int __wfd_manager_config_iface_handler(const gchar *method_name,
 		if (ret < 0) {
 			WDS_LOGE("Failed to get GO intent");
 			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			*return_parameters = g_variant_new("(ii)", ret, 0);
+			return_parameters = g_variant_new("(ii)", ret, 0);
 			goto done;
 		}
 
 		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(ii)", ret, go_intent);
+		return_parameters = g_variant_new("(ii)", ret, go_intent);
 
 	} else if (!g_strcmp0(method_name, "SetGoIntent")) {
 		int go_intent = 0;
@@ -1244,12 +1441,12 @@ static int __wfd_manager_config_iface_handler(const gchar *method_name,
 		if(ret < 0) {
 			WDS_LOGE("Failed to set GO intent");
 			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			*return_parameters = g_variant_new("(i)", ret);
+			return_parameters = g_variant_new("(i)", ret);
 			goto done;
 		}
 
 		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(i)", ret);
+		return_parameters = g_variant_new("(i)", ret);
 
 	} else if (!g_strcmp0(method_name, "GetMaxClient")) {
 		int max_client = 0;
@@ -1258,12 +1455,12 @@ static int __wfd_manager_config_iface_handler(const gchar *method_name,
 		if (ret < 0) {
 			WDS_LOGE("Failed to get max station");
 			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			*return_parameters = g_variant_new("(ii)", ret, 0);
+			return_parameters = g_variant_new("(ii)", ret, 0);
 			goto done;
 		}
 
 		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(ii)", ret, max_client);
+		return_parameters = g_variant_new("(ii)", ret, max_client);
 
 	} else if (!g_strcmp0(method_name, "SetMaxClient")) {
 		int max_client = 0;
@@ -1273,12 +1470,12 @@ static int __wfd_manager_config_iface_handler(const gchar *method_name,
 		if(ret < 0) {
 			WDS_LOGE("Failed to set max station");
 			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			*return_parameters = g_variant_new("(i)", ret);
+			return_parameters = g_variant_new("(i)", ret);
 			goto done;
 		}
 
 		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(i)", ret);
+		return_parameters = g_variant_new("(i)", ret);
 
 	} else if (!g_strcmp0(method_name, "SetAutoConnectionMode")) {
 		gboolean mode = FALSE;
@@ -1288,12 +1485,12 @@ static int __wfd_manager_config_iface_handler(const gchar *method_name,
 		if(ret < 0) {
 			WDS_LOGE("Failed to set autoconnection");
 			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			*return_parameters = g_variant_new("(i)", ret);
+			return_parameters = g_variant_new("(i)", ret);
 			goto done;
 		}
 
 		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(i)", ret);
+		return_parameters = g_variant_new("(i)", ret);
 
 	} else if (!g_strcmp0(method_name, "IsAutoConnectionMode")) {
 		int mode = 0;
@@ -1302,12 +1499,12 @@ static int __wfd_manager_config_iface_handler(const gchar *method_name,
 		if (ret < 0) {
 			WDS_LOGE("Failed to get autoconnection");
 			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			*return_parameters = g_variant_new("(ib)", ret, FALSE);
+			return_parameters = g_variant_new("(ib)", ret, FALSE);
 			goto done;
 		}
 
 		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(ib)", ret, mode);
+		return_parameters = g_variant_new("(ib)", ret, mode);
 
 	} else if (!g_strcmp0(method_name, "GetOperatingChannel")) {
 		int channel = 0;
@@ -1316,40 +1513,86 @@ static int __wfd_manager_config_iface_handler(const gchar *method_name,
 		if (!group) {
 			WDS_LOGE("Group not exist");
 			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
-			*return_parameters = g_variant_new("(ii)", ret, 0);
+			return_parameters = g_variant_new("(ii)", ret, 0);
 			goto done;
 		}
 
 		channel = wfd_util_freq_to_channel(group->freq);
 		if (channel < 0) {
 			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			*return_parameters = g_variant_new("(ii)", ret, 0);
+			return_parameters = g_variant_new("(ii)", ret, 0);
 			goto done;
 		}
 
 		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(ii)", ret, channel);
+		return_parameters = g_variant_new("(ii)", ret, channel);
 
 	} else if (!g_strcmp0(method_name, "SetAutoConnectionPeer")) {
 		ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-		*return_parameters = g_variant_new("(i)", ret);
+		return_parameters = g_variant_new("(i)", ret);
 
+	} else if (!g_strcmp0(method_name, "GetInterfaceName")) {
+		wfd_group_s *group = (wfd_group_s *)manager->group;
+		if (!group) {
+			WDS_LOGE("Group not exist");
+			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
+			return_parameters = g_variant_new("(is)", ret, "");
+			goto done;
+		}
+		ret = WIFI_DIRECT_ERROR_NONE;
+		return_parameters = g_variant_new("(is)", ret, group->ifname);
+	} else if (!g_strcmp0(method_name, "GetSubnetMask")) {
+			char *get_str = NULL;
+			char subnet_mask[IPSTR_LEN+1] = {0, };
+
+			get_str = vconf_get_str(VCONFKEY_SUBNET_MASK);
+			if (!get_str) {
+				WDS_LOGE("Get Subnet Mask failed");
+				ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
+				return_parameters = g_variant_new("(is)", ret, "");
+				goto done;
+			}
+			WDS_LOGD("VCONFKEY_SUBNET_MASK(%s) : %s", VCONFKEY_SUBNET_MASK,
+				get_str);
+			ret = WIFI_DIRECT_ERROR_NONE;
+			g_strlcpy(subnet_mask, get_str, IPSTR_LEN + 1);
+			return_parameters = g_variant_new("(is)", ret, subnet_mask);
+			free(get_str);
+	} else if (!g_strcmp0(method_name, "GetGateway")) {
+			char *get_str = NULL;
+			char gateway_addr[IPSTR_LEN+1] = {0, };
+			get_str = vconf_get_str(VCONFKEY_GATEWAY);
+			if (!get_str) {
+				WDS_LOGE("Get Gateway failed");
+				ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
+				return_parameters = g_variant_new("(is)", ret, "");
+				goto done;
+			}
+			WDS_LOGD("VCONFKEY_GATEWAY_ADDR(%s) : %s", VCONFKEY_GATEWAY,
+				get_str);
+			ret = WIFI_DIRECT_ERROR_NONE;
+			g_strlcpy(gateway_addr, get_str, IPSTR_LEN + 1);
+			return_parameters = g_variant_new("(is)", ret, gateway_addr);
+			free(get_str);
 	} else {
 		WDS_LOGD("method not handled");
-		ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+		WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_OPERATION_FAILED);
+		return;
 	}
 
 done:
-	return ret;
+	WFD_DBUS_REPLY_PARAMS(invocation, return_parameters);
+	return;
 }
 
 #ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
-static int __wfd_manager_service_iface_handler(const gchar *method_name,
+static void __wfd_manager_service_iface_handler(const gchar *method_name,
 					       GVariant    *parameters,
-					       GVariant    **return_parameters)
+					       GDBusMethodInvocation *invocation)
 {
 	int ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 	wfd_manager_s *manager = wfd_get_manager();
+	GVariant *return_parameters = NULL;
 	WDS_LOGD("%s", method_name);
 
 	if (!g_strcmp0(method_name, "StartDiscovery")) {
@@ -1360,7 +1603,7 @@ static int __wfd_manager_service_iface_handler(const gchar *method_name,
 		if (manager->state < WIFI_DIRECT_STATE_ACTIVATED) {
 			WDS_LOGE("Wi-Fi Direct is not activated.");
 			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
-			*return_parameters = g_variant_new("(i)", ret);
+			return_parameters = g_variant_new("(i)", ret);
 			goto done;
 		}
 
@@ -1373,12 +1616,12 @@ static int __wfd_manager_service_iface_handler(const gchar *method_name,
 		if (ret < 0) {
 			WDS_LOGE("Failed to start service discovery");
 			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			*return_parameters = g_variant_new("(i)", ret);
+			return_parameters = g_variant_new("(i)", ret);
 			goto done;
 		}
 
 		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(i)", ret);
+		return_parameters = g_variant_new("(i)", ret);
 
 		wfd_manager_dbus_emit_signal(WFD_MANAGER_SERVICE_INTERFACE,
 				"DiscoveryStarted", NULL);
@@ -1391,7 +1634,7 @@ static int __wfd_manager_service_iface_handler(const gchar *method_name,
 		if (manager->state < WIFI_DIRECT_STATE_ACTIVATED) {
 			WDS_LOGE("Wi-Fi Direct is not activated.");
 			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
-			*return_parameters = g_variant_new("(i)", ret);
+			return_parameters = g_variant_new("(i)", ret);
 			goto done;
 		}
 
@@ -1404,12 +1647,12 @@ static int __wfd_manager_service_iface_handler(const gchar *method_name,
 		if (ret < 0) {
 			WDS_LOGE("Failed to cancel service discovery");
 			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			*return_parameters = g_variant_new("(i)", ret);
+			return_parameters = g_variant_new("(i)", ret);
 			goto done;
 		}
 
 		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(i)", ret);
+		return_parameters = g_variant_new("(i)", ret);
 
 	} else if (!g_strcmp0(method_name, "Register")) {
 		int service_type;
@@ -1419,7 +1662,7 @@ static int __wfd_manager_service_iface_handler(const gchar *method_name,
 		if (manager->state < WIFI_DIRECT_STATE_ACTIVATED) {
 			WDS_LOGE("Wi-Fi Direct is not activated.");
 			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
-			*return_parameters = g_variant_new("(ii)", ret, service_id);
+			return_parameters = g_variant_new("(ii)", ret, service_id);
 			goto done;
 		}
 
@@ -1430,12 +1673,12 @@ static int __wfd_manager_service_iface_handler(const gchar *method_name,
 		if (ret < 0) {
 			WDS_LOGE("Failed to add service");
 			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			*return_parameters = g_variant_new("(ii)", ret, service_id);
+			return_parameters = g_variant_new("(ii)", ret, service_id);
 			goto done;
 		}
 
 		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(ii)", ret, service_id);
+		return_parameters = g_variant_new("(ii)", ret, service_id);
 
 	} else if (!g_strcmp0(method_name, "Deregister")) {
 		int service_id = 0;
@@ -1443,7 +1686,7 @@ static int __wfd_manager_service_iface_handler(const gchar *method_name,
 		if (manager->state < WIFI_DIRECT_STATE_ACTIVATED) {
 			WDS_LOGE("Wi-Fi Direct is not activated.");
 			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
-			*return_parameters = g_variant_new("(i)", ret);
+			return_parameters = g_variant_new("(i)", ret);
 			goto done;
 		}
 
@@ -1454,37 +1697,40 @@ static int __wfd_manager_service_iface_handler(const gchar *method_name,
 		if (ret < 0) {
 			WDS_LOGE("Failed to delete service");
 			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			*return_parameters = g_variant_new("(i)", ret);
+			return_parameters = g_variant_new("(i)", ret);
 			goto done;
 		}
 
 		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(i)", ret);
+		return_parameters = g_variant_new("(i)", ret);
 
 	} else {
 		WDS_LOGD("method not handled");
-		ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+		WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_OPERATION_FAILED);
+		return;
 	}
 
 done:
-	return ret;
+	WFD_DBUS_REPLY_PARAMS(invocation, return_parameters);
+	return;
 }
 #endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
 
 #ifdef TIZEN_FEATURE_WIFI_DISPLAY
-static int __wfd_manager_display_iface_handler(const gchar *method_name,
+static void __wfd_manager_display_iface_handler(const gchar *method_name,
 					       GVariant    *parameters,
-					       GVariant    **return_parameters)
+					       GDBusMethodInvocation *invocation)
 {
 	int ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 	wfd_manager_s *manager = wfd_get_manager();
+	GVariant *return_parameters = NULL;
 	WDS_LOGD("%s", method_name);
 
 	if (!g_strcmp0(method_name, "Init")) {
 		if(manager->state < WIFI_DIRECT_STATE_ACTIVATED ||
 				manager->state >= WIFI_DIRECT_STATE_CONNECTED) {
 			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
-			*return_parameters = g_variant_new("(i)", ret);
+			return_parameters = g_variant_new("(i)", ret);
 			goto done;
 		}
 
@@ -1494,7 +1740,7 @@ static int __wfd_manager_display_iface_handler(const gchar *method_name,
 		if (ret < 0) {
 			WDS_LOGE("Failed to initialize display");
 			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			*return_parameters = g_variant_new("(i)", ret);
+			return_parameters = g_variant_new("(i)", ret);
 			goto done;
 		}
 
@@ -1504,13 +1750,13 @@ static int __wfd_manager_display_iface_handler(const gchar *method_name,
 		device->display.hdcp_support = WIFI_DISPLAY_DEFAULT_HDCP;
 
 		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(i)", ret);
+		return_parameters = g_variant_new("(i)", ret);
 
 	} else if (!g_strcmp0(method_name, "Deinit")) {
 		if(manager->state < WIFI_DIRECT_STATE_ACTIVATED ||
 				manager->state >= WIFI_DIRECT_STATE_CONNECTED) {
 			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
-			*return_parameters = g_variant_new("(i)", ret);
+			return_parameters = g_variant_new("(i)", ret);
 			goto done;
 		}
 
@@ -1520,14 +1766,14 @@ static int __wfd_manager_display_iface_handler(const gchar *method_name,
 		if (ret < 0) {
 			WDS_LOGE("Failed to deinitialize display");
 			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			*return_parameters = g_variant_new("(i)", ret);
+			return_parameters = g_variant_new("(i)", ret);
 			goto done;
 		}
 
 		memset(&(device->display), 0x0, sizeof(wfd_display_type_e));
 
 		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(i)", ret);
+		return_parameters = g_variant_new("(i)", ret);
 
 	} else if (!g_strcmp0(method_name, "SetConfig")) {
 		int type, port, hdcp;
@@ -1536,7 +1782,7 @@ static int __wfd_manager_display_iface_handler(const gchar *method_name,
 		if(manager->state < WIFI_DIRECT_STATE_ACTIVATED ||
 				manager->state >= WIFI_DIRECT_STATE_CONNECTED) {
 			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
-			*return_parameters = g_variant_new("(i)", ret);
+			return_parameters = g_variant_new("(i)", ret);
 			goto done;
 		}
 
@@ -1546,12 +1792,12 @@ static int __wfd_manager_display_iface_handler(const gchar *method_name,
 		if(ret < 0) {
 			WDS_LOGE("Failed to set display device settings");
 			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			*return_parameters = g_variant_new("(i)", ret);
+			return_parameters = g_variant_new("(i)", ret);
 			goto done;
 		}
 
 		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(i)", ret);
+		return_parameters = g_variant_new("(i)", ret);
 
 	} else if (!g_strcmp0(method_name, "SetAvailiability")) {
 		int availability;
@@ -1560,7 +1806,7 @@ static int __wfd_manager_display_iface_handler(const gchar *method_name,
 		if(manager->state < WIFI_DIRECT_STATE_ACTIVATED ||
 				manager->state >= WIFI_DIRECT_STATE_CONNECTED) {
 			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
-			*return_parameters = g_variant_new("(i)", ret);
+			return_parameters = g_variant_new("(i)", ret);
 			goto done;
 		}
 
@@ -1568,12 +1814,12 @@ static int __wfd_manager_display_iface_handler(const gchar *method_name,
 		if (ret < 0) {
 			WDS_LOGE("Failed to set session availability");
 			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			*return_parameters = g_variant_new("(i)", ret);
+			return_parameters = g_variant_new("(i)", ret);
 			goto done;
 		}
 
 		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(i)", ret);
+		return_parameters = g_variant_new("(i)", ret);
 
 	} else if (!g_strcmp0(method_name, "GetPeerType")) {
 		wfd_device_s *peer = NULL;
@@ -1585,7 +1831,7 @@ static int __wfd_manager_display_iface_handler(const gchar *method_name,
 
 		if(manager->state < WIFI_DIRECT_STATE_ACTIVATED) {
 			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
-			*return_parameters = g_variant_new("(ii)", ret, 0);
+			return_parameters = g_variant_new("(ii)", ret, 0);
 			goto done;
 		}
 
@@ -1593,12 +1839,12 @@ static int __wfd_manager_display_iface_handler(const gchar *method_name,
 		if(!peer) {
 			WDS_LOGE("Failed to get peer");
 			ret = WIFI_DIRECT_ERROR_INVALID_PARAMETER;
-			*return_parameters = g_variant_new("(ii)", ret, 0);
+			return_parameters = g_variant_new("(ii)", ret, 0);
 			goto done;
 		}
 
 		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(ii)", ret, peer->display.type);
+		return_parameters = g_variant_new("(ii)", ret, peer->display.type);
 
 	} else if (!g_strcmp0(method_name, "GetPeerAvailability")) {
 		wfd_device_s *peer = NULL;
@@ -1610,19 +1856,19 @@ static int __wfd_manager_display_iface_handler(const gchar *method_name,
 
 		if(manager->state < WIFI_DIRECT_STATE_ACTIVATED) {
 			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
-			*return_parameters = g_variant_new("(ii)", ret, 0);
+			return_parameters = g_variant_new("(ii)", ret, 0);
 			goto done;
 		}
 
 		peer = wfd_manager_get_peer_by_addr(manager, mac_addr);
-		if(peer) {
+		if(!peer) {
 			WDS_LOGE("Failed to get peer");
 			ret = WIFI_DIRECT_ERROR_INVALID_PARAMETER;
-			*return_parameters = g_variant_new("(ii)", ret, 0);
+			return_parameters = g_variant_new("(ii)", ret, 0);
 			goto done;
 		}
 
-		*return_parameters = g_variant_new("(ii)", ret, peer->display.availability);
+		return_parameters = g_variant_new("(ii)", ret, peer->display.availability);
 		ret = WIFI_DIRECT_ERROR_NONE;
 
 	} else if (!g_strcmp0(method_name, "GetPeerHdcp")) {
@@ -1635,20 +1881,20 @@ static int __wfd_manager_display_iface_handler(const gchar *method_name,
 
 		if(manager->state < WIFI_DIRECT_STATE_ACTIVATED) {
 			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
-			*return_parameters = g_variant_new("(ii)", ret, 0);
+			return_parameters = g_variant_new("(ii)", ret, 0);
 			goto done;
 		}
 
 		peer = wfd_manager_get_peer_by_addr(manager, mac_addr);
-		if(peer) {
+		if(!peer) {
 			WDS_LOGE("Failed to get peer");
 			ret = WIFI_DIRECT_ERROR_INVALID_PARAMETER;
-			*return_parameters = g_variant_new("(ii)", ret, 0);
+			return_parameters = g_variant_new("(ii)", ret, 0);
 			goto done;
 		}
 
 		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(ii)", ret, peer->display.hdcp_support);
+		return_parameters = g_variant_new("(ii)", ret, peer->display.hdcp_support);
 
 	} else if (!g_strcmp0(method_name, "GetPeerPort")) {
 		wfd_device_s *peer = NULL;
@@ -1660,20 +1906,20 @@ static int __wfd_manager_display_iface_handler(const gchar *method_name,
 
 		if(manager->state < WIFI_DIRECT_STATE_ACTIVATED) {
 			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
-			*return_parameters = g_variant_new("(ii)", ret, 0);
+			return_parameters = g_variant_new("(ii)", ret, 0);
 			goto done;
 		}
 
 		peer = wfd_manager_get_peer_by_addr(manager, mac_addr);
-		if(peer) {
+		if(!peer) {
 			WDS_LOGE("Failed to get peer");
 			ret = WIFI_DIRECT_ERROR_INVALID_PARAMETER;
-			*return_parameters = g_variant_new("(ii)", ret, 0);
+			return_parameters = g_variant_new("(ii)", ret, 0);
 			goto done;
 		}
 
 		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(ii)", ret, peer->display.port);
+		return_parameters = g_variant_new("(ii)", ret, peer->display.port);
 
 	} else if (!g_strcmp0(method_name, "GetPeerThroughput")) {
 		wfd_device_s *peer = NULL;
@@ -1685,76 +1931,35 @@ static int __wfd_manager_display_iface_handler(const gchar *method_name,
 
 		if(manager->state < WIFI_DIRECT_STATE_ACTIVATED) {
 			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
-			*return_parameters = g_variant_new("(ii)", ret, 0);
+			return_parameters = g_variant_new("(ii)", ret, 0);
 			goto done;
 		}
 
 		peer = wfd_manager_get_peer_by_addr(manager, mac_addr);
-		if(peer) {
+		if(!peer) {
 			WDS_LOGE("Failed to get peer");
 			ret = WIFI_DIRECT_ERROR_INVALID_PARAMETER;
-			*return_parameters = g_variant_new("(ii)", ret, 0);
+			return_parameters = g_variant_new("(ii)", ret, 0);
 			goto done;
 		}
 
 		ret = WIFI_DIRECT_ERROR_NONE;
-		*return_parameters = g_variant_new("(ii)", ret, peer->display.max_tput);
+		return_parameters = g_variant_new("(ii)", ret, peer->display.max_tput);
 
 	} else {
 		WDS_LOGD("method not handled");
-		ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+		WFD_DBUS_REPLY_RET(invocation, WIFI_DIRECT_ERROR_OPERATION_FAILED);
+		return;
 	}
 
 done:
-	return ret;
+	WFD_DBUS_REPLY_PARAMS(invocation, return_parameters);
+	return;
 }
 #endif /* TIZEN_FEATURE_WIFI_DISPLAY */
 
-static struct {
-	guint reg_id;
-	const gchar *iface_name;
-        int (*function) (const gchar *method_name,
-			 GVariant    *parameters,
-			 GVariant    **return_parameters);
-} wfd_manager_iface_map[] = {
-	{
-		0,
-		WFD_MANAGER_MANAGE_INTERFACE,
-		__wfd_manager_manage_iface_handler
-	},
-	{
-		0,
-		WFD_MANAGER_GROUP_INTERFACE,
-		__wfd_manager_group_iface_handler
-	},
-	{
-		0,
-		WFD_MANAGER_CONFIG_INTERFACE,
-		__wfd_manager_config_iface_handler
-	},
-#ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
-	{
-		0,
-		WFD_MANAGER_SERVICE_INTERFACE,
-		__wfd_manager_service_iface_handler
-	},
-#endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
-#ifdef TIZEN_FEATURE_WIFI_DISPLAY
-	{
-		0,
-		WFD_MANAGER_DISPLAY_INTERFACE,
-		__wfd_manager_display_iface_handler
-	},
-#endif /* TIZEN_FEATURE_WIFI_DISPLAY */
-	{
-		0,
-		NULL,
-		NULL
-	}
-};
-
 // GDBus method handler
-static void wfd_manager_method_call_handler (GDBusConnection       *connection,
+static void wifidirect_method_call_handler (GDBusConnection       *connection,
 					     const gchar           *sender,
 					     const gchar           *object_path,
 					     const gchar           *interface_name,
@@ -1763,62 +1968,179 @@ static void wfd_manager_method_call_handler (GDBusConnection       *connection,
 					     GDBusMethodInvocation *invocation,
 					     gpointer               user_data)
 {
-	int count = 0;
-	GVariant *return_parameters = NULL;
 
-	/* Method Call */
+	// Method Call
 	WDS_LOGD("interface : [%s], method : [%s]", interface_name, method_name);
 	WDS_LOGD("param [%s]", parameters ? g_variant_print(parameters, TRUE) : "NULL");
 
-	while (wfd_manager_iface_map[count].iface_name != NULL) {
-		if (!g_strcmp0(interface_name, wfd_manager_iface_map[count].iface_name)) {
-
-			wfd_manager_iface_map[count].function(method_name,
-							      parameters,
-							      &return_parameters);
-			break;
-		}
-		count++;
-	}
-
-	g_dbus_method_invocation_return_value(invocation, return_parameters);
+	__wfd_manager_manage_iface_handler(method_name,
+						  parameters,
+						  invocation);
+	return;
 }
 
-static const GDBusInterfaceVTable wfd_manager_interface_vtable =
-				{wfd_manager_method_call_handler, NULL, NULL};
+static void wifidirect_group_method_call_handler (GDBusConnection       *connection,
+					     const gchar           *sender,
+					     const gchar           *object_path,
+					     const gchar           *interface_name,
+					     const gchar           *method_name,
+					     GVariant              *parameters,
+					     GDBusMethodInvocation *invocation,
+					     gpointer               user_data)
+{
+
+	// Method Call
+	WDS_LOGD("interface : [%s], method : [%s]", interface_name, method_name);
+	WDS_LOGD("param [%s]", parameters ? g_variant_print(parameters, TRUE) : "NULL");
+
+	__wfd_manager_group_iface_handler(method_name,
+						  parameters,
+						  invocation);
+	return;
+}
+
+static void wifidirect_config_method_call_handler (GDBusConnection       *connection,
+					     const gchar           *sender,
+					     const gchar           *object_path,
+					     const gchar           *interface_name,
+					     const gchar           *method_name,
+					     GVariant              *parameters,
+					     GDBusMethodInvocation *invocation,
+					     gpointer               user_data)
+{
+
+	// Method Call
+	WDS_LOGD("interface : [%s], method : [%s]", interface_name, method_name);
+	WDS_LOGD("param [%s]", parameters ? g_variant_print(parameters, TRUE) : "NULL");
+
+	__wfd_manager_config_iface_handler(method_name,
+						  parameters,
+						  invocation);
+	return;
+}
+#ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
+static void wifidirect_service_method_call_handler (GDBusConnection       *connection,
+					     const gchar           *sender,
+					     const gchar           *object_path,
+					     const gchar           *interface_name,
+					     const gchar           *method_name,
+					     GVariant              *parameters,
+					     GDBusMethodInvocation *invocation,
+					     gpointer               user_data)
+{
+
+	// Method Call
+	WDS_LOGD("interface : [%s], method : [%s]", interface_name, method_name);
+	WDS_LOGD("param [%s]", parameters ? g_variant_print(parameters, TRUE) : "NULL");
+
+	__wfd_manager_service_iface_handler(method_name,
+						  parameters,
+						  invocation);
+	return;
+}
+#endif
+#ifdef TIZEN_FEATURE_WIFI_DISPLAY
+static void wifidirect_display_method_call_handler (GDBusConnection       *connection,
+					     const gchar           *sender,
+					     const gchar           *object_path,
+					     const gchar           *interface_name,
+					     const gchar           *method_name,
+					     GVariant              *parameters,
+					     GDBusMethodInvocation *invocation,
+					     gpointer               user_data)
+{
+
+	// Method Call
+	WDS_LOGD("interface : [%s], method : [%s]", interface_name, method_name);
+	WDS_LOGD("param [%s]", parameters ? g_variant_print(parameters, TRUE) : "NULL");
+
+	__wfd_manager_display_iface_handler(method_name,
+						  parameters,
+						  invocation);
+	return;
+}
+#endif
+
+static const GDBusInterfaceVTable wifidirect_interface_vtable =
+				{wifidirect_method_call_handler, NULL, NULL};
+
+static const GDBusInterfaceVTable wifidirect_group_interface_vtable =
+				{wifidirect_group_method_call_handler, NULL, NULL};
+
+static const GDBusInterfaceVTable wifidirect_config_interface_vtable =
+				{wifidirect_config_method_call_handler, NULL, NULL};
+#ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
+static const GDBusInterfaceVTable wifidirect_service_interface_vtable =
+				{wifidirect_service_method_call_handler, NULL, NULL};
+#endif
+#ifdef TIZEN_FEATURE_WIFI_DISPLAY
+static const GDBusInterfaceVTable wifidirect_display_interface_vtable =
+				{wifidirect_display_method_call_handler, NULL, NULL};
+#endif
 
 void wfd_manager_dbus_unregister(void)
 {
-	int count = 0;
-
-	while (wfd_manager_iface_map[count].iface_name != NULL) {
-		wfd_manager_dbus_iface_unregister(wfd_manager_iface_map[count].reg_id);
-		count++;
-	}
-
-	wfd_manager_dbus_deinit();
+	wfd_manager_dbus_iface_unregister(wifidirect_iface_reg_id);
+	wifidirect_iface_reg_id = 0;
+	wfd_manager_dbus_iface_unregister(wifidirect_group_iface_reg_id);
+	wifidirect_group_iface_reg_id = 0;
+	wfd_manager_dbus_iface_unregister(wifidirect_config_iface_reg_id);
+	wifidirect_config_iface_reg_id = 0;
+#ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
+	wfd_manager_dbus_iface_unregister(wifidirect_service_iface_reg_id);
+	wifidirect_service_iface_reg_id = 0;
+#endif
+#ifdef TIZEN_FEATURE_WIFI_DISPLAY
+	wfd_manager_dbus_iface_unregister(wifidirect_display_iface_reg_id);
+	wifidirect_display_iface_reg_id = 0;
+#endif
 }
 
 gboolean wfd_manager_dbus_register(void)
 {
-	int count = 0;
+	GDBusNodeInfo *node_info = NULL;
+	GError *Error = NULL;
 
-	if (wfd_manager_dbus_init() == 0)
+	node_info = g_dbus_node_info_new_for_xml(wfd_manager_introspection_xml, &Error);
+	if (node_info == NULL) {
+		WDS_LOGE("Failed to get node info, Error: %s", Error->message);
+		g_clear_error(&Error);
 		return FALSE;
-
-	while (wfd_manager_iface_map[count].iface_name != NULL) {
-		wfd_manager_iface_map[count].reg_id =
-			wfd_manager_dbus_iface_register(wfd_manager_iface_map[count].iface_name,
-							WFD_MANAGER_PATH,
-							wfd_manager_introspection_xml,
-							&wfd_manager_interface_vtable);
-
-		WDS_LOGD("Registered Interface [%d, %s]",
-					wfd_manager_iface_map[count].reg_id,
-					wfd_manager_iface_map[count].iface_name);
-
-		count++;
 	}
 
+	wifidirect_iface_reg_id =
+			wfd_manager_dbus_iface_register(WFD_MANAGER_MANAGE_INTERFACE,
+					WFD_MANAGER_PATH,
+					node_info,
+					&wifidirect_interface_vtable);
+
+		wifidirect_group_iface_reg_id =
+				wfd_manager_dbus_iface_register(WFD_MANAGER_GROUP_INTERFACE,
+						WFD_MANAGER_PATH,
+						node_info,
+						&wifidirect_group_interface_vtable);
+
+			wifidirect_config_iface_reg_id =
+					wfd_manager_dbus_iface_register(WFD_MANAGER_CONFIG_INTERFACE,
+							WFD_MANAGER_PATH,
+							node_info,
+							&wifidirect_config_interface_vtable);
+
+#ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
+				wifidirect_service_iface_reg_id =
+						wfd_manager_dbus_iface_register(WFD_MANAGER_SERVICE_INTERFACE,
+								WFD_MANAGER_PATH,
+								node_info,
+								&wifidirect_service_interface_vtable);
+#endif
+#ifdef TIZEN_FEATURE_WIFI_DISPLAY
+					wifidirect_display_iface_reg_id =
+							wfd_manager_dbus_iface_register(WFD_MANAGER_DISPLAY_INTERFACE,
+									WFD_MANAGER_PATH,
+									node_info,
+									&wifidirect_display_interface_vtable);
+#endif
+
+	g_dbus_node_info_unref(node_info);
 	return TRUE;
 }
