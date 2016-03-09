@@ -791,12 +791,13 @@ static gboolean _polling_ip(gpointer user_data)
 	return FALSE;
 }
 
-int wfd_util_dhcps_start()
+int wfd_util_dhcps_start(char *ifname)
 {
 	__WDS_LOG_FUNC_ENTER__;
 	gboolean rv = FALSE;
+	char *const iface = ifname;
 	const char *path = "/usr/bin/wifi-direct-dhcp.sh";
-	char *const args[] = { "/usr/bin/wifi-direct-dhcp.sh", "server", NULL };
+	char *const args[] = { "/usr/bin/wifi-direct-dhcp.sh", "server", iface, NULL };
 	char *const envs[] = { NULL };
 	wfd_manager_s *manager = wfd_get_manager();
 
@@ -842,12 +843,13 @@ int wfd_util_dhcps_wait_ip_leased(wfd_device_s *peer)
 	return 0;
 }
 
-int wfd_util_dhcps_stop()
+int wfd_util_dhcps_stop(char *ifname)
 {
 	__WDS_LOG_FUNC_ENTER__;
 	gboolean rv = FALSE;
+	char *const iface = ifname;
 	const char *path = "/usr/bin/wifi-direct-dhcp.sh";
-	char *const args[] = { "/usr/bin/wifi-direct-dhcp.sh", "stop", NULL };
+	char *const args[] = { "/usr/bin/wifi-direct-dhcp.sh", "stop", iface, NULL };
 	char *const envs[] = { NULL };
 
 	vconf_ignore_key_changed(VCONFKEY_DHCPS_IP_LEASE, _dhcps_ip_leased_cb);
@@ -865,12 +867,13 @@ int wfd_util_dhcps_stop()
 	return 0;
 }
 
-int wfd_util_dhcpc_start(wfd_device_s *peer)
+int wfd_util_dhcpc_start(char *ifname, wfd_device_s *peer)
 {
 	__WDS_LOG_FUNC_ENTER__;
 	gboolean rv = FALSE;
+	char *const iface = ifname;
 	const char *path = "/usr/bin/wifi-direct-dhcp.sh";
-	char *const args[] = { "/usr/bin/wifi-direct-dhcp.sh", "client", NULL };
+	char *const args[] = { "/usr/bin/wifi-direct-dhcp.sh", "client", iface, NULL };
 	char *const envs[] = { NULL };
 
 	if (!peer) {
@@ -891,12 +894,13 @@ int wfd_util_dhcpc_start(wfd_device_s *peer)
 	return 0;
 }
 
-int wfd_util_dhcpc_stop()
+int wfd_util_dhcpc_stop(char *ifname)
 {
 	__WDS_LOG_FUNC_ENTER__;
 	gboolean rv = FALSE;
+	char *const iface = ifname;
 	const char *path = "/usr/bin/wifi-direct-dhcp.sh";
-	char *const args[] = { "/usr/bin/wifi-direct-dhcp.sh", "stop", NULL };
+	char *const args[] = { "/usr/bin/wifi-direct-dhcp.sh", "stop", iface, NULL };
 	char *const envs[] = { NULL };
 
 	rv = wfd_util_execute_file(path, args, envs);

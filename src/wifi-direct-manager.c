@@ -49,6 +49,7 @@
 #include "wifi-direct-log.h"
 #include "wifi-direct-error.h"
 #include "wifi-direct-iface.h"
+#include "wifi-direct-dbus.h"
 
 
 wfd_manager_s *g_manager;

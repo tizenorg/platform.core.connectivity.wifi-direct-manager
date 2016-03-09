@@ -1,12 +1,18 @@
 #!/bin/sh
+if [ $2 ]; then
+INTERFACE_NAME="$2"
+else
 INTERFACE_NAME="p2p0"
+fi
 INTERFACE_PREFIX="p2p"
-TARGET="TIZEN_TV"
+TARGET="TM1"
 DEFAULT_IP="192.168.49.1"
-#DEFAULT_NET="192.168.49.1/24"
-#DEFAULT_BRD="192.168.49.255"
+DEFAULT_NET="192.168.49.1/24"
+DEFAULT_BRD="192.168.49.255"
 
-interface=`/sbin/ifconfig|/bin/grep ^${INTERFACE_NAME}|/usr/bin/cut -d" " -f1`
+#interface=`/sbin/ifconfig|/bin/grep ^${INTERFACE_NAME}|/usr/bin/cut -d" " -f1`
+interface=`/sbin/ifconfig|/bin/grep ^${INTERFACE_NAME}|/usr/bin/cut -d":" -f1`
+#interface=`/usr/sbin/ip link|/bin/grep ^${INTERFACE_NAME}|/usr/bin/cut -d":" -f2`
 echo "Target is ${TARGET} and interface ${INTERFACE_PREFIX}: ${interface}."
 
 start_dhcp_server()
@@ -16,17 +22,16 @@ start_dhcp_server()
 		return 0
 	fi
 
-	/bin/rm /var/lib/misc/udhcpd.leases
-	/bin/touch /var/lib/misc/udhcpd.leases
-	/sbin/ifconfig ${INTERFACE_NAME} ${DEFAULT_IP} up
-#	/usr/sbin/ip addr add ${DEFAULT_NET} brd ${DEFAULT_BRD} dev ${INTERFACE_NAME}
-	/usr/sbin/dhcpd /usr/etc/wifi-direct/dhcpd.${INTERFACE_PREFIX}.conf -f &
+	/bin/rm /opt/var/lib/misc/dhcpd.leases
+	/bin/touch /opt/var/lib/misc/dhcpd.leases
+	/usr/sbin/ip addr add ${DEFAULT_NET} brd ${DEFAULT_BRD} dev ${interface}
+	/usr/sbin/dhcpd -S -i ${interface} /usr/etc/wifi-direct/dhcpd.conf -f &
 
-	route=`/bin/cat /usr/etc/wifi-direct/dhcpd.${INTERFACE_PREFIX}.conf | /bin/grep router | /bin/awk '{print $3}'`
+	route=`/bin/cat /usr/etc/wifi-direct/dhcpd.conf | /bin/grep router | /bin/awk '{print $3}'`
 	if [ -z $route ]; then
 		route="192.168.49.1"
 	fi
-	subnet=`/bin/cat /usr/etc/wifi-direct/dhcpd.${INTERFACE_PREFIX}.conf | /bin/grep subnet | /bin/awk '{print $3}'`
+	subnet=`/bin/cat /usr/etc/wifi-direct/dhcpd.conf | /bin/grep subnet | /bin/awk '{print $3}'`
 
 	if [ -z $subnet ]; then
 		subnet="255.255.255.0"
@@ -46,7 +51,7 @@ start_dhcp_client()
 	fi
 
 	/usr/bin/vconftool set -t string memory/private/wifi_direct_manager/dhcpc_server_ip "0.0.0.0" -f
-	/usr/bin/dhcp -i ${INTERFACE_NAME} -s /usr/etc/wifi-direct/udhcp_script.non-autoip &
+	/usr/bin/dhcp -S -i $interface -s /usr/etc/wifi-direct/udhcp_script.non-autoip &
 }
 
 
@@ -63,7 +68,11 @@ stop_dhcp()
 {
 	/usr/bin/pkill -x dhcp
 	/usr/bin/pkill -x dhcpd
-#	/sbin/ifconfig ${interface} 0.0.0.0
+	if [ "X${interface}" == "X" ]; then
+		echo "interface(${INTERFACE_PREFIX}) is not up"
+		return 0
+	fi
+	/usr/sbin/ip addr del ${local_ip_net} dev ${interface}
 }
 
 is_running()
