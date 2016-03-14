@@ -56,9 +56,9 @@
 
 #define NETCONFIG_DBUS_REPLY_TIMEOUT	(10 * 1000)
 
-#define SUPPL_GLOBAL_INTF_PATH tzplatform_getenv(TZ_SYS_RUN, "wpa_global/")
-#define SUPPL_IFACE_PATH tzplatform_getenv(TZ_SYS_RUN, "wpa_supplicant/")
-#define SUPPL_GROUP_IFACE_PATH tzplatform_getenv(TZ_SYS_RUN, "wpa_supplicant/")
+#define SUPPL_GLOBAL_INTF_PATH tzplatform_mkpath(TZ_SYS_RUN, "wpa_global/")
+#define SUPPL_IFACE_PATH tzplatform_mkpath(TZ_SYS_RUN, "wpa_supplicant/")
+#define SUPPL_GROUP_IFACE_PATH tzplatform_mkpath(TZ_SYS_RUN, "wpa_supplicant/")
 
 #if defined TIZEN_MOBILE
 #define DEFAULT_MAC_FILE_PATH tzplatform_mkpath(TZ_SYS_ETC, ".mac.info")
@@ -777,6 +777,9 @@ static int _connect_to_supplicant(char *ifname, ws_sock_data_s **sock_data)
 	int res = 0;
 	int i = 0;
 
+	const char *supp_iface_path = SUPPL_IFACE_PATH;
+	const char *supp_group_iface_path = SUPPL_GROUP_IFACE_PATH;
+
 	if (!ifname || !sock_data) {
 		WDP_LOGE("Invalie parameter");
 		__WDP_LOG_FUNC_EXIT__;
@@ -794,9 +797,9 @@ static int _connect_to_supplicant(char *ifname, ws_sock_data_s **sock_data)
 	snprintf(ctrl_path, sizeof(ctrl_path), "/tmp/%s_control", ifname);
 	snprintf(mon_path, sizeof(mon_path), "/tmp/%s_monitor", ifname);
 	if (strncmp(ifname, GROUP_IFACE_NAME, 11))
-		g_snprintf(suppl_path, sizeof(suppl_path), SUPPL_IFACE_PATH "%s", ifname);
+		g_snprintf(suppl_path, sizeof(suppl_path), "%s%s", supp_iface_path, ifname);
 	else
-		g_snprintf(suppl_path, sizeof(suppl_path), SUPPL_GROUP_IFACE_PATH "%s", ifname);
+		g_snprintf(suppl_path, sizeof(suppl_path), "%s%s", supp_group_iface_path, ifname);
 
 
 	for(i = 0; i < WS_CONN_RETRY_COUNT; i++) {
@@ -2695,7 +2698,7 @@ static int _ws_update_local_dev_addr_from_file()
 	}
 	WDP_SECLOGD("Local MAC address [%s]", ptr);
 
-	res = _ws_txt_to_mac((unsigned char *)local_mac, g_pd->local_dev_addr);
+	res = _ws_txt_to_mac(local_mac, g_pd->local_dev_addr);
 	if (res < 0) {
 		WDP_LOGE("Failed to convert text to MAC address");
 		fclose(fd);
