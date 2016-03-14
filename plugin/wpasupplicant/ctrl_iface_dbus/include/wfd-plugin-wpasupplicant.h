@@ -40,10 +40,10 @@
 #define IPSECSTR "%d..%d"
 #define OBJECT_PATH_MAX 150
 
+#define CONF_FILE_PATH "/etc/wpa_supplicant/wpa_supplicant.conf"
+
 #if defined TIZEN_MOBILE
-#	define CONF_FILE_PATH "/etc/wpa_supplicant/wpa_supplicant.conf"
-#	define DEFAULT_MAC_FILE_PATH "/opt/etc/.mac.info"
-#	define COMMON_IFACE_NAME "wlan0"
+#define COMMON_IFACE_NAME "wlan0"
 
 #	if defined TIZEN_WLAN_BOARD_SPRD
 #		define P2P_IFACE_NAME "p2p0"
@@ -67,15 +67,12 @@
 #endif /* TIZEN_MOBILE */
 
 #if defined TIZEN_TV
-#	define CONF_FILE_PATH "/opt/etc/p2p_supp.conf"
 
 #	if defined TIZEN_WIFI_MODULE_BUNDLE
-#		define DEFAULT_MAC_FILE_PATH "/sys/class/net/wlan0/address"
 #		define COMMON_IFACE_NAME "wlan0"
 #		define GROUP_IFACE_NAME "wlan0"
 #		define GROUP_IFACE_PREFIX "wlan"
 #	else /* TIZEN_WIFI_MODULE_BUNDLE */
-#		define DEFAULT_MAC_FILE_PATH "/sys/class/net/p2p0/address"
 #		define COMMON_IFACE_NAME "p2p0"
 #		define GROUP_IFACE_NAME "p2p0"
 #		define GROUP_IFACE_PREFIX "p2p"

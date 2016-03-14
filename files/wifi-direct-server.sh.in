@@ -7,7 +7,7 @@ start_wifi_direct()
 	if [ "X${target}" == "X" ]; then
 		echo "${program} is not running"
 		echo "Launching ${program}"
-		/usr/bin/${program}&
+		@BIN_DIR@/${program}&
 		/bin/sleep 1
 	else
 		echo "${program} is already running"
@@ -20,7 +20,7 @@ stop_wifi_direct()
 		echo "${program} is not running"
 	else
 		echo "${program} is running.. Killing it"
-		/usr/bin/pkill -x ${program}
+		@BIN_DIR@/pkill -x ${program}
 	fi
 }
 

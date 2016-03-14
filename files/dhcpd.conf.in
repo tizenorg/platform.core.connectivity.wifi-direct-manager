@@ -1,8 +1,8 @@
 start           192.168.49.20             #default: 192.168.0.20
 end             192.168.49.40             #default: 192.168.0.254
 max_leases      20                        #default: 254
-notify_file     /usr/bin/dhcpd-notify.sh
-lease_file      /opt/var/lib/misc/dhcpd.leases  #default: /var/lib/misc/udhcpd.leases
+notify_file     @BIN_DIR@/dhcpd-notify.sh
+lease_file      @TZ_SYS_VAR@/lib/misc/dhcpd.leases  #default: /var/lib/misc/udhcpd.leases
 
 option          subnet     255.255.255.0
 option          router     192.168.49.1

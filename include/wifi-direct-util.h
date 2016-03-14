@@ -28,22 +28,6 @@
 #ifndef __WIFI_DIRECT_UTIL_H__
 #define __WIFI_DIRECT_UTIL_H__
 
-#if defined TIZEN_MOBILE
-#	define DEFAULT_MAC_FILE_PATH "/opt/etc/.mac.info"
-#endif /* TIZEN_MOBILE */
-
-#if defined TIZEN_TV
-#	if defined TIZEN_WIFI_MODULE_BUNDLE
-#		define DEFAULT_MAC_FILE_PATH "/sys/class/net/wlan0/address"
-#	else /* TIZEN_WIFI_MODULE_BUNDLE */
-#		define DEFAULT_MAC_FILE_PATH "/sys/class/net/p2p0/address"
-#	endif /* TIZEN_WIFI_MODULE_BUNDLE */
-#endif /* TIZEN_TV */
-
-#ifndef DEFAULT_MAC_FILE_PATH
-#	define DEFAULT_MAC_FILE_PATH "/sys/class/net/p2p0/address"
-#endif
-
 #define MAC2STR(a) (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
 #define MACSTR "%02x:%02x:%02x:%02x:%02x:%02x"
 #define IP2STR(a) (a)[0], (a)[1], (a)[2], (a)[3]
@@ -58,7 +42,6 @@
 #define VCONFKEY_DHCPC_SERVER_IP "memory/private/wifi_direct_manager/dhcpc_server_ip"
 #define VCONFKEY_LOCAL_IP "memory/private/wifi_direct_manager/p2p_local_ip"
 #define DHCP_DUMP_FILE "/tmp/dhcp-client-table"
-#define COUNTRY_CODE_FILE "/usr/etc/wifi-direct/ccode.conf"
 #define MAX_DHCP_DUMP_SIZE 64    // Single lease format: [99:66:dd:00:11:aa 192.168.16.20 00:00:60]
 
 #define SOCK_FD_MIN 3

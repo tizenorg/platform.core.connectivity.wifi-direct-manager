@@ -43,6 +43,7 @@
 #include <glib.h>
 
 #include <vconf.h>
+#include <tzplatform_config.h>
 #if defined(TIZEN_FEATURE_DEFAULT_CONNECTION_AGENT)
 #include <app_control.h>
 #include <aul.h>
@@ -71,6 +72,24 @@
 
 #define TIZEN_P2P_GO_IPADDR "192.168.49.1"
 #define MAX_SIZE_ERROR_BUFFER 256
+
+#if defined TIZEN_MOBILE
+#define DEFAULT_MAC_FILE_PATH tzplatform_mkpath(TZ_SYS_ETC, ".mac.info")
+#endif /* TIZEN_MOBILE */
+
+#if defined TIZEN_TV
+#	if defined TIZEN_WIFI_MODULE_BUNDLE
+#		define DEFAULT_MAC_FILE_PATH "/sys/class/net/wlan0/address"
+#	else /* TIZEN_WIFI_MODULE_BUNDLE */
+#		define DEFAULT_MAC_FILE_PATH "/sys/class/net/p2p0/address"
+#	endif /* TIZEN_WIFI_MODULE_BUNDLE */
+#endif /* TIZEN_TV */
+
+#ifndef DEFAULT_MAC_FILE_PATH
+#	define DEFAULT_MAC_FILE_PATH "/sys/class/net/p2p0/address"
+#endif
+
+#define COUNTRY_CODE_FILE tzplatform_mkpath(TZ_SYS_RO_ETC, "wifi-direct/ccode.conf")
 
 static int _txt_to_mac(char *txt, unsigned char *mac)
 {
@@ -288,6 +307,7 @@ void _wfd_util_check_country_cb(keynode_t *key, void *data)
 	char mcc[4] = {0, };
 	char *ccode;
 	GKeyFile *keyfile = NULL;
+	const char *file_path = COUNTRY_CODE_FILE;
 	GError * err = NULL;
 
 	if (!manager) {
@@ -304,7 +324,7 @@ void _wfd_util_check_country_cb(keynode_t *key, void *data)
 	snprintf(mcc, 4, "%d", plmn);
 
 	keyfile = g_key_file_new();
-	res = g_key_file_load_from_file(keyfile, COUNTRY_CODE_FILE, 0, &err);
+	res = g_key_file_load_from_file(keyfile, file_path, 0, &err);
 	if (!res) {
 		WDS_LOGE("Failed to load key file(%s)", err->message);
 		g_key_file_free(keyfile);
@@ -525,15 +545,16 @@ int wfd_util_set_wifi_direct_state(int state)
 int wfd_util_get_local_dev_mac(unsigned char *dev_mac)
 {
 	__WDS_LOG_FUNC_ENTER__;
+	const char *file_path = DEFAULT_MAC_FILE_PATH;
 	FILE *fd = NULL;
 	char local_mac[MACSTR_LEN] = {0, };
 	char *ptr = NULL;
 	int res = 0;
 
 	errno = 0;
-	fd = fopen(DEFAULT_MAC_FILE_PATH, "r");
+	fd = fopen(file_path, "r");
 	if (!fd) {
-		WDS_LOGE("Failed to open MAC info file (%s)", strerror(errno));
+		WDS_LOGE("Failed to open MAC info file [%s] (%s)",file_path , strerror(errno));
 		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}

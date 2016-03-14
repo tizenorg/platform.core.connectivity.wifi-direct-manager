@@ -41,21 +41,6 @@
 
 #define SOCK_FD_MIN 3
 #define GLOBAL_INTF_PATH "/tmp/wpa_ctrl_global"
-#define SUPPL_GLOBAL_INTF_PATH "/var/run/wpa_global"
-#define SUPPL_IFACE_PATH "/var/run/wpa_supplicant/"
-#define SUPPL_GROUP_IFACE_PATH "/var/run/wpa_supplicant/"
-
-#if defined TIZEN_MOBILE
-#define DEFAULT_MAC_FILE_PATH "/opt/etc/.mac.info"
-#endif
-
-#if defined TIZEN_WIFI_MODULE_BUNDLE
-#define DEFAULT_MAC_FILE_PATH "/sys/class/net/wlan0/address"
-#endif
-
-#ifndef DEFAULT_MAC_FILE_PATH
-#define DEFAULT_MAC_FILE_PATH "/sys/class/net/p2p0/address"
-#endif
 
 #if defined TIZEN_MOBILE
 #define COMMON_IFACE_NAME "wlan0"

@@ -1,0 +1,118 @@
+#!/bin/sh
+if [ $2 ]; then
+INTERFACE_NAME="$2"
+else
+INTERFACE_NAME="p2p0"
+fi
+INTERFACE_PREFIX="p2p"
+TARGET="TM1"
+DEFAULT_IP="192.168.49.1"
+DEFAULT_NET="192.168.49.1/24"
+DEFAULT_BRD="192.168.49.255"
+
+#interface=`/sbin/ifconfig|/bin/grep ^${INTERFACE_NAME}|@BIN_DIR@/cut -d" " -f1`
+interface=`/sbin/ifconfig|/bin/grep ^${INTERFACE_NAME}|@BIN_DIR@/cut -d":" -f1`
+#interface=`@SBIN_DIR@/ip link|/bin/grep ^${INTERFACE_NAME}|@BIN_DIR@/cut -d":" -f2`
+echo "Target is ${TARGET} and interface ${INTERFACE_PREFIX}: ${interface}."
+
+start_dhcp_server()
+{
+	if [ "X${interface}" == "X" ]; then
+		echo "interface(${INTERFACE_PREFIX}) is not up"
+		return 0
+	fi
+
+	/bin/rm /@TZ_SYS_VAR@/lib/misc/dhcpd.leases
+	/bin/touch @TZ_SYS_VAR@/lib/misc/dhcpd.leases
+	@SBIN_DIR@/ip addr add ${DEFAULT_NET} brd ${DEFAULT_BRD} dev ${interface}
+	@SBIN_DIR@/dhcpd -S -i ${interface} @TZ_SYS_RO_ETC@/wifi-direct/dhcpd.conf -f &
+
+	route=`/bin/cat @TZ_SYS_RO_ETC@/wifi-direct/dhcpd.conf | /bin/grep router | /bin/awk '{print $3}'`
+	if [ -z $route ]; then
+		route="192.168.49.1"
+	fi
+	subnet=`/bin/cat @TZ_SYS_RO_ETC@/wifi-direct/dhcpd.conf | /bin/grep subnet | /bin/awk '{print $3}'`
+
+	if [ -z $subnet ]; then
+		subnet="255.255.255.0"
+	fi
+
+	@BIN_DIR@/vconftool set -t string memory/private/wifi_direct_manager/p2p_ifname ${interface} -f
+	@BIN_DIR@/vconftool set -t string memory/private/wifi_direct_manager/p2p_subnet_mask ${subnet} -f
+	@BIN_DIR@/vconftool set -t string memory/private/wifi_direct_manager/p2p_gateway ${route} -f
+	@BIN_DIR@/vconftool set -t string memory/private/wifi_direct_manager/p2p_local_ip ${DEFAULT_IP} -f
+}
+
+start_dhcp_client()
+{
+	if [ "X${interface}" == "X" ]; then
+		echo "interface(${INTERFACE_PREFIX}) is not up"
+		return 0
+	fi
+
+	@BIN_DIR@/vconftool set -t string memory/private/wifi_direct_manager/dhcpc_server_ip "0.0.0.0" -f
+	@BIN_DIR@/dhcp -S -i $interface -s @TZ_SYS_RO_ETC@/wifi-direct/udhcp_script.non-autoip &
+}
+
+
+clean_vconfs()
+{
+	@BIN_DIR@/vconftool set -t string memory/private/wifi_direct_manager/p2p_ifname "" -f
+	@BIN_DIR@/vconftool set -t string memory/private/wifi_direct_manager/p2p_subnet_mask "" -f
+	@BIN_DIR@/vconftool set -t string memory/private/wifi_direct_manager/p2p_gateway "" -f
+	@BIN_DIR@/vconftool set -t string memory/private/wifi_direct_manager/p2p_local_ip "" -f
+	@BIN_DIR@/vconftool set -t string memory/private/wifi_direct_manager/dhcpc_server_ip "0.0.0.0" -f
+}
+
+stop_dhcp()
+{
+	@BIN_DIR@/pkill -x dhcp
+	@BIN_DIR@/pkill -x dhcpd
+	if [ "X${interface}" == "X" ]; then
+		echo "interface(${INTERFACE_PREFIX}) is not up"
+		return 0
+	fi
+	@SBIN_DIR@/ip addr del ${local_ip_net} dev ${interface}
+}
+
+is_running()
+{
+	program=$1
+	run=`/bin/ps -eo comm|/bin/grep ${program}`
+	if [ "X${run}" == "X" ]; then
+		echo "${program} is not running"
+	else
+		echo "${program} is already running"
+	fi
+}
+
+status_dhcp()
+{
+	is_running @BIN_DIR@/dhcp
+	is_running @SBIN_DIR@/dhcpd
+}
+
+
+case $1 in
+"server")
+stop_dhcp
+start_dhcp_server
+;;
+"client")
+clean_vconfs
+stop_dhcp
+start_dhcp_client
+;;
+"stop")
+clean_vconfs
+stop_dhcp
+;;
+"status")
+status_dhcp
+;;
+*)
+/bin/echo wifi-direct-dhcp.sh [server] [client] [stop] [status]
+exit 1
+;;
+esac
+

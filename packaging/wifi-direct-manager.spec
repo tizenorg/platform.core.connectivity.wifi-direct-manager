@@ -1,6 +1,6 @@
 Name:		wifi-direct-manager
 Summary:	Wi-Fi Direct manger
-Version:	1.2.141
+Version:	1.2.143
 Release:	1
 Group:      Network & Connectivity/Wireless
 License:    Apache-2.0
@@ -19,6 +19,9 @@ BuildRequires:	pkgconfig(cynara-creds-socket)
 BuildRequires:	pkgconfig(cynara-session)
 
 BuildRequires:	pkgconfig(capi-appfw-application)
+
+BuildRequires: pkgconfig(libtzplatform-config)
+
 BuildRequires:	cmake
 #BuildRequires:  model-build-features
 Requires:	net-tools
@@ -48,6 +51,7 @@ cp -a %{SOURCE1} ./wfd-manager.conf
 cp -a %{SOURCE2} .
 
 %build
+
 export CFLAGS="$CFLAGS -DTIZEN_DEBUG_ENABLE"
 export CXXFLAGS="$CXXFLAGS -DTIZEN_DEBUG_ENABLE"
 export FFLAGS="$FFLAGS -DTIZEN_DEBUG_ENABLE"
@@ -103,7 +107,13 @@ cmake . -DCMAKE_INSTALL_PREFIX=%{_prefix} -DARCHITECTURE=$ARCH \
 %if "%{?_lib}" == "lib64"
 	-DTIZEN_ARCH_64=1 \
 %endif
--DCMAKE_LIB_DIR=%{_libdir}
+-DLIB_DIR=%{_libdir} \
+-DBIN_DIR=%{_bindir} \
+-DSBIN_DIR=%{_sbindir} \
+-DTZ_SYS_RO_ETC=%TZ_SYS_RO_ETC \
+-DTZ_SYS_VAR=%TZ_SYS_VAR \
+-DTZ_SYS_ETC=%TZ_SYS_ETC \
+-DTZ_SYS_RUN=%TZ_SYS_RUN
 
 make %{?_smp_mflags}
 
@@ -119,42 +129,35 @@ mkdir -p %{buildroot}%{_datadir}/dbus-1/system-services/
 cp net.wifidirect.service %{buildroot}%{_datadir}/dbus-1/system-services/net.wifidirect.service
 
 %post
-chmod 644 /usr/etc/wifi-direct/dhcpd.*.conf
-chmod 755 /usr/bin/dhcpd-notify.sh
-chmod 755 /usr/etc/wifi-direct/udhcp_script.non-autoip
-chmod 755 /usr/bin/wifi-direct-server.sh
-chmod 755 /usr/bin/wifi-direct-dhcp.sh
-chmod 755 /usr/sbin/p2p_supp.sh
+chmod 644 %{TZ_SYS_RO_ETC}/wifi-direct/dhcpd.conf
+chmod 755 %{_bindir}/dhcpd-notify.sh
+chmod 755 %{TZ_SYS_RO_ETC}/wifi-direct/udhcp_script.non-autoip
+chmod 755 %{_bindir}/wifi-direct-server.sh
+chmod 755 %{_bindir}/wifi-direct-dhcp.sh
+chmod 755 %{_sbindir}/p2p_supp.sh
 
-%if "%{profile}" == "tv"
-	if [ ! -d /opt/var/lib/misc ]; then
-		mkdir -p /opt/var/lib/misc
-	fi
+if [ ! -d %{TZ_SYS_VAR}/lib/misc ]; then
+	mkdir -p %{TZ_SYS_VAR}/lib/misc
+fi
 
-	touch /opt/var/lib/misc/dhcpd.leases
-	chmod 666 /opt/var/lib/misc/dhcpd.leases
-%else
-	if [ ! -d /var/lib/misc ]; then
-		mkdir -p /var/lib/misc
-	fi
-
-	touch /var/lib/misc/dhcpd.leases
-	chmod 666 /var/lib/misc/dhcpd.leases
-%endif
-
-%postun
-
+touch %{TZ_SYS_VAR}/lib/misc/dhcpd.leases
+chmod 666 %{TZ_SYS_VAR}/lib/misc/dhcpd.leases
 
 %files
 %manifest wifi-direct-manager.manifest
 %license LICENSE
 %defattr(-,root,root,-)
 %{_bindir}/wfd-manager
-/usr/etc/wifi-direct/dhcpd.conf
-/usr/etc/wifi-direct/udhcp_script.non-autoip
-/usr/etc/wifi-direct/p2p_supp.conf
-/opt/etc/p2p_supp.conf
-/usr/etc/wifi-direct/ccode.conf
+%config %TZ_SYS_RO_ETC/wifi-direct/ccode.conf 
+%config %TZ_SYS_RO_ETC/wifi-direct/dhcpd.conf
+%config %TZ_SYS_RO_ETC/wifi-direct/p2p_supp.conf
+%config %TZ_SYS_RO_ETC/wifi-direct/udhcp_script.non-autoip
+%config %{_sysconfdir}/dbus-1/system.d/wfd-manager.conf
+%TZ_SYS_RO_ETC/wifi-direct/ccode.conf
+%TZ_SYS_RO_ETC/wifi-direct/dhcpd.conf
+%TZ_SYS_RO_ETC/wifi-direct/p2p_supp.conf
+%TZ_SYS_RO_ETC/wifi-direct/udhcp_script.non-autoip
+%TZ_SYS_ETC/p2p_supp.conf
 %{_bindir}/dhcpd-notify.sh
 %{_bindir}/wifi-direct-server.sh
 %{_bindir}/wifi-direct-dhcp.sh
@@ -162,7 +165,7 @@ chmod 755 /usr/sbin/p2p_supp.sh
 %attr(755,-,-) %{_bindir}/dhcpd-notify.sh
 %attr(755,-,-) %{_bindir}/wifi-direct-server.sh
 %attr(755,-,-) %{_bindir}/wifi-direct-dhcp.sh
-%attr(755,-,-) /usr/etc/wifi-direct/udhcp_script.non-autoip
+%attr(755,-,-) %{TZ_SYS_RO_ETC}/wifi-direct/udhcp_script.non-autoip
 %attr(644,root,root) %{_sysconfdir}/dbus-1/system.d/*
 %attr(644,root,root) %{_datadir}/dbus-1/system-services/*
 %attr(755,-,-) %{_sbindir}/p2p_supp.sh

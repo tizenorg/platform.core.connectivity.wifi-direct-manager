@@ -1,0 +1,75 @@
+#!/bin/sh
+
+PROGRAM="@SBIN_DIR@/wpa_supplicant"
+
+start()
+{
+	HARDWARE_MODEL=`/bin/grep Hardware /proc/cpuinfo | /bin/awk "{print \\$3}"`
+	/bin/echo "Hardware Model=${HARDWARE_MODEL}"
+
+	if [ -e @TZ_SYS_ETC@/p2p_supp.conf ]; then
+		echo "File exist: @TZ_SYS_ETC@/p2p_supp.conf"
+	else
+		echo "File not exist. Reinstall: @TZ_SYS_ETC@/p2p_supp.conf"
+		 /bin/cp @TZ_SYS_RO_ETC@/wifi-direct/p2p_supp.conf @TZ_SYS_ETC@/
+	fi
+	## For Hawk-P Platform, Hardware model is Samsung
+	if [ $HARDWARE_MODEL = "Samsung" ];then
+		@SBIN_DIR@/wpa_supplicant -t -B -ddd -Dnl80211 -ip2p0 -c@TZ_SYS_ETC@/p2p_supp.conf -g@TZ_SYS_RUN@/wpa_global  -f/var/log/wpa_supplicant.log
+	 else
+		@SBIN_DIR@/wpa_supplicant -t -B -C@TZ_SYS_RUN@/wpa_supplicant -ddd -Dnl80211 -iwlan0 -c@TZ_SYS_ETC@/p2p_supp.conf -f/var/log/wpa_supplicant.log
+	fi
+ }
+
+start_p2p0()
+{
+	if [ -e @TZ_SYS_ETC@/p2p_supp.conf ]; then
+		echo "File exist: @TZ_SYS_ETC@/p2p_supp.conf"
+	else
+		echo "File not exist. Reinstall: @TZ_SYS_ETC@/p2p_supp.conf"
+		 /bin/cp @TZ_SYS_RO_ETC@/wifi-direct/p2p_supp.conf @TZ_SYS_ETC@/
+	fi
+	@SBIN_DIR@/wpa_supplicant -t -B -ddd -Dnl80211 -ip2p0 -c@TZ_SYS_ETC@/p2p_supp.conf -f/var/log/wpa_supplicant.log
+}
+
+start_dbus()
+{
+	program=${PROGRAM}
+	run=`/bin/ps -eo comm|/bin/grep ${program}`
+	if [ "X${run}" == "X" ]; then
+		echo "${program} is not running"
+		if [ -e @TZ_SYS_ETC@/p2p_supp.conf ]; then
+			echo "File exist: @TZ_SYS_ETC@/p2p_supp.conf"
+		else
+			echo "File not exist. Reinstall: @TZ_SYS_ETC@/p2p_supp.conf"
+			 /bin/cp @TZ_SYS_RO_ETC@/wifi-direct/p2p_supp.conf @TZ_SYS_ETC@/
+		fi
+		@SBIN_DIR@/wpa_supplicant -t -B -u -ddd -K -f/var/log/wpa_supplicant.log
+	else
+		echo "${program} is already running"
+	fi
+}
+
+stop()
+{
+	@BIN_DIR@/pkill -x wpa_supplicant
+}
+
+case $1 in
+"start")
+start
+;;
+"start_p2p0")
+start_p2p0
+;;
+"start_dbus")
+start_dbus
+;;
+"stop")
+stop
+;;
+*)
+/bin/echo p2p_supp.sh [start] [start_p2p0] [start_dbus] [stop]
+exit 1
+;;
+esac

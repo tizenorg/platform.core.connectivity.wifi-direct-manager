@@ -1,5 +1,5 @@
 ##### p2p_supplicant configuration file template #####
-ctrl_interface=/var/run/wpa_supplicant
+ctrl_interface=@TZ_SYS_RUN@/wpa_supplicant
 update_config=1
 eapol_version=1
 ap_scan=1

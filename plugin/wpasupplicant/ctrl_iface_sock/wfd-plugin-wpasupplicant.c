@@ -44,6 +44,8 @@
 #include <glib.h>
 #include <gio/gio.h>
 
+#include <tzplatform_config.h>
+
 #include "wifi-direct-oem.h"
 #include "wfd-plugin-log.h"
 #include "wfd-plugin-wpasupplicant.h"
@@ -53,6 +55,22 @@
 #define NETCONFIG_WIFI_PATH				"/net/netconfig/wifi"
 
 #define NETCONFIG_DBUS_REPLY_TIMEOUT	(10 * 1000)
+
+#define SUPPL_GLOBAL_INTF_PATH tzplatform_getenv(TZ_SYS_RUN, "wpa_global/")
+#define SUPPL_IFACE_PATH tzplatform_getenv(TZ_SYS_RUN, "wpa_supplicant/")
+#define SUPPL_GROUP_IFACE_PATH tzplatform_getenv(TZ_SYS_RUN, "wpa_supplicant/")
+
+#if defined TIZEN_MOBILE
+#define DEFAULT_MAC_FILE_PATH tzplatform_mkpath(TZ_SYS_ETC, ".mac.info")
+#endif
+
+#if defined TIZEN_WIFI_MODULE_BUNDLE
+#define DEFAULT_MAC_FILE_PATH "/sys/class/net/wlan0/address"
+#endif
+
+#ifndef DEFAULT_MAC_FILE_PATH
+#define DEFAULT_MAC_FILE_PATH "/sys/class/net/p2p0/address"
+#endif
 
 ws_string_s ws_event_strs[] = {
 	// discovery
@@ -2654,14 +2672,15 @@ static int _ws_update_local_dev_addr_from_file()
 {
 	__WDP_LOG_FUNC_ENTER__;
 	FILE *fd = NULL;
+	const char *file_path = DEFAULT_MAC_FILE_PATH;
 	char local_mac[OEM_MACSTR_LEN] = {0, };
 	char *ptr = NULL;
 	int res = 0;
 
 	errno = 0;
-	fd = fopen(DEFAULT_MAC_FILE_PATH, "r");
+	fd = fopen(file_path, "r");
 	if (!fd) {
-		WDP_LOGE("Failed to open MAC info file (%s)", strerror(errno));
+		WDP_LOGE("Failed to open MAC info file [%s] (%s)",file_path, strerror(errno));
 		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
@@ -2676,7 +2695,7 @@ static int _ws_update_local_dev_addr_from_file()
 	}
 	WDP_SECLOGD("Local MAC address [%s]", ptr);
 
-	res = _ws_txt_to_mac(local_mac, g_pd->local_dev_addr);
+	res = _ws_txt_to_mac((unsigned char *)local_mac, g_pd->local_dev_addr);
 	if (res < 0) {
 		WDP_LOGE("Failed to convert text to MAC address");
 		fclose(fd);
