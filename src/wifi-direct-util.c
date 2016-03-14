@@ -45,7 +45,7 @@
 #include <vconf.h>
 #include <tzplatform_config.h>
 #if defined(TIZEN_FEATURE_DEFAULT_CONNECTION_AGENT)
-#include <app_control.h>
+#include <systemd/sd-login.h>
 #include <aul.h>
 #endif
 #include <wifi-direct.h>
@@ -152,6 +152,37 @@ int wfd_util_get_current_time(unsigned long *cur_time)
 
 	return -1;
 }
+#endif
+
+#if defined(TIZEN_FEATURE_DEFAULT_CONNECTION_AGENT)
+static int __wfd_util_find_login_user(uid_t *uid)
+ {
+	uid_t *uids;
+	int ret, i;
+	char *state;
+
+	ret = sd_get_uids(&uids);
+	if (ret <= 0)
+		return -1;
+
+	for (i = 0; i < ret ; i++) {
+		if (sd_uid_get_state(uids[i], &state) < 0) {
+			free(uids);
+			return -1;
+		} else {
+			if (!strncmp(state, "online", 6)) {
+				*uid = uids[i];
+				free(uids);
+				free(state);
+				return 0;
+			}
+		}
+	 }
+	free(uids);
+	free(state);
+	return -1;
+ }
+
 #endif
 
 gboolean wfd_util_execute_file(const char *file_path,
@@ -589,32 +620,19 @@ int wfd_util_start_wifi_direct_popup()
 {
 	__WDS_LOG_FUNC_ENTER__;
 
-	app_control_h popup_control = NULL;
-	if (APP_CONTROL_ERROR_NONE != app_control_create(&popup_control)
-		|| NULL == popup_control) {
-		WDS_LOGE("App control operation Failed !");
-		return -1;
-	}
-	if (APP_CONTROL_ERROR_NONE != app_control_set_operation(popup_control,
-		APP_CONTROL_OPERATION_DEFAULT)) {
-		WDS_LOGE("App control operation Failed !");
-		app_control_destroy(popup_control);
-		return -1;
-	}
-	if (APP_CONTROL_ERROR_NONE != app_control_set_app_id(popup_control,
-		"org.tizen.wifi-direct-popup")) {
-		WDS_LOGE("App control operation Failed !");
-		app_control_destroy(popup_control);
-		return -1;
-	}
-	if (APP_CONTROL_ERROR_NONE !=
-		app_control_send_launch_request(popup_control, NULL, NULL)) {
-		WDS_LOGE("App control operation Failed !");
-		app_control_destroy(popup_control);
+	uid_t uid = 0;
+	int ret = 0;
+	ret = __wfd_util_find_login_user(&uid);
+	if (ret < 0) {
+		WDS_LOGE("__wfd_util_find_login_user Failed !");
 		return -1;
 	}
 
-	app_control_destroy(popup_control);
+	if (AUL_R_OK != aul_launch_app_for_uid(
+		"org.tizen.wifi-direct-popup", NULL, uid)) {
+		WDS_LOGE("aul_launch_for_uid Failed !");
+		return -1;
+	}
 
 	WDS_LOGD("Succeeded to launch wifi-direct-popup");
 	__WDS_LOG_FUNC_EXIT__;

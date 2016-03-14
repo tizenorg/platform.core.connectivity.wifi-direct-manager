@@ -2,7 +2,7 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 PROJECT(wfd-manager C)
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(pkgs REQUIRED capi-network-wifi-direct glib-2.0 gio-2.0 gobject-2.0 dlog libnl-2.0 capi-appfw-application vconf cynara-client cynara-creds-socket cynara-session aul${MDM_REQUIRED_PKGS})
+pkg_check_modules(pkgs REQUIRED capi-network-wifi-direct glib-2.0 gio-2.0 gobject-2.0 dlog libnl-2.0 capi-appfw-application vconf cynara-client cynara-creds-socket cynara-session aul libsystemd-login ${MDM_REQUIRED_PKGS})
 FOREACH(flag ${pkgs_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
 ENDFOREACH(flag)
