@@ -38,12 +38,19 @@ static GDBusConnection *__dbus_get_gdbus_conn(void)
 	return g_connection;
 }
 
+static void __on_bus_acquired(GDBusConnection *connection,
+			      const gchar *name,
+			      gpointer user_data)
+{
+	WDS_LOGD("on_bus_acquired: %s", name);
+	wfd_manager_dbus_register();
+}
+
 static void __on_name_acquired(GDBusConnection *connection,
 			       const gchar *name,
 			       gpointer user_data)
 {
 	WDS_LOGD("on_name_acquired: %s", name);
-	wfd_manager_dbus_register();
 }
 
 static void __on_name_lost(GDBusConnection *connection,
@@ -130,13 +137,15 @@ gboolean wfd_manager_dbus_init(void)
 		return FALSE;
 	}
 
-	g_owner_id = g_bus_own_name_on_connection(g_connection,
-						  WFD_MANAGER_SERVICE,
-						  G_BUS_NAME_OWNER_FLAGS_NONE,
-						  __on_name_acquired,
-						  __on_name_lost,
-						  NULL,
-						  NULL);
+
+	g_owner_id = g_bus_own_name(G_BUS_TYPE_SYSTEM,
+				    WFD_MANAGER_SERVICE,
+				    G_BUS_NAME_OWNER_FLAGS_NONE,
+				    __on_bus_acquired,
+				    __on_name_acquired,
+				    __on_name_lost,
+				    NULL,
+				    NULL);
 	if (g_owner_id == 0) {
 		WDS_LOGE("Failed to get bus name");
 		return FALSE;
