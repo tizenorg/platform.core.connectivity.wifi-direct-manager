@@ -1959,7 +1959,7 @@ static void wfd_manager_method_call_handler (GDBusConnection       *connection,
 
 	/* Method Call */
 	WDS_LOGD("interface : [%s], method : [%s]", interface_name, method_name);
-	WDS_LOGD("param [%s]", parameters ? g_variant_print(parameters, TRUE) : "NULL");
+	DBUS_DEBUG_VARIANT(parameters);
 
 	while (wfd_manager_iface_map[count].iface_name != NULL) {
 		if (!g_strcmp0(interface_name, wfd_manager_iface_map[count].iface_name)) {
