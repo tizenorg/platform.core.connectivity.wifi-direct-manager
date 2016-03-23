@@ -283,12 +283,12 @@ static int __ws_segment_to_service(char *segment, wfd_oem_new_service_s **servic
 
 		while (*ptr != 0 && strncmp(ptr, "c0", 2)) {
 			len = __ws_hex_to_num(ptr, 2);
-			ptr +=2;
-			if (len && len <= 0xffff) {
+			ptr += 2;
+			if (len && len <= 0xff) {
 				temp = (char*) calloc(1, len+2);
 				if (temp) {
 					temp[0] = '.';
-					for (i=0; i<len; i++) {
+					for (i = 0; i < len; i++) {
 						temp[i+1] = (char) __ws_hex_to_num(ptr, 2);
 						ptr += 2;
 					}
@@ -324,11 +324,11 @@ static int __ws_segment_to_service(char *segment, wfd_oem_new_service_s **servic
 		while (*ptr != 0 && strncmp(ptr, "c0", 2)) {
 			len = __ws_hex_to_num(ptr, 2);
 			ptr += 2;
-			if (len && len <= 0xffff) {
+			if (len && len <= 0xff) {
 				temp = (char*) g_try_malloc0(len+2);
 				if (temp) {
 					temp[0] = '.';
-					for (i=0; i<len; i++) {
+					for (i = 0; i < len; i++) {
 						temp[i+1] = (char) __ws_hex_to_num(ptr, 2);
 						ptr += 2;
 					}
