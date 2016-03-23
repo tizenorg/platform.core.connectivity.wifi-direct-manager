@@ -1671,8 +1671,7 @@ static void __wfd_manager_display_iface_handler(const gchar *method_name,
 	WDS_LOGD("%s", method_name);
 
 	if (!g_strcmp0(method_name, "Init")) {
-		if(manager->state < WIFI_DIRECT_STATE_ACTIVATED ||
-				manager->state >= WIFI_DIRECT_STATE_CONNECTED) {
+		if (manager->state < WIFI_DIRECT_STATE_ACTIVATED) {
 			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
 			return_parameters = g_variant_new("(i)", ret);
 			goto done;
@@ -1697,8 +1696,7 @@ static void __wfd_manager_display_iface_handler(const gchar *method_name,
 		return_parameters = g_variant_new("(i)", ret);
 
 	} else if (!g_strcmp0(method_name, "Deinit")) {
-		if(manager->state < WIFI_DIRECT_STATE_ACTIVATED ||
-				manager->state >= WIFI_DIRECT_STATE_CONNECTED) {
+		if (manager->state < WIFI_DIRECT_STATE_ACTIVATED) {
 			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
 			return_parameters = g_variant_new("(i)", ret);
 			goto done;
@@ -1723,8 +1721,7 @@ static void __wfd_manager_display_iface_handler(const gchar *method_name,
 		int type, port, hdcp;
 		g_variant_get(parameters, "(iii)", &type, &port, &hdcp);
 
-		if(manager->state < WIFI_DIRECT_STATE_ACTIVATED ||
-				manager->state >= WIFI_DIRECT_STATE_CONNECTED) {
+		if (manager->state < WIFI_DIRECT_STATE_ACTIVATED) {
 			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
 			return_parameters = g_variant_new("(i)", ret);
 			goto done;
@@ -1747,8 +1744,7 @@ static void __wfd_manager_display_iface_handler(const gchar *method_name,
 		int availability;
 		g_variant_get(parameters, "(i)", &availability);
 
-		if(manager->state < WIFI_DIRECT_STATE_ACTIVATED ||
-				manager->state >= WIFI_DIRECT_STATE_CONNECTED) {
+		if(manager->state < WIFI_DIRECT_STATE_ACTIVATED) {
 			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
 			return_parameters = g_variant_new("(i)", ret);
 			goto done;
