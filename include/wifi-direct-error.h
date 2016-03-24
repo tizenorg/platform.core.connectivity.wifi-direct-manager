@@ -38,6 +38,8 @@ extern "C" {
 #define WFD_MANAGER_ERROR_INTERFACE WFD_MANAGER_SERVICE ".Error"
 
 void wfd_error_set_gerror(wifi_direct_error_e error_code, GError **error);
+void wfd_error_register(void);
+void wfd_error_deregister(void);
 
 #ifdef __cplusplus
 }
