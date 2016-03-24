@@ -30,30 +30,58 @@
 #include "wifi-direct-dbus.h"
 #include "wifi-direct-log.h"
 
-#define WFD_MANAGER_QUARK (g_quark_from_string ("wifi-direct-manager"))
+#define WFD_MANAGER_QUARK (g_quark_from_string ("wifi-direct-error-quark"))
 
 static void wfd_error_invalid_parameter(GError **error)
 {
+	*error = g_dbus_error_new_for_dbus_error(
+		"net.wifidirect.Error.InvalidParameter",
+		"net.wifidirect.Error.InvalidParameter");
+	/*
 	g_set_error(error,
 			WFD_MANAGER_QUARK,
 			WIFI_DIRECT_ERROR_INVALID_PARAMETER,
 			WFD_MANAGER_ERROR_INTERFACE ".InvalidParameter");
+			*/
 }
 
 static void wfd_error_not_permitted(GError **error)
 {
+	*error = g_dbus_error_new_for_dbus_error(
+		"net.wifidirect.Error.NotPermitted",
+		"net.wifidirect.Error.NotPermitted");
+/*
 	g_set_error(error,
 			WFD_MANAGER_QUARK,
 			WIFI_DIRECT_ERROR_NOT_PERMITTED,
 			WFD_MANAGER_ERROR_INTERFACE ".NotPermitted");
+			*/
 }
 
 static void wfd_error_operation_failed(GError **error)
 {
+	*error = g_dbus_error_new_for_dbus_error(
+		"net.wifidirect.Error.OperationFailed",
+		"net.wifidirect.Error.OperationFailed");
+	/*
 	g_set_error(error,
 			WFD_MANAGER_QUARK,
 			WIFI_DIRECT_ERROR_OPERATION_FAILED,
 			WFD_MANAGER_ERROR_INTERFACE ".OperationFailed");
+			*/
+}
+
+static void wfd_error_too_many_client(GError **error)
+{
+	*error = g_dbus_error_new_for_dbus_error(
+		"net.wifidirect.Error.TooManyClient",
+		"net.wifidirect.Error.TooManyClient");
+/*
+	g_set_error(error,
+			WFD_MANAGER_QUARK,
+			WIFI_DIRECT_ERROR_TOO_MANY_CLIENT,
+			WFD_MANAGER_ERROR_INTERFACE ".TooManyClient");
+			*/
 }
 
 void wfd_error_set_gerror(wifi_direct_error_e error_code, GError **error) {
@@ -67,7 +95,56 @@ void wfd_error_set_gerror(wifi_direct_error_e error_code, GError **error) {
 	case WIFI_DIRECT_ERROR_OPERATION_FAILED:
 		wfd_error_operation_failed(error);
 		break;
+	case WIFI_DIRECT_ERROR_TOO_MANY_CLIENT:
+		wfd_error_too_many_client(error);
+		break;
 	default:
 		WDS_LOGD("Error Not handled [%d]", error_code);
+		wfd_error_operation_failed(error);
 	}
+}
+
+void wfd_error_register(void)
+{
+	g_dbus_error_register_error(WFD_MANAGER_QUARK,
+			WIFI_DIRECT_ERROR_INVALID_PARAMETER,
+			"net.wifidirect.Error.InvalidParameter");
+
+
+	g_dbus_error_register_error(WFD_MANAGER_QUARK,
+			WIFI_DIRECT_ERROR_NOT_PERMITTED,
+			"net.wifidirect.Error.NotPermitted");
+
+
+	g_dbus_error_register_error(WFD_MANAGER_QUARK,
+			WIFI_DIRECT_ERROR_OPERATION_FAILED,
+			"net.wifidirect.Error.OperationFailed");
+
+
+	g_dbus_error_register_error(WFD_MANAGER_QUARK,
+			WIFI_DIRECT_ERROR_TOO_MANY_CLIENT,
+			"net.wifidirect.Error.TooManyClient");
+}
+
+void wfd_error_deregister(void)
+{
+	g_dbus_error_unregister_error(WFD_MANAGER_QUARK,
+			WIFI_DIRECT_ERROR_INVALID_PARAMETER,
+			"net.wifidirect.Error.InvalidParameter");
+
+
+	g_dbus_error_unregister_error(WFD_MANAGER_QUARK,
+			WIFI_DIRECT_ERROR_NOT_PERMITTED,
+			"net.wifidirect.Error.NotPermitted");
+
+
+	g_dbus_error_unregister_error(WFD_MANAGER_QUARK,
+			WIFI_DIRECT_ERROR_OPERATION_FAILED,
+			"net.wifidirect.Error.OperationFailed");
+
+
+	g_dbus_error_unregister_error(WFD_MANAGER_QUARK,
+			WIFI_DIRECT_ERROR_TOO_MANY_CLIENT,
+			"net.wifidirect.Error.TooManyClient");
+
 }
