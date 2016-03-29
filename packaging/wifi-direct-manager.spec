@@ -1,6 +1,6 @@
 Name:		wifi-direct-manager
 Summary:	Wi-Fi Direct manger
-Version:	1.2.151
+Version:	1.2.152
 Release:	1
 Group:      Network & Connectivity/Wireless
 License:    Apache-2.0
@@ -14,9 +14,6 @@ BuildRequires:	pkgconfig(vconf)
 BuildRequires:  pkgconfig(libnl-2.0)
 BuildRequires:	pkgconfig(dbus-1)
 BuildRequires:	pkgconfig(aul)
-BuildRequires:	pkgconfig(cynara-client)
-BuildRequires:	pkgconfig(cynara-creds-socket)
-BuildRequires:	pkgconfig(cynara-session)
 
 BuildRequires:	pkgconfig(capi-appfw-application)
 BuildRequires:  pkgconfig(libsystemd-login)
