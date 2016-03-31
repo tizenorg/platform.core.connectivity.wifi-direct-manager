@@ -39,7 +39,7 @@
 		gchar *parameters_debug_str = NULL;\
 		if (parameters)\
 			parameters_debug_str = g_variant_print(parameters, TRUE);\
-		WDP_LOGD("signal params [%s]", parameters_debug_str ? parameters_debug_str : "NULL");\
+		WDP_LOGD("params [%s]", parameters_debug_str ? parameters_debug_str : "NULL");\
 		g_free(parameters_debug_str);\
 	} while (0)
 

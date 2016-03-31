@@ -364,7 +364,7 @@ typedef struct {
 	int auth_alg;
 	int mode;
 	int p2p_client_num;
-	unsigned char p2p_client_list[OEM_MACADDR_LEN][OEM_MAX_PEER_NUM];
+	unsigned char p2p_client_list[OEM_MAX_PEER_NUM][OEM_MACADDR_LEN];
 	char persistent_path[OBJECT_PATH_MAX];
 	int total;
 } ws_network_info_s;

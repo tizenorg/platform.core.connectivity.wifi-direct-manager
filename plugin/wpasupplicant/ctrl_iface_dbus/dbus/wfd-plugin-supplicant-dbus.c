@@ -100,7 +100,7 @@ void dbus_property_foreach(GVariantIter *iter,
 				WDP_LOGD("function");
 				function(key, value, user_data);
 			} else {
-				WDP_LOGE("do nothing");
+				WDP_LOGD("do nothing");
 			}
 		}
 	}

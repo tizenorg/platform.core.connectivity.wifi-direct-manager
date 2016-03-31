@@ -627,7 +627,7 @@ static void __ws_get_peer_property(const char *key, GVariant *value, void *user_
 			peer->dev_role = WFD_OEM_DEV_ROLE_GC;
 
 	} else {
-		WDP_LOGE("Unknown value");
+		WDP_LOGD("Unknown value");
 	}
 	__WDP_LOG_FUNC_EXIT__;
 	return;
@@ -722,7 +722,7 @@ static void __ws_peer_property(const char *key, GVariant *value, void *user_data
 			peer->dev_role = WFD_OEM_DEV_ROLE_GC;
 
 	} else {
-		WDP_LOGE("Unknown value");
+		WDP_LOGD("Unknown value");
 	}
 	__WDP_LOG_FUNC_EXIT__;
 	return;
@@ -799,7 +799,7 @@ void __ws_group_property(const char *key, GVariant *value, void *user_data)
 			WDP_LOGD("[" MACSTR "]", MAC2STR(group->go_dev_addr));
 
 	} else {
-		WDP_LOGE("Unknown value");
+		WDP_LOGD("Unknown value");
 	}
 	__WDP_LOG_FUNC_EXIT__;
 	return;
@@ -836,7 +836,7 @@ void __ws_extract_invitation_details(const char *key, GVariant *value, void *use
 		g_variant_get(value, "i", &(invitation->oper_freq));
 		WDP_LOGD("op freq [%d]", invitation->oper_freq);
 	} else {
-		WDP_LOGE("Unknown value");
+		WDP_LOGD("Unknown value");
 	}
 	__WDP_LOG_FUNC_EXIT__;
 	return;
@@ -4246,20 +4246,28 @@ void __parsing_networks (const char *key, GVariant *value, void *user_data)
 		g_variant_get(value, "&s", &p2p_client_list);
 		WDP_LOGD("p2p_client_list [%s]", p2p_client_list);
 		ptr = (char *)p2p_client_list;
-		while(ptr != NULL && list_len >= (OEM_MACSTR_LEN - 1)) {
-			__ws_txt_to_mac((unsigned char *)ptr, &(network->p2p_client_list[0][num]));
+		list_len = strlen(p2p_client_list);
+		WDP_LOGD("list_len [%d]", list_len);
+		while (ptr && list_len >= (OEM_MACSTR_LEN - 1)) {
+			__ws_txt_to_mac((unsigned char *)ptr, (network->p2p_client_list[num]));
 			ptr += OEM_MACSTR_LEN;
 			list_len -= OEM_MACSTR_LEN;
+			if (ptr && ptr[0] == ' ') {
+				ptr += 1;
+				list_len -= 1;
+			}
 			num++;
+			if (num >= OEM_MAX_PEER_NUM)
+				break;
 		}
 		network->p2p_client_num = num;
+		WDP_LOGD("p2p_client_num [%d]", network->p2p_client_num);
 	}
 	return;
 }
 
 void __ws_extract_p2pdevice_details(const char *key, GVariant *value, void *user_data)
 {
-
 	__WDP_LOG_FUNC_ENTER__;
 #if defined (TIZEN_DEBUG_DBUS_VALUE)
 	CHECK_KEY_VALUE(key, value);
@@ -4297,7 +4305,7 @@ void __ws_extract_p2pdevice_details(const char *key, GVariant *value, void *user
 		}
 
 		networks[0].total = num;
-		WDP_LOGE("total number [%d]", num);
+		WDP_LOGI("total number [%d]", num);
 		g_variant_iter_free(iter);
 	}
 	__WDP_LOG_FUNC_EXIT__;
@@ -4315,15 +4323,20 @@ int ws_get_persistent_groups(wfd_oem_persistent_group_s **groups, int *group_cou
 
 	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
 	g_dbus = g_pd->g_dbus;
 	if (!g_dbus) {
 		WDP_LOGE("DBus connection is NULL");
+		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
-	dbus_property_get_all(g_pd->iface_path, g_dbus, SUPPLICANT_P2PDEVICE, __ws_extract_p2pdevice_details, &networks[0]);
+
+	memset(&networks, 0x0, WS_MAX_PERSISTENT_COUNT * sizeof(ws_network_info_s));
+	dbus_property_get_all(g_pd->iface_path, g_dbus, SUPPLICANT_P2PDEVICE,
+			__ws_extract_p2pdevice_details, &networks[0]);
 
 	cnt = networks[0].total;
 
@@ -4342,21 +4355,31 @@ int ws_get_persistent_groups(wfd_oem_persistent_group_s **groups, int *group_cou
 		return 0;
 	}
 
-	wfd_persistent_groups = (wfd_oem_persistent_group_s*) g_try_malloc0(cnt * sizeof(wfd_oem_persistent_group_s));
+	wfd_persistent_groups = (wfd_oem_persistent_group_s *) g_try_malloc0(cnt * sizeof(wfd_oem_persistent_group_s));
 	if (wfd_persistent_groups == NULL) {
 		WDP_LOGE("Failed to allocate memory for wfd_persistent_groups ");
+		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
-	for(i = 0; i < cnt; i++) {
+	for (i = 0; i < cnt; i++) {
+		int j = 0;
+
 		WDP_LOGD("----persistent group [%d]----", i);
-		WDP_LOGD("network_id=%d", networks[i].network_id);
-		WDP_LOGD("ssid=%s", networks[i].ssid);
-		WDP_LOGD("bssid=" MACSTR, MAC2STR(networks[i].bssid));
+		WDP_LOGD("network_id [%d]", networks[i].network_id);
+		WDP_LOGD("ssid [%s]", networks[i].ssid);
+		WDP_LOGD("bssid ["MACSTR"]", MAC2STR(networks[i].bssid));
+		WDP_LOGD("p2p_client_num [%d]", networks[i].p2p_client_num);
+		for(j = 0; j < networks[i].p2p_client_num; j++)
+			WDP_LOGD("p2p_client_list ["MACSTR"]", MAC2STR(networks[i].p2p_client_list[j]));
 
 		wfd_persistent_groups[i].network_id = networks[i].network_id;
 		g_strlcpy(wfd_persistent_groups[i].ssid, networks[i].ssid, WS_SSID_LEN + 1);
 		memcpy(wfd_persistent_groups[i].go_mac_address, networks[i].bssid, WS_MACADDR_LEN);
+		wfd_persistent_groups[i].p2p_client_num = networks[i].p2p_client_num;
+		if (wfd_persistent_groups[i].p2p_client_num > 0)
+			memcpy(wfd_persistent_groups[i].p2p_client_list, networks[i].p2p_client_list,
+					OEM_MACADDR_LEN * OEM_MAX_PEER_NUM * sizeof(char));
 	}
 
 	*group_count = cnt;
@@ -4378,15 +4401,18 @@ int ws_remove_persistent_group(char *ssid, unsigned char *bssid)
 
 	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
 	g_dbus = g_pd->g_dbus;
 	if (!g_dbus) {
 		WDP_LOGE("DBus connection is NULL");
+		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
-	dbus_property_get_all(g_pd->iface_path, g_dbus, SUPPLICANT_P2PDEVICE, __ws_extract_p2pdevice_details, networks);
+	dbus_property_get_all(g_pd->iface_path, g_dbus, SUPPLICANT_P2PDEVICE,
+			__ws_extract_p2pdevice_details, networks);
 
 	cnt = networks[0].total;
 
@@ -4397,20 +4423,25 @@ int ws_remove_persistent_group(char *ssid, unsigned char *bssid)
 		return -1;
 	}
 
-	for(i=0;i<cnt;i++) {
+	for (i = 0; i < cnt; i++) {
+		int j = 0;
+
 		WDP_LOGD("----persistent group [%d]----", i);
-		WDP_LOGD("network_id=%d", networks[i].network_id);
-		WDP_LOGD("network ssid=%s", networks[i].ssid);
-		WDP_LOGD("network bssid=" MACSTR, MAC2STR(networks[i].bssid));
+		WDP_LOGD("network_id [%d]", networks[i].network_id);
+		WDP_LOGD("network ssid [%s]", networks[i].ssid);
+		WDP_LOGD("network bssid ["MACSTR"]", MAC2STR(networks[i].bssid));
+		WDP_LOGD("network p2p_client_num [%d]", networks[i].p2p_client_num);
+		for(j = 0; j < networks[i].p2p_client_num; j++)
+			WDP_LOGD("network p2p_client_list ["MACSTR"]",
+					MAC2STR(networks[i].p2p_client_list[j]));
 
-		WDP_LOGD("ssid=%s", ssid);
-		WDP_LOGD("bssid=" MACSTR, MAC2STR(bssid));
+		WDP_LOGD("ssid [%s]", ssid);
+		WDP_LOGD("bssid ["MACSTR"]", MAC2STR(bssid));
 
-
-		if (!memcmp(bssid, networks[i].bssid, WS_MACADDR_LEN) &&
-				!strcmp(ssid, networks[i].ssid)) {
-
-			WDP_LOGD("Persistent group found [%d: %s]", networks[i].network_id, ssid);
+		if (!g_strcmp0(ssid, networks[i].ssid) &&
+				!memcmp(bssid, networks[i].bssid, WS_MACADDR_LEN)) {
+			WDP_LOGD("Persistent group owner found [%d: %s]",
+					networks[i].network_id, ssid);
 
 			memset(&params, 0x0, sizeof(dbus_method_param_s));
 			dbus_set_method_param(&params, "RemovePersistentGroup",
@@ -4426,6 +4457,7 @@ int ws_remove_persistent_group(char *ssid, unsigned char *bssid)
 				__WDP_LOG_FUNC_EXIT__;
 				return -1;
 			}
+
 			WDP_LOGD("Succeeded to remove persistent group");;
 			break;
 		}
