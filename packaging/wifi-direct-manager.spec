@@ -1,6 +1,6 @@
 Name:		wifi-direct-manager
 Summary:	Wi-Fi Direct manger
-Version:	1.2.153
+Version:	1.2.154
 Release:	1
 Group:      Network & Connectivity/Wireless
 License:    Apache-2.0
@@ -84,7 +84,7 @@ cmake . -DCMAKE_INSTALL_PREFIX=%{_prefix} -DARCHITECTURE=$ARCH \
         -DTIZEN_FEATURE_SERVICE_DISCOVERY=1 \
         -DTIZEN_WLAN_CONCURRENT_ENABLE=1 \
         -DTIZEN_FEATURE_WIFI_DISPLAY=1 \
-        -DTIZEN_FEATURE_DEFAULT_CONNECTION_AGENT=0 \
+        -DTIZEN_FEATURE_DEFAULT_CONNECTION_AGENT=1 \
         -DTIZEN_FEATURE_IP_OVER_EAPOL=1 \
         -DCTRL_IFACE_DBUS=1 \
         -DTIZEN_DEBUG_DBUS_VALUE=1 \
