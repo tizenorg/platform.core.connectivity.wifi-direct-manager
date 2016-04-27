@@ -42,7 +42,7 @@
 
 #define CONF_FILE_PATH "/etc/wpa_supplicant/wpa_supplicant.conf"
 
-#if defined TIZEN_MOBILE
+#if defined (TIZEN_MOBILE) || defined (TIZEN_COMMON)
 #define COMMON_IFACE_NAME "wlan0"
 
 #	if defined TIZEN_WLAN_BOARD_SPRD

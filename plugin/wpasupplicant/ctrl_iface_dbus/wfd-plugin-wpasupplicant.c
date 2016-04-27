@@ -4638,13 +4638,15 @@ int _convert_bonjour_to_args(char *query, char *rdata, GVariantBuilder *builder)
 		temp = NULL;
 	}
 
+	g_variant_builder_add (builder, "{sv}", "service_type", g_variant_new_string("bonjour"));
+
 	/* compress query */
 	length = __ws_compress_query(compressed, query, qtype);
 
 	args = g_variant_builder_new (G_VARIANT_TYPE ("ay"));
 	for (i = 0; i < length; i++)
 		g_variant_builder_add(args, "y", compressed[i]);
-	g_variant_builder_add (builder, "{sv}", "query", g_variant_new ("ay", args));
+	g_variant_builder_add(builder, "{sv}", "query", g_variant_new ("ay", args));
 	g_variant_builder_unref (args);
 
 	memset(compressed, 0x0, 256);
@@ -4657,7 +4659,7 @@ int _convert_bonjour_to_args(char *query, char *rdata, GVariantBuilder *builder)
 		args = g_variant_builder_new (G_VARIANT_TYPE ("ay"));
 		for (i = 0; i < length; i++)
 			g_variant_builder_add(args, "y", compressed[i]);
-		g_variant_builder_add (builder, "{sv}", "response", g_variant_new ("ay", args));
+		g_variant_builder_add(builder, "{sv}", "response", g_variant_new ("ay", args));
 		g_variant_builder_unref (args);
 	}
 
