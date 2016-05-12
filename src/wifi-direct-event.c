@@ -1099,8 +1099,12 @@ static void __wfd_process_sta_disconnected(wfd_manager_s *manager, wfd_oem_event
 	}
 	memcpy(peer_addr, peer->dev_addr, MACADDR_LEN);
 
-	/* If state is not DISCONNECTING, connection is finished by peer */
-	if (manager->state >= WIFI_DIRECT_STATE_CONNECTED) {
+	/* If state is not DISCONNECTING, connection is finished by peer.
+	*  Required the check also, when Device is Group Owner and state is DISCOVERING.
+	*/
+	if (manager->state >= WIFI_DIRECT_STATE_CONNECTED ||
+				(manager->state == WIFI_DIRECT_STATE_DISCOVERING &&
+				 manager->local->dev_role == WFD_DEV_ROLE_GO)) {
 		wfd_group_remove_member(group, peer_addr);
 		g_snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
 		if (group->member_count) {
