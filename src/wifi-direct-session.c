@@ -385,6 +385,19 @@ int wfd_session_connect(wfd_session_s *session)
 		g_strlcpy(param.wps_pin, session->wps_pin, OEM_PINSTR_LEN + 1);
 	}
 
+	/* To connect with windows phone,set go_intent value to 2.
+	*  As windows phone does not connect when local device act as GO.
+	*  WIFI_DIRECT_PRIMARY_DEVICE_TYPE_COMPUTER ==>1 (Assume Peer Device is Windows PC)
+	*  WIFI_DIRECT_SECONDARY_DEVICE_TYPE_TELEPHONE_WINDOWS_MOBILE ==>1
+	*  WIFI_DIRECT_PRIMARY_DEVICE_TYPE_TELEPHONE ==> 10
+	*/
+	 if ((peer->pri_dev_type == 1) ||
+				 ((peer->pri_dev_type == 10) && (peer->sec_dev_type == 1))) {
+		param.go_intent = 2;
+		WDS_LOGD("go_intent set to %d, Windows device",param.go_intent);
+	 }
+
+	WDS_LOGD("connection go_intent: %d", param.go_intent);
 	res = wfd_oem_connect(manager->oem_ops, peer->dev_addr, &param);
 	if (res < 0) {
 		WDS_LOGD("Failed to connect peer [" MACSECSTR "]", MAC2SECSTR(peer->dev_addr));
