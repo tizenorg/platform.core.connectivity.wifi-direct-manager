@@ -1108,12 +1108,14 @@ static int _ws_flush()
 
 	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
 	g_dbus = g_pd->g_dbus;
 	if (!g_dbus) {
 		WDP_LOGE("DBus connection is NULL");
+		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
 	memset(&params, 0x0, sizeof(dbus_method_param_s));
@@ -3439,17 +3441,20 @@ int ws_reject_connection(unsigned char *peer_addr)
 
 	if (!peer_addr) {
 		WDP_LOGE("Invalid parameter");
+		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
 	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
 	g_dbus = g_pd->g_dbus;
 	if (!g_dbus) {
 		WDP_LOGE("DBus connection is NULL");
+		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
 	memset(&params, 0x0, sizeof(dbus_method_param_s));
@@ -3473,6 +3478,7 @@ int ws_reject_connection(unsigned char *peer_addr)
 	else
 		WDP_LOGD("Succeeded to reject peer[" MACSTR "]", MAC2STR(peer_addr));
 
+	_ws_flush();
 	__WDP_LOG_FUNC_EXIT__;
 	return res;
 }
