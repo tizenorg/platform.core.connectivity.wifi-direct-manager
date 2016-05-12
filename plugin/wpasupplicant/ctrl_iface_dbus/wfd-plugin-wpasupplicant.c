@@ -1844,6 +1844,39 @@ static void _ws_process_group_formation_failure(GDBusConnection *connection,
 	__WDP_LOG_FUNC_EXIT__;
 }
 
+static void _ws_process_invitation_accepted(GDBusConnection *connection,
+		const gchar *object_path, GVariant *parameters)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	GVariantIter *iter = NULL;
+	wfd_oem_event_s event;
+
+	memset(&event, 0x0, sizeof(wfd_oem_event_s));
+
+	event.event_id = WFD_OEM_EVENT_INVITATION_ACCEPTED;
+	event.edata_type = WFD_OEM_EDATA_TYPE_NONE;
+
+	if (parameters != NULL) {
+		g_variant_get(parameters, "(a{sv})", &iter);
+
+		if (iter != NULL) {
+			gchar *key = NULL;
+			GVariant *value = NULL;
+
+			while (g_variant_iter_loop(iter, "{sv}", &key, &value)) {
+				CHECK_KEY_VALUE(key, value);
+				if(g_strcmp0(key, "sa") == 0)
+					if (__ws_unpack_ay(event.dev_addr, value, WS_MACADDR_LEN))
+						WDP_LOGI("[" MACSTR "]", MAC2STR(event.dev_addr));
+			}
+			g_variant_iter_free(iter);
+		}
+	}
+
+	g_pd->callback(g_pd->user_data, &event);
+	__WDP_LOG_FUNC_EXIT__;
+}
+
 static struct {
 	const char *interface;
 	const char *member;
@@ -1961,6 +1994,11 @@ static struct {
 		SUPPLICANT_P2PDEVICE,
 		"GroupFormationFailure",
 		_ws_process_group_formation_failure
+	},
+	{
+		SUPPLICANT_P2PDEVICE,
+		"InvitationAccepted",
+		_ws_process_invitation_accepted
 	},
 	{
 		NULL,
