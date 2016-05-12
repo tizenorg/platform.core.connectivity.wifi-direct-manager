@@ -496,6 +496,8 @@ typedef struct _wfd_oem_ops_s {
 #endif /* TIZEN_FEATURE_WIFI_DISPLAY */
 
 	int (*refresh) (void);
+	int (*save_config) (void);
+
 
 } wfd_oem_ops_s;
 
