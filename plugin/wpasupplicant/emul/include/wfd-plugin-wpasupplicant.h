@@ -118,5 +118,6 @@ int ws_set_display(wfd_oem_display_s *wifi_display);
 #endif /* TIZEN_FEATURE_WIFI_DISPLAY */
 
 int ws_refresh();
+int ws_save_config(void);
 
 #endif /* __WFD_PLUGIN_WPASUPPLICANT_H__ */

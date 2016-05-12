@@ -127,6 +127,7 @@ static wfd_oem_ops_s supplicant_ops = {
 #endif /* TIZEN_FEATURE_WIFI_DISPLAY */
 
 	.refresh = ws_refresh,
+	.save_config =  ws_save_config,
 
 	};
 
@@ -5231,3 +5232,32 @@ int ws_refresh()
 	__WDP_LOG_FUNC_EXIT__;
 	return 0;
 }
+
+int ws_save_config(void)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	GDBusConnection *g_dbus = NULL;
+	dbus_method_param_s params;
+	int res = 0;
+
+	g_dbus = g_pd->g_dbus;
+	if (!g_dbus) {
+		WDP_LOGE("DBus connection is NULL");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+	memset(&params, 0x0, sizeof(dbus_method_param_s));
+
+	dbus_set_method_param(&params, "SaveConfig", g_pd->iface_path, g_dbus);
+	params.params = NULL;
+
+	res = dbus_method_call(&params, SUPPLICANT_IFACE, NULL, NULL);
+	if (res < 0)
+		WDP_LOGE("Failed to save config to wpa_supplicant");
+	else
+		WDP_LOGD("Succeeded to save config");
+
+	__WDP_LOG_FUNC_EXIT__;
+	return res;
+}
+

@@ -270,6 +270,7 @@ static wfd_oem_ops_s supplicant_ops = {
 #endif /* TIZEN_FEATURE_WIFI_DISPLAY */
 
 	.refresh = ws_refresh,
+	.save_config = ws_save_config,
 
 	};
 
@@ -4861,3 +4862,12 @@ int ws_refresh()
 	__WDP_LOG_FUNC_EXIT__;
 	return 0;
 }
+
+int ws_save_config()
+{
+	__WDP_LOG_FUNC_ENTER__;
+
+	__WDP_LOG_FUNC_EXIT__;
+	return 0;
+}
+

@@ -68,6 +68,8 @@ static wfd_oem_ops_s supplicant_ops = {
 	.miracast_init = ws_miracast_init,
 	.set_display = ws_set_display,
 #endif /* TIZEN_FEATURE_WIFI_DISPLAY */
+	.save_config = ws_save_config,
+
 	};
 
 int wfd_plugin_load(wfd_oem_ops_s **ops)
@@ -433,4 +435,13 @@ int ws_set_display(wfd_oem_display_s *wifi_display)
 	__WDP_LOG_FUNC_EXIT__;
 	return -1;
 }
+
+int ws_save_config(void)
+{
+	__WDP_LOG_FUNC_ENTER__;
+
+	__WDP_LOG_FUNC_EXIT__;
+	return -1;
+}
+
 #endif /* TIZEN_FEATURE_WIFI_DISPLAY */
