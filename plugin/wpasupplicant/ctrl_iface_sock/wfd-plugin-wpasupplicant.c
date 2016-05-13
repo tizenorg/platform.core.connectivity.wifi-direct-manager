@@ -272,6 +272,7 @@ static wfd_oem_ops_s supplicant_ops = {
 	.refresh = ws_refresh,
 	.save_config = ws_save_config,
 	.set_operating_channel = ws_set_operating_channel,
+	.remove_all_network = ws_remove_all_network,
 
 	};
 
@@ -4905,3 +4906,12 @@ int ws_set_operating_channel(int channel)
 	__WDP_LOG_FUNC_EXIT__;
 	return 0;
 }
+
+int ws_remove_all_network()
+{
+	__WDP_LOG_FUNC_ENTER__;
+
+	__WDP_LOG_FUNC_EXIT__;
+	return 0;
+}
+

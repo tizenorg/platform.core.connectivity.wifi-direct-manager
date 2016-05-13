@@ -70,6 +70,7 @@ static wfd_oem_ops_s supplicant_ops = {
 #endif /* TIZEN_FEATURE_WIFI_DISPLAY */
 	.save_config = ws_save_config,
 	.set_operating_channel = ws_set_operating_channel,
+	.remove_all_network = ws_remove_all_network,
 
 	};
 
@@ -448,6 +449,14 @@ int ws_save_config(void)
 }
 
 int ws_set_operating_channel(int channel)
+{
+	__WDP_LOG_FUNC_ENTER__;
+
+	__WDP_LOG_FUNC_EXIT__;
+	return -1;
+}
+
+int ws_remove_all_network()
 {
 	__WDP_LOG_FUNC_ENTER__;
 
