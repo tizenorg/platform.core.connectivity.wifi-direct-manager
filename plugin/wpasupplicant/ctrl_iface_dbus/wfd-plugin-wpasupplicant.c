@@ -128,6 +128,7 @@ static wfd_oem_ops_s supplicant_ops = {
 
 	.refresh = ws_refresh,
 	.save_config =  ws_save_config,
+	.set_operating_channel = ws_set_operating_channel,
 
 	};
 
@@ -5262,6 +5263,45 @@ int ws_save_config(void)
 		WDP_LOGE("Failed to save config to wpa_supplicant");
 	else
 		WDP_LOGD("Succeeded to save config");
+
+	__WDP_LOG_FUNC_EXIT__;
+	return res;
+}
+
+int ws_set_operating_channel(int channel)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	GDBusConnection *g_dbus = NULL;
+	GVariant *value = NULL;
+	GVariant *param = NULL;
+	GVariantBuilder *builder = NULL;
+	dbus_method_param_s params;
+	int res = 0;
+
+	g_dbus = g_pd->g_dbus;
+	if (!g_dbus) {
+		WDP_LOGE("DBus connection is NULL");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	memset(&params, 0x0, sizeof(dbus_method_param_s));
+
+	dbus_set_method_param(&params, DBUS_PROPERTIES_METHOD_SET, g_pd->iface_path, g_dbus);
+
+	builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
+	g_variant_builder_add (builder, "{sv}", "OperChannel", g_variant_new_uint32(channel));
+	value = g_variant_new ("a{sv}", builder);
+	g_variant_builder_unref (builder);
+
+	param = g_variant_new("(ssv)", SUPPLICANT_P2PDEVICE, "P2PDeviceConfig", value);
+	params.params = param;
+
+	res = dbus_method_call(&params, DBUS_PROPERTIES_INTERFACE, NULL, NULL);
+	if (res < 0)
+		WDP_LOGE("Failed to send command to wpa_supplicant");
+	else
+		WDP_LOGD("Succeeded to set Operating Channel");
 
 	__WDP_LOG_FUNC_EXIT__;
 	return res;

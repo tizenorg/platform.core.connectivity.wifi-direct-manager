@@ -271,6 +271,7 @@ static wfd_oem_ops_s supplicant_ops = {
 
 	.refresh = ws_refresh,
 	.save_config = ws_save_config,
+	.set_operating_channel = ws_set_operating_channel,
 
 	};
 
@@ -4871,3 +4872,36 @@ int ws_save_config()
 	return 0;
 }
 
+int ws_set_operating_channel(int channel)
+{
+	__WDP_LOG_FUNC_ENTER__;
+
+	char cmd[80] = {0, };
+	char reply[WS_REPLY_LEN] = {0, };
+	int res = 0;
+	ws_sock_data_s *sock = g_pd->common;
+
+	if (!sock) {
+		WDP_LOGE("Socket is NULL");
+		return -1;
+	}
+
+	snprintf(cmd, sizeof(cmd), WS_CMD_SET "p2p_oper_channel %d", channel);
+
+	res = _ws_send_cmd(sock->ctrl_sock, cmd, reply, sizeof(reply));
+	if (res < 0) {
+		WDP_LOGE("Failed to send command to wpa_supplicant");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	if (strstr(reply, "FAIL")) {
+		WDP_LOGE("Failed to set Operating channel");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	WDP_LOGD("Succeeded to set P2P Operating Channel");
+	__WDP_LOG_FUNC_EXIT__;
+	return 0;
+}

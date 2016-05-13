@@ -119,5 +119,6 @@ int ws_set_display(wfd_oem_display_s *wifi_display);
 
 int ws_refresh();
 int ws_save_config(void);
+int ws_set_operating_channel(int channel);
 
 #endif /* __WFD_PLUGIN_WPASUPPLICANT_H__ */
