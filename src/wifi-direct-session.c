@@ -367,8 +367,6 @@ int wfd_session_connect(wfd_session_s *session)
 		return -1;
 	}
 
-	wfd_oem_stop_scan(manager->oem_ops);
-
 	session->state = SESSION_STATE_GO_NEG;
 	peer = session->peer;
 
