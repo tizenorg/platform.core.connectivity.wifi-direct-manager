@@ -498,6 +498,7 @@ typedef struct _wfd_oem_ops_s {
 	int (*refresh) (void);
 	int (*save_config) (void);
 	int (*set_operating_channel)(int channel);
+	int (*remove_all_network)(void);
 
 
 } wfd_oem_ops_s;

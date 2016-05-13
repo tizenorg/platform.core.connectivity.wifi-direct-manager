@@ -129,6 +129,7 @@ static wfd_oem_ops_s supplicant_ops = {
 	.refresh = ws_refresh,
 	.save_config =  ws_save_config,
 	.set_operating_channel = ws_set_operating_channel,
+	.remove_all_network = ws_remove_all_network,
 
 	};
 
@@ -5303,6 +5304,35 @@ int ws_set_operating_channel(int channel)
 	else
 		WDP_LOGD("Succeeded to set Operating Channel");
 
+	__WDP_LOG_FUNC_EXIT__;
+	return res;
+}
+
+int ws_remove_all_network(void)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	GDBusConnection *g_dbus = NULL;
+	dbus_method_param_s params;
+	int res = 0;
+
+	g_dbus = g_pd->g_dbus;
+	if (!g_dbus) {
+		WDP_LOGE("DBus connection is NULL");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+	memset(&params, 0x0, sizeof(dbus_method_param_s));
+
+	dbus_set_method_param(&params, "RemoveAllNetworks", g_pd->iface_path, g_dbus);
+	params.params = NULL;
+
+	res = dbus_method_call(&params, SUPPLICANT_IFACE, NULL, NULL);
+	if (res < 0)
+		WDP_LOGE("Failed to send [RemoveAllNetworks] command to wpa_supplicant");
+	else
+		WDP_LOGD("Succeeded to remove all networks from supplicant");
+
+	WDP_LOGD("Succeeded to remove all network");
 	__WDP_LOG_FUNC_EXIT__;
 	return res;
 }
