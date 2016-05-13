@@ -582,5 +582,7 @@ int ws_refresh();
 int ws_save_config(void);
 int ws_set_operating_channel(int channel);
 int ws_remove_all_network(void);
+int ws_get_wpa_status(int *wpa_status);
+
 
 #endif /* __WFD_PLUGIN_WPASUPPLICANT_H__ */

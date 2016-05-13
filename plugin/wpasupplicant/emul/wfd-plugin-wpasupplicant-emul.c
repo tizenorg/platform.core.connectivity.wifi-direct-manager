@@ -71,6 +71,7 @@ static wfd_oem_ops_s supplicant_ops = {
 	.save_config = ws_save_config,
 	.set_operating_channel = ws_set_operating_channel,
 	.remove_all_network = ws_remove_all_network,
+	.get_wpa_status = ws_get_wpa_status,
 
 	};
 
@@ -464,3 +465,10 @@ int ws_remove_all_network()
 	return -1;
 }
 
+int ws_get_wpa_status(int *wpa_status)
+{
+	__WDP_LOG_FUNC_ENTER__;
+
+	__WDP_LOG_FUNC_EXIT__;
+	return -1;
+}
