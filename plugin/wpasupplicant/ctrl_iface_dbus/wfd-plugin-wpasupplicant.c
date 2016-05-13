@@ -130,6 +130,7 @@ static wfd_oem_ops_s supplicant_ops = {
 	.save_config =  ws_save_config,
 	.set_operating_channel = ws_set_operating_channel,
 	.remove_all_network = ws_remove_all_network,
+	.get_wpa_status = ws_get_wpa_status,
 
 	};
 
@@ -5337,3 +5338,105 @@ int ws_remove_all_network(void)
 	return res;
 }
 
+int ws_get_wpa_status(int *wpa_status)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	GDBusConnection *g_dbus = NULL;
+	GVariant *param = NULL;
+	GVariant *reply = NULL;
+	GError *error = NULL;
+
+	if (!wpa_status) {
+		WDP_LOGE("Invalid parameter");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	*wpa_status = WFD_OEM_WPA_STATE_MAX;
+
+	g_dbus = g_pd->g_dbus;
+	if (!g_dbus) {
+		WDP_LOGE("DBus connection is NULL");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	param = g_variant_new("(s)", SUPPLICANT_IFACE);
+
+	reply = g_dbus_connection_call_sync (
+			g_pd->g_dbus,
+			SUPPLICANT_SERVICE, /* bus name */
+			g_pd->iface_path, /* object path */
+			DBUS_PROPERTIES_INTERFACE, /* interface name */
+			DBUS_PROPERTIES_METHOD_GETALL, /* method name */
+			param, /* GVariant *params */
+			NULL, /* reply_type */
+			G_DBUS_CALL_FLAGS_NONE, /* flags */
+			SUPPLICANT_TIMEOUT , /* timeout */
+			NULL, /* cancellable */
+			&error); /* error */
+
+	if(error != NULL) {
+		WDP_LOGE("Error! Failed to get properties: [%s]",
+							error->message);
+		g_error_free(error);
+		if (reply)
+			g_variant_unref(reply);
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	gchar *reply_str = NULL;
+	if (reply)
+		reply_str = g_variant_print(reply, TRUE);
+	WDP_LOGE("reply [%s]", reply_str ? reply_str : "NULL");
+	g_free(reply_str);
+
+	if(reply != NULL) {
+		GVariantIter *iter = NULL;
+		g_variant_get(reply, "(a{sv})", &iter);
+
+		if (iter != NULL) {
+			gchar *key = NULL;
+			GVariant *value = NULL;
+
+			while (g_variant_iter_loop(iter, "{sv}", &key, &value)) {
+				if(g_strcmp0(key, "State") == 0) {
+					const gchar *state = NULL;
+					g_variant_get(value, "&s", &state);
+					WDP_LOGI("state : [%s]", state);
+
+					if (g_strcmp0(state, "disconnected") == 0)
+						*wpa_status = WFD_OEM_WPA_STATE_DISCONNECTED;
+					else if (g_strcmp0(state, "inactive") == 0)
+						*wpa_status = WFD_OEM_WPA_STATE_INACTIVE;
+					else if (g_strcmp0(state, "scanning") == 0)
+						*wpa_status = WFD_OEM_WPA_STATE_SCANNING;
+					else if (g_strcmp0(state, "authenticating") == 0)
+						*wpa_status = WFD_OEM_WPA_STATE_AUTHENTICATING;
+					else if (g_strcmp0(state, "associating") == 0)
+						*wpa_status = WFD_OEM_WPA_STATE_ASSOCIATING;
+					else if (g_strcmp0(state, "associated") == 0)
+						*wpa_status = WFD_OEM_WPA_STATE_ASSOCIATED;
+					else if (g_strcmp0(state, "4way_handshake") == 0)
+						*wpa_status = WFD_OEM_WPA_STATE_4WAY_HANDSHAKE;
+					else if (g_strcmp0(state, "group_handshake") == 0)
+						*wpa_status = WFD_OEM_WPA_STATE_GROUP_HANDSHAKE;
+					else if (g_strcmp0(state, "completed") == 0)
+						*wpa_status = WFD_OEM_WPA_STATE_COMPLETED;
+					else
+						*wpa_status = WFD_OEM_WPA_STATE_MAX;
+				}
+			}
+			g_variant_iter_free(iter);
+		}
+		g_variant_unref(reply);
+	} else {
+		WDP_LOGD("No properties");
+	}
+
+	WDP_LOGI("wpa_status : [%d]", *wpa_status);
+
+	__WDP_LOG_FUNC_EXIT__;
+	return 0;
+}
