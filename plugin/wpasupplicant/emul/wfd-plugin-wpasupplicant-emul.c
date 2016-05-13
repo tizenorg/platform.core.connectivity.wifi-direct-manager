@@ -69,6 +69,7 @@ static wfd_oem_ops_s supplicant_ops = {
 	.set_display = ws_set_display,
 #endif /* TIZEN_FEATURE_WIFI_DISPLAY */
 	.save_config = ws_save_config,
+	.set_operating_channel = ws_set_operating_channel,
 
 	};
 
@@ -436,6 +437,8 @@ int ws_set_display(wfd_oem_display_s *wifi_display)
 	return -1;
 }
 
+#endif /* TIZEN_FEATURE_WIFI_DISPLAY */
+
 int ws_save_config(void)
 {
 	__WDP_LOG_FUNC_ENTER__;
@@ -444,4 +447,11 @@ int ws_save_config(void)
 	return -1;
 }
 
-#endif /* TIZEN_FEATURE_WIFI_DISPLAY */
+int ws_set_operating_channel(int channel)
+{
+	__WDP_LOG_FUNC_ENTER__;
+
+	__WDP_LOG_FUNC_EXIT__;
+	return -1;
+}
+
