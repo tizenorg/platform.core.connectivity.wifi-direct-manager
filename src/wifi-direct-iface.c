@@ -377,6 +377,30 @@ const gchar wfd_manager_introspection_xml[] = {
 			"</method>"
 		"</interface>"
 #endif /* TIZEN_FEATURE_WIFI_DISPLAY */
+#if defined(TIZEN_FEATURE_ASP)
+		"<interface name='net.wifidirect.asp'>"
+			"<method name='AdvertiseService'>"
+				"<arg type='a{sv}' name='parameters' direction='in'/>"
+				"<arg type='i' name='result' direction='out'/>"
+			"</method>"
+			"<method name='CancelAdvertiseService'>"
+				"<arg type='u' name='adv_id' direction='in'/>"
+				"<arg type='i' name='result' direction='out'/>"
+			"</method>"
+			"<method name='SeekService'>"
+				"<arg type='a{sv}' name='parameters' direction='in'/>"
+				"<arg type='i' name='result' direction='out'/>"
+				"<arg type='t' name='search_id' direction='out'/>"
+			"</method>"
+			"<method name='CancelSeekService'>"
+				"<arg type='t' name='search_id' direction='in'/>"
+				"<arg type='i' name='result' direction='out'/>"
+			"</method>"
+			"<signal name='SearchResult'>"
+				"<arg type='a{sv}' name='parameters'/>"
+			"</signal>"
+		"</interface>"
+#endif
 	"</node>"
 };
 
@@ -1926,6 +1950,200 @@ failed:
 	return;
 }
 #endif /* TIZEN_FEATURE_WIFI_DISPLAY */
+#if defined(TIZEN_FEATURE_ASP)
+static void __wfd_manager_asp_iface_handler(const gchar *method_name,
+					       GVariant    *parameters,
+					       GDBusMethodInvocation *invocation)
+{
+	int ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+	wfd_manager_s *manager = wfd_get_manager();
+	GVariant *return_parameters = NULL;
+	GError *err = NULL;
+	WDS_LOGD("%s", method_name);
+
+	if (!g_strcmp0(method_name, "AdvertiseService")) {
+
+		wfd_oem_asp_service_s service;
+		GVariantIter *iter = NULL;
+		gchar *key = NULL;
+		GVariant *var = NULL;
+		int replace = 0;
+
+		if (manager->state != WIFI_DIRECT_STATE_ACTIVATED &&
+				manager->state != WIFI_DIRECT_STATE_DISCOVERING &&
+				manager->state >= WIFI_DIRECT_STATE_CONNECTED) {
+			WDS_LOGE("Wi-Fi Direct is not available status for Advertising.");
+			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
+			goto failed;
+		}
+
+		memset(&service, 0, sizeof(wfd_oem_asp_service_s));
+		g_variant_get(parameters, "(a{sv})", &iter);
+		while (g_variant_iter_loop(iter, "{sv}", &key, &var)) {
+			if (!g_strcmp0(key, "adv_id"))
+				g_variant_get(var, "u", &(service.adv_id));
+			else if (!g_strcmp0(key, "discovery_tech"))
+				g_variant_get(var, "i", &(service.discovery_tech));
+			else if (!g_strcmp0(key, "preferred_connection"))
+				g_variant_get(var, "y", &(service.preferred_connection));
+			else if (!g_strcmp0(key, "auto_accept"))
+				g_variant_get(var, "i", &(service.auto_accept));
+			else if (!g_strcmp0(key, "status"))
+				g_variant_get(var, "y", &(service.status));
+			else if (!g_strcmp0(key, "role"))
+				g_variant_get(var, "y", &(service.role));
+			else if (!g_strcmp0(key, "replace"))
+				g_variant_get(var, "i", &(replace));
+			else if (!g_strcmp0(key, "config_method"))
+				g_variant_get(var, "u", &(service.config_method));
+			else if (!g_strcmp0(key, "instance_name"))
+					g_variant_get(var, "&s", &(service.instance_name));
+			else if (!g_strcmp0(key, "service_type"))
+					g_variant_get(var, "&s", &(service.service_type));
+			else if (!g_strcmp0(key, "service_info"))
+				g_variant_get(var, "&s", &(service.service_info));
+			else if (!g_strcmp0(key, "rsp_info"))
+				g_variant_get(var, "&s", &(service.rsp_info));
+			else
+				;/* Do Nothing */
+		}
+
+		ret = wfd_oem_advertise_service(manager->oem_ops, &service, replace);
+		if (ret < 0) {
+			WDS_LOGE("Failed to add service");
+			g_variant_iter_free(iter);
+			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+			goto failed;
+		}
+		g_variant_iter_free(iter);
+
+		if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
+			WDS_LOGW("Wi-Fi Direct device is already visible, do not start listen");
+			goto done;
+		}
+
+		ret = wfd_manager_start_discovery(manager, WFD_OEM_SCAN_MODE_PASSIVE, 0, 0, 0);
+		if (ret == WIFI_DIRECT_ERROR_NONE) {
+			wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+							 "ListenStarted",
+							 NULL);
+		} else {
+			wfd_oem_cancel_advertise_service(manager->oem_ops, &service);
+			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+			goto failed;
+		}
+		goto done;
+
+	} else if (!g_strcmp0(method_name, "CancelAdvertiseService")) {
+
+		wfd_oem_asp_service_s service;
+		memset(&service, 0, sizeof(wfd_oem_asp_service_s));
+
+		if (manager->state < WIFI_DIRECT_STATE_ACTIVATED) {
+			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
+			goto failed;
+		}
+
+		g_variant_get(parameters, "(u)", &(service.adv_id));
+		ret = wfd_oem_cancel_advertise_service(manager->oem_ops, &service);
+		if (ret < 0) {
+			WDS_LOGE("Failed to del service");
+			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+			goto failed;
+		}
+
+		ret = WIFI_DIRECT_ERROR_NONE;
+		return_parameters = g_variant_new("(i)", ret);
+		goto done;
+	} else if (!g_strcmp0(method_name, "SeekService")) {
+
+		wfd_oem_asp_service_s service;
+		GVariantIter *iter = NULL;
+		gchar *key = NULL;
+		GVariant *var = NULL;
+
+		if (manager->state != WIFI_DIRECT_STATE_ACTIVATED &&
+				manager->state != WIFI_DIRECT_STATE_DISCOVERING &&
+				manager->state >= WIFI_DIRECT_STATE_CONNECTED) {
+			WDS_LOGE("Wi-Fi Direct is not available status to Seek.");
+			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
+			goto failed;
+		}
+
+		memset(&service, 0, sizeof(wfd_oem_asp_service_s));
+		g_variant_get(parameters, "(a{sv})", &iter);
+		while (g_variant_iter_loop(iter, "{sv}", &key, &var)) {
+			if (!g_strcmp0(key, "discovery_tech"))
+				g_variant_get(var, "i", &(service.discovery_tech));
+			else if (!g_strcmp0(key, "preferred_connection"))
+				g_variant_get(var, "y", &(service.preferred_connection));
+			else if (!g_strcmp0(key, "service_type"))
+					g_variant_get(var, "&s", &(service.service_type));
+			else if (!g_strcmp0(key, "service_info"))
+				g_variant_get(var, "&s", &(service.service_info));
+			else
+				;/* Do Nothing */
+		}
+
+		ret = wfd_oem_seek_service(manager->oem_ops, &service);
+		if (ret < 0) {
+			WDS_LOGE("Failed to seek service");
+			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+			goto failed;
+		}
+		g_variant_iter_free(iter);
+
+		WDS_LOGD("search_id [%x]", service.search_id);
+
+		ret = wfd_manager_start_discovery(manager, WFD_OEM_SCAN_MODE_ACTIVE, 0, 0, 0);
+		if (ret == WIFI_DIRECT_ERROR_NONE) {
+			wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+							 "DiscoveryStarted",
+							 NULL);
+		} else {
+			wfd_oem_cancel_seek_service(manager->oem_ops, &service);
+			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+			goto failed;
+		}
+
+		return_parameters = g_variant_new("(it)", ret, service.search_id);
+		goto done;
+
+	} else if (!g_strcmp0(method_name, "CancelSeekService")) {
+
+		wfd_oem_asp_service_s service;
+		memset(&service, 0, sizeof(wfd_oem_asp_service_s));
+
+		if (manager->state < WIFI_DIRECT_STATE_ACTIVATED) {
+			WDS_LOGE("Wi-Fi Direct is not activated.");
+			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
+			goto failed;
+		}
+
+		g_variant_get(parameters, "(t)", &(service.search_id));
+		ret = wfd_oem_cancel_seek_service(manager->oem_ops, &service);
+		if (ret < 0) {
+			WDS_LOGE("Failed to cancel seek service");
+			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+			goto failed;
+		}
+
+		ret = WIFI_DIRECT_ERROR_NONE;
+		return_parameters = g_variant_new("(i)", ret);
+		goto done;
+	}
+
+done:
+	WFD_DBUS_REPLY_PARAMS(invocation, return_parameters);
+	return;
+
+failed:
+	wfd_error_set_gerror(ret, &err);
+	g_dbus_method_invocation_return_gerror(invocation, err);
+	g_clear_error(&err);
+	return;
+}
+#endif
 
 static struct {
 	guint reg_id;
@@ -1963,6 +2181,13 @@ static struct {
 		__wfd_manager_display_iface_handler
 	},
 #endif /* TIZEN_FEATURE_WIFI_DISPLAY */
+#if defined(TIZEN_FEATURE_ASP)
+	{
+		0,
+		WFD_MANAGER_ASP_INTERFACE,
+		__wfd_manager_asp_iface_handler
+	},
+#endif
 	{
 		0,
 		NULL,

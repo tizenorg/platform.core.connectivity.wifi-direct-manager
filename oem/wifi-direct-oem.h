@@ -43,6 +43,14 @@
 #define OEM_QUERY_ID_LEN 15
 #define OEM_SERVICE_MAX_LEN 1024
 
+#if defined(TIZEN_FEATURE_ASP)
+/* Referring to Wi-Fi Peer-to-Peer Services Technical Specification v1.1
+ * The default P2Ps PIN is 12345670. Any device decided to be GO will use
+ * that as device password
+ */
+#define OEM_DEFAULT_P2PS_PIN "12345670"
+#endif /* TIZEN_FEATURE_ASP */
+
 #define OEM_MAX_PEER_NUM 8
 
 typedef enum {
@@ -58,6 +66,9 @@ typedef enum {
 	WFD_OEM_SC_FAIL_BOTH_GO_INTENT_15 = 9,
 	WFD_OEM_SC_FAIL_INCOMPATIBLE_PROV_METHOD = 10,
 	WFD_OEM_SC_FAIL_REJECTED_BY_USER = 11,
+#if defined(TIZEN_FEATURE_ASP)
+	WFD_OEM_SC_SUCCESS_ACCEPTED_BY_USER = 12,
+#endif /* TIZEN_FEATURE_ASP */
 } wfd_oem_status_code_e;
 
 typedef enum {
@@ -73,6 +84,15 @@ typedef enum {
 	WFD_OEM_WPA_STATE_COMPLETED,
 	WFD_OEM_WPA_STATE_MAX,
 } ws_wpa_state_type_e;
+
+#if defined(TIZEN_FEATURE_ASP)
+typedef enum {
+	WFD_OEM_ASP_SESSION_ROLE_NONE = 0x00,  /**< Session network role none */
+	WFD_OEM_ASP_SESSION_ROLE_NEW = 0x01,  /**< Session network role new */
+	WFD_OEM_ASP_SESSION_ROLE_CLIENT = 0x02,  /**< Session network role client */
+	WFD_OEM_ASP_SESSION_ROLE_GO = 0x04,  /**< Session network role GO */
+} wfd_oem_asp_network_role_e;
+#endif /* TIZEN_FEATURE_ASP */
 
 typedef enum {
 	WFD_OEM_EVENT_NONE,
@@ -113,6 +133,9 @@ typedef enum {
 
 	WFD_OEM_EVENT_GROUP_FORMATION_FAILURE,
 	WFD_OEM_EVENT_INVITATION_ACCEPTED,
+#if defined(TIZEN_FEATURE_ASP)
+	WFD_OEM_EVENT_ASP_SERV_RESP,
+#endif /* TIZEN_FEATURE_ASP */
 
 	WFD_OEM_EVENT_MAX,
 } wfd_oem_event_e;
@@ -245,6 +268,9 @@ typedef enum {
 	WFD_OEM_EDATA_TYPE_GROUP,
 	WFD_OEM_EDATA_TYPE_SERVICE,
 	WFD_OEM_EDATA_TYPE_NEW_SERVICE,
+#if defined(TIZEN_FEATURE_ASP)
+	WFD_OEM_EDATA_TYPE_ASP_SERVICE,
+#endif /* TIZEN_FEATURE_ASP */
 } ws_event_type_e;
 
 typedef enum {
@@ -267,6 +293,9 @@ typedef enum {
 	WFD_OEM_WPS_MODE_PBC = 0x1,
 	WFD_OEM_WPS_MODE_DISPLAY = 0x2,
 	WFD_OEM_WPS_MODE_KEYPAD = 0x4,
+#if defined(TIZEN_FEATURE_ASP)
+	WFD_OEM_WPS_MODE_P2PS = 0x8,
+#endif /* TIZEN_FEATURE_ASP */
 } wfd_oem_wps_mode_e;
 
 #define WFD_OEM_GROUP_FLAG_GROUP_OWNER 0x1
@@ -291,6 +320,9 @@ typedef struct {
 	int scan_type;
 	int freq;
 	int refresh;
+#if defined(TIZEN_FEATURE_ASP)
+	char *seek;
+#endif /* TIZEN_FEATURE_ASP */
 } wfd_oem_scan_param_s;
 
 typedef struct {
@@ -420,6 +452,34 @@ typedef enum {
 	WFD_OEM_PERSISTENT_MODE_GO = 0x3,
 } wfd_oem_persistent_mode_e;
 
+#if defined(TIZEN_FEATURE_ASP)
+typedef enum
+{
+	WFD_OEM_TYPE_ADVERTISE,
+	WFD_OEM_TYPE_SEEK,
+	WFD_OEM_TYPE_MAX,
+} wfd_oem_asp_service_type_e;
+
+typedef struct {
+	wfd_oem_asp_service_type_e type;
+	unsigned int adv_id;
+	long long unsigned search_id;
+	int auto_accept;
+	int discovery_tech;
+	unsigned char preferred_connection;
+
+	unsigned char status;
+	unsigned char role;
+	unsigned int config_method;
+	unsigned char tran_id;
+
+	char *instance_name;
+	char *service_name;
+	char *service_type;
+	char *service_info;
+	char *rsp_info;
+} wfd_oem_asp_service_s;
+#endif /* TIZEN_FEATURE_ASP */
 typedef struct
 {
 	int network_id;
@@ -501,7 +561,12 @@ typedef struct _wfd_oem_ops_s {
 	int (*remove_all_network)(void);
 	int (*get_wpa_status)(int *wpa_status);
 
-
+#if defined(TIZEN_FEATURE_ASP)
+	int (*advertise_service)(wfd_oem_asp_service_s *service, int replace);
+	int (*cancel_advertise_service)(wfd_oem_asp_service_s *service);
+	int (*seek_service)(wfd_oem_asp_service_s *service);
+	int (*cancel_seek_service)(wfd_oem_asp_service_s *service);
+#endif /* TIZEN_FEATURE_ASP */
 } wfd_oem_ops_s;
 
 int wfd_oem_init(wfd_oem_ops_s *ops, wfd_oem_event_cb event_callback, void *user_data);
@@ -560,5 +625,11 @@ int wfd_oem_set_display(wfd_oem_ops_s *ops, wfd_oem_display_s *wifi_display);
 #endif /* TIZEN_FEATURE_WIFI_DISPLAY */
 
 int wfd_oem_refresh(wfd_oem_ops_s *ops);
+#if defined(TIZEN_FEATURE_ASP)
+int wfd_oem_advertise_service(wfd_oem_ops_s *ops, wfd_oem_asp_service_s *service, int replace);
+int wfd_oem_cancel_advertise_service(wfd_oem_ops_s *ops, wfd_oem_asp_service_s *service);
+int wfd_oem_seek_service(wfd_oem_ops_s *ops, wfd_oem_asp_service_s *service);
+int wfd_oem_cancel_seek_service(wfd_oem_ops_s *ops, wfd_oem_asp_service_s *service);
+#endif /* TIZEN_FEATURE_ASP */
 
 #endif /* __WIFI_DIRECT_OEM_H__ */

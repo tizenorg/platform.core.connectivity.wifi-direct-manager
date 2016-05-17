@@ -50,6 +50,17 @@
 #include "wfd-plugin-wpasupplicant.h"
 #include "dbus/wfd-plugin-supplicant-dbus.h"
 
+#if defined(TIZEN_FEATURE_ASP)
+#define GLIST_ITER_START(arg_list, elem)\
+	GList *temp = NULL;\
+	temp = g_list_first(arg_list);\
+	while (temp) {\
+		elem = temp->data;\
+		temp = g_list_next(temp);\
+
+#define GLIST_ITER_END() }
+#endif
+
 #define NETCONFIG_SERVICE "net.netconfig"
 #define NETCONFIG_WIFI_INTERFACE "net.netconfig.wifi"
 #define NETCONFIG_WIFI_PATH "/net/netconfig/wifi"
@@ -132,6 +143,12 @@ static wfd_oem_ops_s supplicant_ops = {
 	.remove_all_network = ws_remove_all_network,
 	.get_wpa_status = ws_get_wpa_status,
 
+#if defined(TIZEN_FEATURE_ASP)
+	.advertise_service = ws_advertise_service,
+	.cancel_advertise_service = ws_cancel_advertise_service,
+	.seek_service = ws_seek_service,
+	.cancel_seek_service = ws_cancel_seek_service,
+#endif /* TIZEN_FEATURE_ASP */
 	};
 
 static ws_dbus_plugin_data_s *g_pd;
@@ -139,6 +156,8 @@ static ws_dbus_plugin_data_s *g_pd;
 #ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
 static GList *service_list;
 #endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
+
+static GList *seek_list;
 
 static void _supplicant_signal_cb(GDBusConnection *connection,
 		const gchar *sender, const gchar *object_path, const gchar *interface,
@@ -195,6 +214,11 @@ static char *__ws_wps_to_txt(int wps_mode)
 	case WFD_OEM_WPS_MODE_KEYPAD:
 		return WS_DBUS_STR_KEYPAD;
 		break;
+#if defined(TIZEN_FEATURE_ASP)
+	case WFD_OEM_WPS_MODE_NONE:
+	case WFD_OEM_WPS_MODE_P2PS:
+		return WS_DBUS_STR_P2PS;
+#endif /* TIZEN_FEATURE_ASP */
 	default:
 		return "";
 		break;
@@ -1102,6 +1126,73 @@ void __ws_extract_servicediscoveryresponse_details(const char *key, GVariant *va
 }
 #endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
 
+#if defined(TIZEN_FEATURE_ASP)
+static void __ws_extract_serviceaspresponse_details(const char *key, GVariant *value, void *user_data)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	wfd_oem_event_s *event = (wfd_oem_event_s *)user_data;
+	if(!event || !event->edata)
+		return;
+
+	wfd_oem_asp_service_s *service = (wfd_oem_asp_service_s *)event->edata;
+
+	if (g_strcmp0(key, "peer_object") == 0) {
+		static unsigned char peer_dev[WS_MACSTR_LEN] = {'\0',};
+		const char *path = NULL;
+		char *loc = NULL;
+
+		g_variant_get(value, "o", &path);
+		if(path == NULL)
+			return;
+
+		WDP_LOGD("Retrive Added path [%s]", path);
+		loc = strrchr(path,'/');
+		if(loc != NULL)
+			__ws_mac_compact_to_normal(loc + 1, peer_dev);
+		__ws_txt_to_mac(peer_dev, event->dev_addr);
+
+	} else if (g_strcmp0(key, "srv_trans_id") == 0) {
+		unsigned int srv_trans_id = 0;
+		g_variant_get(value, "u", &srv_trans_id);
+		service->tran_id = srv_trans_id;
+		WDP_LOGD("Retrive srv_trans_id [%x]", service->tran_id);
+
+	} else if (g_strcmp0(key, "adv_id") == 0) {
+		unsigned int adv_id = 0;
+		g_variant_get(value, "u", &adv_id);
+		service->adv_id = adv_id;
+		WDP_LOGD("Retrive adv_id [%x]", service->adv_id);
+
+	} else if (g_strcmp0(key, "svc_status") == 0) {
+		unsigned char svc_status = 0;
+		g_variant_get(value, "u", &svc_status);
+		service->status = svc_status;
+		WDP_LOGD("Retrive svc_status [%x]", service->status);
+
+	} else if (g_strcmp0(key, "config_methods") == 0) {
+		unsigned int config_methods = 0;
+		g_variant_get(value, "q", &config_methods);
+		service->config_method = config_methods;
+		WDP_LOGD("Retrive config_methods [%x]", service->config_method);
+
+	} else if (g_strcmp0(key, "svc_str") == 0) {
+		const char *svc_str = NULL;
+		g_variant_get(value, "s", &svc_str);
+		if(svc_str != NULL)
+			service->service_name = g_strdup(svc_str);
+		WDP_LOGD("Retrive srv_name [%s]", service->service_name);
+
+	} else if (g_strcmp0(key, "info") == 0) {
+		const char *info = NULL;
+		g_variant_get(value, "s", &info);
+		if(info != NULL)
+			service->service_info = g_strdup(info);
+		WDP_LOGD("Retrive srv_info [%s]", service->service_info);
+	}
+	__WDP_LOG_FUNC_EXIT__;
+}
+#endif /* TIZEN_FEATURE_ASP */
+
 static int _ws_flush()
 {
 	__WDP_LOG_FUNC_ENTER__;
@@ -1775,6 +1866,57 @@ static void _ws_process_service_discovery_response(GDBusConnection *connection,
 }
 #endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
 
+#if defined(TIZEN_FEATURE_ASP)
+static void _ws_process_service_asp_response(GDBusConnection *connection,
+		const gchar *object_path, GVariant *parameters)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	GVariantIter *iter = NULL;
+	wfd_oem_event_s event;
+	wfd_oem_asp_service_s *service, *tmp;
+
+	service = (wfd_oem_asp_service_s *) g_try_malloc0(sizeof(wfd_oem_asp_service_s));
+	if (!service) {
+		WDP_LOGF("Failed to allocate memory for event. [%s]",
+				strerror(errno));
+		__WDP_LOG_FUNC_EXIT__;
+		return;
+	}
+	memset(&event, 0x0, sizeof(wfd_oem_event_s));
+
+	event.edata = (void*) service;
+	event.edata_type = WFD_OEM_EDATA_TYPE_ASP_SERVICE;
+	event.event_id = WFD_OEM_EVENT_ASP_SERV_RESP;
+
+	if(parameters != NULL) {
+		g_variant_get(parameters, "(a{sv})", &iter);
+		if(iter != NULL) {
+			dbus_property_foreach(iter, __ws_extract_serviceaspresponse_details, &event);
+			g_variant_iter_free(iter);
+		}
+	} else {
+		WDP_LOGE("No Properties");
+	}
+GLIST_ITER_START(seek_list, tmp)
+	if(tmp->tran_id == service->tran_id) {
+		WDP_LOGD("srv_trans_id matched [%d] search_id [%llu]"
+				,tmp->tran_id, tmp->search_id);
+		service->search_id = tmp->search_id;
+		break;
+	} else {
+		tmp = NULL;
+	}
+GLIST_ITER_END()
+	g_pd->callback(g_pd->user_data, &event);
+
+	g_free(service->service_name);
+	g_free(service->service_info);
+	g_free(service);
+
+	__WDP_LOG_FUNC_EXIT__;
+}
+#endif /* TIZEN_FEATURE_ASP */
+
 static void _ws_process_persistent_group_added(GDBusConnection *connection,
 		const gchar *object_path, GVariant *parameters)
 {
@@ -1981,6 +2123,13 @@ static struct {
 		_ws_process_service_discovery_response
 	},
 #endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
+#if defined(TIZEN_FEATURE_ASP)
+	{
+		SUPPLICANT_P2PDEVICE,
+		"ServiceASPResponse",
+		_ws_process_service_asp_response
+	},
+#endif /* TIZEN_FEATURE_ASP */
 	{
 		SUPPLICANT_P2PDEVICE,
 		"PersistentGroupAdded",
@@ -2988,6 +3137,7 @@ int ws_activate(int concurrent)
 	g_pd->activated = TRUE;
 	__ws_init_p2pdevice();
 	__ws_set_config_methods();
+	seek_list = NULL;
 
 	__WDP_LOG_FUNC_EXIT__;
 	return 0;
@@ -2996,6 +3146,9 @@ int ws_activate(int concurrent)
 int ws_deactivate(int concurrent)
 {
 	__WDP_LOG_FUNC_ENTER__;
+#if defined(TIZEN_FEATURE_ASP)
+	wfd_oem_asp_service_s *data = NULL;
+#endif /* TIZEN_FEATURE_ASP */
 	int res = 0;
 
 	if (!g_pd) {
@@ -3029,6 +3182,18 @@ int ws_deactivate(int concurrent)
 	}
 	g_pd->activated = FALSE;
 
+#if defined(TIZEN_FEATURE_ASP)
+	GLIST_ITER_START(seek_list, data)
+
+	if (data) {
+		temp = g_list_next(seek_list);
+		seek_list = g_list_remove(seek_list, data);
+		g_free(data->service_name);
+		g_free(data);
+	}
+
+	GLIST_ITER_END()
+#endif /* TIZEN_FEATURE_ASP */
 	__WDP_LOG_FUNC_EXIT__;
 	return 0;
 }
@@ -3044,6 +3209,42 @@ static gboolean _retry_start_scan(gpointer data)
 	return 0;
 }
 #endif
+
+#if defined(TIZEN_FEATURE_ASP)
+static void __ws_add_seek_params(GVariantBuilder *builder)
+{
+	GVariantBuilder *outter = NULL;
+	GVariantBuilder *inner = NULL;
+	wfd_oem_asp_service_s *data = NULL;
+	int len = 0;
+	int i = 0;
+
+	if(seek_list == NULL || g_list_length(seek_list) == 0) {
+		WDP_LOGD("seek list is NULL");
+		return;
+	}
+	WDP_LOGD("seek list length [%d]", g_list_length(seek_list));
+
+	outter = g_variant_builder_new(G_VARIANT_TYPE("aay"));
+
+GLIST_ITER_START(seek_list, data)
+	if (data) {
+		len = strlen(data->service_name) + 1;
+		WDP_LOGD("data [%s] len [%d]", data->service_name, len);
+		inner = g_variant_builder_new(G_VARIANT_TYPE("ay"));
+		for(i = 0; i < len; i++)
+			g_variant_builder_add(inner, "y", data->service_name[i]);
+		g_variant_builder_add(outter, "ay", inner);
+		g_variant_builder_unref(inner);
+	}
+GLIST_ITER_END()
+	g_variant_builder_add (builder, "{sv}", "Seek", g_variant_new ("aay", outter));
+	g_variant_builder_unref(outter);
+
+	return;
+}
+#endif /* TIZEN_FEATURE_ASP */
+
 
 int ws_start_scan(wfd_oem_scan_param_s *param)
 {
@@ -3083,6 +3284,10 @@ int ws_start_scan(wfd_oem_scan_param_s *param)
 			if (param->scan_type == WFD_OEM_SCAN_TYPE_SOCIAL)
 				g_variant_builder_add (builder, "{sv}", "DiscoveryType",
 							g_variant_new_string("social"));
+#if defined(TIZEN_FEATURE_ASP)
+			if(seek_list != NULL)
+				__ws_add_seek_params(builder);
+#endif /* TIZEN_FEATURE_ASP */
 
 			value = g_variant_new ("(a{sv})", builder);
 			g_variant_builder_unref (builder);
@@ -5440,3 +5645,256 @@ int ws_get_wpa_status(int *wpa_status)
 	__WDP_LOG_FUNC_EXIT__;
 	return 0;
 }
+
+#if defined(TIZEN_FEATURE_ASP)
+int ws_advertise_service(wfd_oem_asp_service_s *service, int replace)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	GDBusConnection *g_dbus = NULL;
+	GVariantBuilder *builder = NULL;
+	GVariant *value = NULL;
+	dbus_method_param_s params;
+	unsigned int config_method = 0x1108;
+	int auto_accept = 0;
+	gboolean rep;
+	int res = 0;
+
+	g_dbus = g_pd->g_dbus;
+	if (!g_dbus) {
+		WDP_LOGE("DBus connection is NULL");
+		return -1;
+	}
+
+	if (service->config_method == 2) {
+		config_method = WS_CONFIG_METHOD_KEYPAD |
+				WS_CONFIG_METHOD_DISPLAY;
+	} else if (service->config_method == 3) {
+		config_method = WS_CONFIG_METHOD_DISPLAY;
+	} else if (service->config_method == 4) {
+		config_method = WS_CONFIG_METHOD_KEYPAD;
+	}
+
+	if(service->auto_accept) {
+		if(service->role == 0)
+			auto_accept = 1;
+		else
+			auto_accept = 2;
+	} else {
+		auto_accept = 0;
+	}
+
+	rep = (replace == 1);
+
+	memset(&params, 0x0, sizeof(dbus_method_param_s));
+
+	dbus_set_method_param(&params, "AddService", g_pd->iface_path, g_dbus);
+
+	builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}") );
+
+	g_variant_builder_add (builder, "{sv}", "service_type", g_variant_new_string("asp"));
+	g_variant_builder_add (builder, "{sv}", "auto_accept", g_variant_new_int32(auto_accept));
+	g_variant_builder_add (builder, "{sv}", "adv_id", g_variant_new_uint32(service->adv_id));
+	g_variant_builder_add (builder, "{sv}", "svc_state", g_variant_new_uint32(service->status));
+	g_variant_builder_add (builder, "{sv}", "config_method", g_variant_new_uint32(config_method));
+	g_variant_builder_add (builder, "{sv}", "replace", g_variant_new_boolean(rep));
+	if(service->service_type != NULL)
+		g_variant_builder_add (builder, "{sv}", "adv_str", g_variant_new_string(service->service_type));
+	if(service->service_info != NULL)
+		g_variant_builder_add (builder, "{sv}", "svc_info", g_variant_new_string(service->service_info));
+
+	value = g_variant_new ("(a{sv})", builder);
+	g_variant_builder_unref (builder);
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
+	WDP_LOGE("params [%s]", g_variant_print(value, TRUE));
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
+
+	params.params = value;
+
+	res = dbus_method_call(&params, SUPPLICANT_P2PDEVICE, NULL, NULL);
+	if (res < 0)
+		WDP_LOGE("Failed to send command to wpa_supplicant");
+	else
+		WDP_LOGD("Succeeded to add service");
+
+	__WDP_LOG_FUNC_EXIT__;
+	return 0;
+}
+
+int ws_cancel_advertise_service(wfd_oem_asp_service_s *service)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	GDBusConnection *g_dbus = NULL;
+	GVariantBuilder *builder = NULL;
+	GVariant *value = NULL;
+	dbus_method_param_s params;
+	int res = 0;
+
+	g_dbus = g_pd->g_dbus;
+	if (!g_dbus) {
+		WDP_LOGE("DBus connection is NULL");
+		return -1;
+	}
+	memset(&params, 0x0, sizeof(dbus_method_param_s));
+
+	dbus_set_method_param(&params, "DeleteService", g_pd->iface_path, g_dbus);
+
+	builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
+
+	g_variant_builder_add (builder, "{sv}", "service_type", g_variant_new_string("asp"));
+	g_variant_builder_add (builder, "{sv}", "adv_id", g_variant_new_uint32(service->adv_id));
+
+	value = g_variant_new ("(a{sv})", builder);
+	g_variant_builder_unref (builder);
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
+	WDP_LOGD("params [%s]", g_variant_print(value, TRUE));
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
+	params.params = value;
+
+	res = dbus_method_call(&params, SUPPLICANT_P2PDEVICE, NULL, NULL);
+	if (res < 0)
+		WDP_LOGE("Failed to send command to wpa_supplicant");
+	else
+		WDP_LOGD("Succeeded to del service");
+
+	__WDP_LOG_FUNC_EXIT__;
+	return 0;
+}
+
+static void __remove_seek_service(long long unsigned search_id)
+{
+	wfd_oem_asp_service_s *data = NULL;
+	int count = 1;
+
+	GLIST_ITER_START(seek_list, data)
+
+	if (data) {
+		if(data->search_id == search_id) {
+			WDP_LOGD("List remove");
+			seek_list = g_list_remove(seek_list, data);
+			g_free(data->service_name);
+			g_free(data);
+		} else {
+			data->tran_id = count;
+			count++;
+		}
+	}
+
+	GLIST_ITER_END()
+	return;
+}
+
+static void __get_asp_search_id(GVariant *value, void *args)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	wfd_oem_asp_service_s *service = NULL;
+	wfd_oem_asp_service_s *tmp = NULL;
+	long long unsigned search_id = 0;
+
+	g_variant_get(value, "(t)", &search_id);
+
+	service = (wfd_oem_asp_service_s *)args;
+	if (!service) {
+		WDP_LOGE("invalid parameters");
+		return;
+	}
+
+	tmp = g_try_malloc0(sizeof(wfd_oem_asp_service_s));
+	if (!tmp) {
+		WDP_LOGE("Failed to allocate memory for service");
+		return;
+	}
+
+	service->search_id = search_id;
+	memcpy(tmp, service, sizeof(wfd_oem_asp_service_s));
+	tmp->service_name = strdup(service->service_name);
+	seek_list = g_list_prepend(seek_list, tmp);
+
+	__WDP_LOG_FUNC_EXIT__;
+	return;
+
+}
+
+int ws_seek_service(wfd_oem_asp_service_s *service)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	GDBusConnection *g_dbus = NULL;
+	GVariantBuilder *builder = NULL;
+	GVariant *value = NULL;
+	dbus_method_param_s params;
+	int res = 0;
+
+	g_dbus = g_pd->g_dbus;
+	if (!g_dbus) {
+		WDP_LOGE("DBus connection is NULL");
+		return -1;
+	}
+	memset(&params, 0x0, sizeof(dbus_method_param_s));
+	service->tran_id = g_list_length(seek_list) + 1;
+
+	dbus_set_method_param(&params, "ServiceDiscoveryRequest", g_pd->iface_path, g_dbus);
+
+	builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}") );
+
+	g_variant_builder_add (builder, "{sv}", "service_type", g_variant_new_string("asp"));
+	g_variant_builder_add (builder, "{sv}", "transaction_id", g_variant_new_byte(service->tran_id));
+	if(service->service_type != NULL)
+		g_variant_builder_add (builder, "{sv}", "svc_str", g_variant_new_string(service->service_type));
+
+	if(service->service_info != NULL)
+		g_variant_builder_add (builder, "{sv}", "svc_info", g_variant_new_string(service->service_info));
+
+	value = g_variant_new ("(a{sv})", builder);
+	g_variant_builder_unref (builder);
+
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
+	WDP_LOGD("params [%s]", g_variant_print(value, TRUE));
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
+
+	params.params = value;
+
+	res = dbus_method_call(&params, SUPPLICANT_P2PDEVICE, __get_asp_search_id, service);
+	if (res < 0)
+		WDP_LOGE("Failed to send command to wpa_supplicant");
+	else
+		WDP_LOGD("Succeeded to seek service");
+
+	__WDP_LOG_FUNC_EXIT__;
+	return res;
+}
+
+int ws_cancel_seek_service(wfd_oem_asp_service_s *service)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	GDBusConnection *g_dbus = NULL;
+	dbus_method_param_s params;
+
+	int res = 0;
+
+	g_dbus = g_pd->g_dbus;
+	if (!g_dbus) {
+		WDP_LOGE("DBus connection is NULL");
+		return -1;
+	}
+
+	memset(&params, 0x0, sizeof(dbus_method_param_s));
+
+	dbus_set_method_param(&params, "ServiceDiscoveryCancelRequest", g_pd->iface_path, g_dbus);
+
+	params.params = g_variant_new ("(t)", service->search_id);
+
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
+	WDP_LOGD("params [%s]", g_variant_print(params.params, TRUE));
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
+
+	res = dbus_method_call(&params, SUPPLICANT_P2PDEVICE, NULL, NULL);
+	if (res < 0) {
+		WDP_LOGE("Failed to send command to wpa_supplicant");
+	} else {
+		WDP_LOGD("Succeeded to cancel seek service");
+		__remove_seek_service(service->search_id);
+	}
+
+	__WDP_LOG_FUNC_EXIT__;
+	return res;
+}
+#endif /* TIZEN_FEATURE_ASP */
