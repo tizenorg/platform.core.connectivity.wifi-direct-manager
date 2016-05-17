@@ -123,6 +123,10 @@ int ws_set_operating_channel(int channel);
 int ws_remove_all_network(void);
 int ws_get_wpa_status(int *wpa_status);
 
-
-
+#if defined(TIZEN_FEATURE_ASP)
+int ws_advertise_service(wfd_oem_asp_service_s *service, int replace);
+int ws_cancel_advertise_service(wfd_oem_asp_service_s *service);
+int ws_seek_service(wfd_oem_asp_service_s *service);
+int ws_cancel_seek_service(wfd_oem_asp_service_s *service);
+#endif /* TIZEN_FEATURE_ASP */
 #endif /* __WFD_PLUGIN_WPASUPPLICANT_H__ */

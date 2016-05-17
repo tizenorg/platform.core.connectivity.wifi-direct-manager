@@ -75,6 +75,9 @@ typedef enum {
 	WFD_WPS_MODE_PBC = 0x1,
 	WFD_WPS_MODE_DISPLAY = 0x2,
 	WFD_WPS_MODE_KEYPAD = 0x4,
+#if defined(TIZEN_FEATURE_ASP)
+	WFD_WPS_MODE_P2PS = 0x8,
+#endif /* TIZEN_FEATURE_ASP */
 } wfd_wps_mode_e;
 
 typedef enum {

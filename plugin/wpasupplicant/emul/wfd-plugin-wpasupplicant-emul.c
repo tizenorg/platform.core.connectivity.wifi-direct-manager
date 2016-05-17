@@ -73,6 +73,12 @@ static wfd_oem_ops_s supplicant_ops = {
 	.remove_all_network = ws_remove_all_network,
 	.get_wpa_status = ws_get_wpa_status,
 
+#if defined(TIZEN_FEATURE_ASP)
+	.advertise_service = ws_advertise_service,
+	.cancel_advertise_service = ws_cancel_advertise_service,
+	.seek_service = ws_seek_service,
+	.cancel_seek_service = ws_cancel_seek_service,
+#endif /* TIZEN_FEATURE_ASP */
 	};
 
 int wfd_plugin_load(wfd_oem_ops_s **ops)
@@ -472,3 +478,37 @@ int ws_get_wpa_status(int *wpa_status)
 	__WDP_LOG_FUNC_EXIT__;
 	return -1;
 }
+
+#if defined(TIZEN_FEATURE_ASP)
+int ws_advertise_service(wfd_oem_asp_service_s *service, int replace)
+{
+	__WDP_LOG_FUNC_ENTER__;
+
+	__WDP_LOG_FUNC_EXIT__;
+	return -1;
+}
+
+int ws_cancel_advertise_service(wfd_oem_asp_service_s *service)
+{
+	__WDP_LOG_FUNC_ENTER__;
+
+	__WDP_LOG_FUNC_EXIT__;
+	return -1;
+}
+
+int ws_seek_service(wfd_oem_asp_service_s *service)
+{
+	__WDP_LOG_FUNC_ENTER__;
+
+	__WDP_LOG_FUNC_EXIT__;
+	return -1;
+}
+
+int ws_cancel_seek_service(wfd_oem_asp_service_s *service)
+{
+	__WDP_LOG_FUNC_ENTER__;
+
+	__WDP_LOG_FUNC_EXIT__;
+	return -1;
+}
+#endif /* TIZEN_FEATURE_ASP */

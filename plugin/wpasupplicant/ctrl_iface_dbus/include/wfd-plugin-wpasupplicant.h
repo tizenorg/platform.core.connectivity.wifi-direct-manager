@@ -62,7 +62,11 @@
 #	define DEFAULT_LISTEN_CHANNEL 1
 #	define DEFAULT_OPER_REG_CLASS 81
 #	define DEFAULT_OPER_CHANNEL 1
+#if !defined(TIZEN_FEATURE_ASP)
 #	define DEFAULT_CONFIG_METHOD "display push_button keypad"
+#else
+#	define DEFAULT_CONFIG_METHOD "display push_button keypad p2ps"
+#endif
 #	define DEFAULT_NO_GROUP_IFACE 0
 #endif /* TIZEN_MOBILE */
 
@@ -149,10 +153,16 @@
 #define WS_CONFIG_METHOD_DISPLAY 0x0008
 #define WS_CONFIG_METHOD_PUSHBUTTON 0x0080
 #define WS_CONFIG_METHOD_KEYPAD 0x0100
+#if defined(TIZEN_FEATURE_ASP)
+#define WS_CONFIG_METHOD_P2PS 0x1000
+#endif /* TIZEN_FEATURE_ASP */
 
 #define WS_DBUS_STR_PBC "pbc"
 #define WS_DBUS_STR_DISPLAY "display"
 #define WS_DBUS_STR_KEYPAD "keypad"
+#if defined(TIZEN_FEATURE_ASP)
+#define WS_DBUS_STR_P2PS "p2ps"
+#endif /* TIZEN_FEATURE_ASP */
 #define WS_DBUS_STR_JOIN "join"
 #define WS_DBUS_STR_AUTH "auth"
 #define WS_DBUS_STR_PERSISTENT "persistent"
@@ -299,6 +309,10 @@ typedef enum {
 	 * method). This value may be further augmented with the optional
 	 * "Identity" attribute in M1. */
 	WS_DEV_PASSWD_ID_REGISTRAR_SPECIFIED = 0x0005,	// ENTER-PIN
+
+#if defined(TIZEN_FEATURE_ASP)
+	WS_DEV_PASSWD_ID_P2PS = 0x0008,
+#endif /* TIZEN_FEATURE_ASP */
 } ws_dev_passwd_id_e;
 
 typedef enum {
@@ -445,6 +459,11 @@ int ws_set_operating_channel(int channel);
 int ws_remove_all_network(void);
 int ws_get_wpa_status(int *wpa_status);
 
-
+#if defined(TIZEN_FEATURE_ASP)
+int ws_advertise_service(wfd_oem_asp_service_s *service, int replace);
+int ws_cancel_advertise_service(wfd_oem_asp_service_s *service);
+int ws_seek_service(wfd_oem_asp_service_s *service);
+int ws_cancel_seek_service(wfd_oem_asp_service_s *service);
+#endif /* TIZEN_FEATURE_ASP */
 
 #endif /* __WFD_PLUGIN_WPASUPPLICANT_H__ */

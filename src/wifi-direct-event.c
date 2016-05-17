@@ -1360,6 +1360,45 @@ static void __wfd_process_serv_disc_started(wfd_manager_s *manager, wfd_oem_even
 }
 #endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
 
+
+#if defined(TIZEN_FEATURE_ASP)
+static void __wfd_process_asp_serv_resp(wfd_manager_s *manager, wfd_oem_event_s *event)
+ {
+	__WDS_LOG_FUNC_ENTER__;
+
+	wfd_oem_asp_service_s *service = NULL;
+	GVariantBuilder *builder = NULL;
+	GVariant *params = NULL;
+
+	service = (wfd_oem_asp_service_s *)event->edata;
+	if(service == NULL) {
+		WDS_LOGE("P2P service found event has NULL information");
+		__WDS_LOG_FUNC_EXIT__;
+		return;
+	}
+
+	builder = g_variant_builder_new(G_VARIANT_TYPE ("a{sv}"));
+	g_variant_builder_add(builder, "{sv}", "search_id", g_variant_new("u", service->search_id));
+	g_variant_builder_add(builder, "{sv}", "service_mac", g_variant_new("s", event->dev_addr));
+	g_variant_builder_add(builder, "{sv}", "advertisement_id", g_variant_new("u", service->adv_id));
+	g_variant_builder_add(builder, "{sv}", "config_method", g_variant_new("u", service->config_method));
+	if(service->service_type)
+		g_variant_builder_add(builder, "{sv}", "service_type", g_variant_new("s", service->service_name));
+	if(service->service_info)
+		g_variant_builder_add(builder, "{sv}", "service_info", g_variant_new("s", service->service_info));
+	g_variant_builder_add(builder, "{sv}", "status", g_variant_new("y", service->status));
+	params = g_variant_new("(a{sv})", builder);
+	g_variant_builder_unref(builder);
+
+	wfd_manager_dbus_emit_signal(WFD_MANAGER_ASP_INTERFACE,
+				     "SearchResult",
+				     params);
+
+	__WDS_LOG_FUNC_EXIT__;
+	return;
+ }
+#endif /* TIZEN_FEATURE_ASP */
+
 static struct {
  const int event_id;
  void (*function) (wfd_manager_s *manager, wfd_oem_event_s *event);
@@ -1479,6 +1518,12 @@ static struct {
 		WFD_OEM_EVENT_INVITATION_ACCEPTED,
 		__wfd_process_invitation_accepted
 	},
+#if defined(TIZEN_FEATURE_ASP)
+	{
+		WFD_OEM_EVENT_ASP_SERV_RESP,
+		__wfd_process_asp_serv_resp,
+	},
+#endif /* TIZEN_FEATURE_ASP */
 	{
 		WFD_OEM_EVENT_MAX,
 		NULL
