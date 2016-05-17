@@ -507,20 +507,20 @@ int wfd_manager_activate(wfd_manager_s *manager)
 
 	wfd_state_get(manager, &prev_state);
 	wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATING);
-#if defined(TIZEN_WLAN_CONCURRENT_ENABLE) && defined(TIZEN_MOBILE)
+#if defined(TIZEN_WLAN_CONCURRENT_ENABLE)
 	res = wfd_util_check_wifi_state();
 	if (res < 0) {
 		WDS_LOGE("Failed to get wifi state");
 		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
 	} else if (res == 0) {
-#endif /* TIZEN_WLAN_CONCURRENT_ENABLE && TIZEN_MOBILE */
+#endif /* TIZEN_WLAN_CONCURRENT_ENABLE */
 	res = wfd_oem_activate(manager->oem_ops, 0);
 	if (res < 0) {
 		WDS_LOGE("Failed to activate");
 		wfd_state_set(manager, prev_state);
 		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
 	}
-#if defined(TIZEN_WLAN_CONCURRENT_ENABLE) && defined(TIZEN_MOBILE)
+#if defined(TIZEN_WLAN_CONCURRENT_ENABLE)
 	} else {
 		res = wfd_oem_activate(manager->oem_ops, res);
 		if (res < 0) {
@@ -529,7 +529,7 @@ int wfd_manager_activate(wfd_manager_s *manager)
 			return WIFI_DIRECT_ERROR_OPERATION_FAILED;
 		}
 	}
-#endif /* TIZEN_WLAN_CONCURRENT_ENABLE && TIZEN_MOBILE */
+#endif /* TIZEN_WLAN_CONCURRENT_ENABLE */
 	WDS_LOGE("Succeeded to activate");
 
 	wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
