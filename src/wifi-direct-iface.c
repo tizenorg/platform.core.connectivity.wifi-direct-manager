@@ -306,6 +306,10 @@ const gchar wfd_manager_introspection_xml[] = {
 				"<arg type='i' name='session_timer' direction='in'/>"
 				"<arg type='i' name='error_code' direction='out'/>"
 			"</method>"
+			"<method name='SetAutoGroupRemoval'>"
+				"<arg type='b' name='enable' direction='in'/>"
+				"<arg type='i' name='error_code' direction='out'/>"
+			"</method>"
 		"</interface>"
 #ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
 		"<interface name='net.wifidirect.service'>"
@@ -1569,7 +1573,21 @@ static void __wfd_manager_config_iface_handler(const gchar *method_name,
 		return_parameters = g_variant_new("(i)", ret);
 		goto done;
 
-	} else {
+	} else if (!g_strcmp0(method_name, "SetAutoGroupRemoval")) {
+		gboolean enable;
+
+		g_variant_get(parameters, "(b)", &enable);
+		WDS_LOGE("Activate Auto Group Removal Mode : [%s]",
+				enable ? "True" : "False");
+		if (enable)
+			manager->auto_group_remove_enable = TRUE;
+		else
+			manager->auto_group_remove_enable = FALSE;
+		ret = WIFI_DIRECT_ERROR_NONE;
+		return_parameters = g_variant_new("(i)", ret);
+		goto done;
+
+	}  else {
 		WDS_LOGE("method not handled");
 		ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 		goto failed;
