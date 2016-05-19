@@ -306,6 +306,10 @@ const gchar wfd_manager_introspection_xml[] = {
 				"<arg type='i' name='session_timer' direction='in'/>"
 				"<arg type='i' name='error_code' direction='out'/>"
 			"</method>"
+			"<method name='SetAutoGroupRemoval'>"
+				"<arg type='b' name='enable' direction='in'/>"
+				"<arg type='i' name='error_code' direction='out'/>"
+			"</method>"
 		"</interface>"
 #ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
 		"<interface name='net.wifidirect.service'>"
@@ -1569,7 +1573,46 @@ static void __wfd_manager_config_iface_handler(const gchar *method_name,
 		return_parameters = g_variant_new("(i)", ret);
 		goto done;
 
-	} else {
+	} else if (!g_strcmp0(method_name, "SetAutoGroupRemoval")) {
+		gboolean enable;
+
+
+		g_variant_get(parameters, "(b)", &enable);
+		WDS_LOGE("Activate Auto Group Removal Mode : [%s]",
+				enable ? "True" : "False");
+
+		if (manager->state < WIFI_DIRECT_STATE_ACTIVATED) {
+			WDS_LOGE("Wi-Fi Direct is not activated.");
+			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
+			goto failed;
+		}
+
+		if (enable) {
+			manager->auto_group_remove_enable = TRUE;
+
+			/* Enable Group destroy only if state is connecting */
+			if (manager->state == WIFI_DIRECT_STATE_CONNECTING) {
+				WDS_LOGE("Wi-Fi Direct state is CONNECTING");
+				ret = WIFI_DIRECT_ERROR_NONE;
+				return_parameters = g_variant_new("(i)", ret);
+				goto done;
+			}
+			/* Remove group immediately if no connected peer found */
+			if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
+				wfd_group_s *group = (wfd_group_s*) manager->group;
+				if (group && !group->member_count && wfd_util_is_remove_group_allowed())
+					wfd_oem_destroy_group(manager->oem_ops, group->ifname);
+			  }
+
+		} else
+			manager->auto_group_remove_enable = FALSE;
+
+
+		ret = WIFI_DIRECT_ERROR_NONE;
+		return_parameters = g_variant_new("(i)", ret);
+		goto done;
+
+	}  else {
 		WDS_LOGE("method not handled");
 		ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 		goto failed;

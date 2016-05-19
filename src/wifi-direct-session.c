@@ -77,8 +77,14 @@ static gboolean _session_timeout_cb(gpointer *user_data)
 	wfd_session_cancel(session, peer_addr);
 
 	if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
-		wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
-		wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
+
+		wfd_group_s *group = (wfd_group_s*) manager->group;
+		if (group && wfd_util_is_remove_group_allowed()) {
+				wfd_oem_destroy_group(manager->oem_ops, group->ifname);
+		} else {
+				wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
+				wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
+		}
 	} else {
 		wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
 		wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);

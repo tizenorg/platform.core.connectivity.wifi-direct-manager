@@ -1287,3 +1287,17 @@ int wfd_util_ip_unset(const char *ifname)
 	__WDS_LOG_FUNC_EXIT__;
 	return res;
 }
+
+gboolean wfd_util_is_remove_group_allowed(void)
+{
+	wfd_manager_s *manager = wfd_get_manager();
+
+	/* Check if automatic group destroy feature is disabled
+	*/
+	if (!manager->auto_group_remove_enable)
+		return FALSE;
+
+
+	return TRUE;
+}
+
