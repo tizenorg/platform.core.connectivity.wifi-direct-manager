@@ -186,6 +186,7 @@ typedef struct {
 
 	void *oem_ops;
 	void *plugin_handle;
+	int session_timer;
 } wfd_manager_s;
 
 wfd_manager_s *wfd_get_manager();
