@@ -82,4 +82,6 @@ int wfd_util_dhcpc_get_server_ip(unsigned char* ip_addr);
 int wfd_util_ip_over_eap_assign(wfd_device_s *peer, const char *ifname);
 #endif /* TIZEN_FEATURE_IP_OVER_EAPOL */
 int wfd_util_ip_unset(const char *ifname);
+gboolean wfd_util_is_remove_group_allowed(void);
+
 #endif /* __WIFI_DIRECT_UTIL_H__ */

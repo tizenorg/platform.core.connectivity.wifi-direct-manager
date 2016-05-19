@@ -187,6 +187,7 @@ typedef struct {
 	void *oem_ops;
 	void *plugin_handle;
 	int session_timer;
+	gboolean auto_group_remove_enable;
 } wfd_manager_s;
 
 wfd_manager_s *wfd_get_manager();
