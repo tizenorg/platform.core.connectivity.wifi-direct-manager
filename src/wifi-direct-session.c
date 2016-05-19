@@ -879,6 +879,7 @@ int wfd_session_process_event(wfd_manager_s *manager, wfd_oem_event_s *event)
 						MAC2SECSTR(event->dev_addr));
 			break;
 		} else {
+			manager->local->dev_role = event->dev_role;
 			session->state = SESSION_STATE_WPS;
 		}
 

@@ -582,7 +582,7 @@ static void __wfd_process_go_neg_done(wfd_manager_s *manager, wfd_oem_event_s *e
 		peer = session->peer;
 		memcpy(peer->intf_addr, edata->peer_intf_addr, MACADDR_LEN);
 	}
-	manager->local->dev_role = event->dev_role;
+
 	wfd_session_process_event(manager, event);
 #endif /* CTRL_IFACE_DBUS */
 	__WDS_LOG_FUNC_EXIT__;
