@@ -710,13 +710,12 @@ int wfd_session_process_event(wfd_manager_s *manager, wfd_oem_event_s *event)
 	{
 		int req_wps_mode = WFD_WPS_MODE_NONE;
 
-		if (event->wps_mode == WFD_WPS_MODE_DISPLAY) {
+		if (event->wps_mode == WFD_WPS_MODE_DISPLAY)
 			req_wps_mode = WFD_WPS_MODE_KEYPAD;
-		} else if (event->wps_mode == WFD_WPS_MODE_KEYPAD) {
+		else if (event->wps_mode == WFD_WPS_MODE_KEYPAD)
 			req_wps_mode = WFD_WPS_MODE_DISPLAY;
-		} else {
+		else
 			req_wps_mode = WFD_WPS_MODE_PBC;
-		}
 
 		/* Only peer initiated connection or invitation session can be allowed */
 		if (session) {
@@ -739,17 +738,17 @@ int wfd_session_process_event(wfd_manager_s *manager, wfd_oem_event_s *event)
 		}
 
 		/* Update session */
-		if (event->wps_mode == WFD_WPS_MODE_DISPLAY) {
+		if (event->wps_mode == WFD_WPS_MODE_DISPLAY)
 			g_strlcpy(session->wps_pin, event->wps_pin, PINSTR_LEN + 1);
-		}
+
 		session->state = SESSION_STATE_STARTED;
-		if (session->type == SESSION_TYPE_INVITE) {
+		if (session->type == SESSION_TYPE_INVITE)
 			WDS_LOGD("Invitation session");
-		} else if (WFD_DEV_ROLE_GO == manager->local->dev_role) {
+		else if (WFD_DEV_ROLE_GO == manager->local->dev_role)
 			session->type = SESSION_TYPE_JOIN;
-		} else {
+		else
 			session->type = SESSION_TYPE_NORMAL;
-		}
+
 		wfd_session_timer(session, 1);
 
 		/* Update local device */
@@ -816,6 +815,7 @@ int wfd_session_process_event(wfd_manager_s *manager, wfd_oem_event_s *event)
 		} else {
 			session->req_wps_mode = WFD_WPS_MODE_PBC;
 		}
+
 		session->state = SESSION_STATE_STARTED;
 		wfd_session_timer(session, 1);
 
@@ -848,16 +848,34 @@ int wfd_session_process_event(wfd_manager_s *manager, wfd_oem_event_s *event)
 			WDS_LOGD("Start connection corresponding to OEM event [%d]", event->event_id);
 			res = wfd_session_connect(session);
 		}
+
+		if (res < 0)
+			_wfd_notify_session_failed(manager, event->dev_addr);
 	}
-	if (res < 0)
-		_wfd_notify_session_failed(manager, event->dev_addr);
 	break;
 	case WFD_OEM_EVENT_GO_NEG_REQ:
+	{
 		if (!session) {
-			// TODO: check whether connection is started by negotiation not by prov_disc
-			WDS_LOGE("Unexpected event. Session not exist [peer: " MACSECSTR "]",
-						MAC2SECSTR(event->dev_addr));
-			break;
+			session = wfd_create_session(manager, event->dev_addr,
+					event->wps_mode, SESSION_DIRECTION_INCOMING);
+			if (!session) {
+				WDS_LOGE("Failed to create session");
+				__WDS_LOG_FUNC_EXIT__;
+				break;
+			}
+
+			session->type = SESSION_TYPE_NORMAL;
+			session->state = SESSION_STATE_GO_NEG;
+			wfd_session_timer(session, 1);
+			wfd_state_set(manager, WIFI_DIRECT_STATE_CONNECTING);
+
+			char peer_mac_address[MACSTR_LEN+1] = {0, };
+			g_snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(event->dev_addr));
+			wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+					"Connection",
+					g_variant_new("(iis)", WIFI_DIRECT_ERROR_NONE,
+						WFD_EVENT_CONNECTION_REQ,
+						peer_mac_address));
 		} else {
 			/* Sometimes, Provision Discovery response is not received.
 			 * At this time, connection should be triggered by GO Negotiation request event */
@@ -872,38 +890,42 @@ int wfd_session_process_event(wfd_manager_s *manager, wfd_oem_event_s *event)
 			if (res < 0)
 				_wfd_notify_session_failed(manager, event->dev_addr);
 		}
-		break;
+	}
+	break;
 	case WFD_OEM_EVENT_GO_NEG_DONE:
+	{
 		if (!session) {
 			WDS_LOGE("Unexpected event. Session is NULL [peer: " MACSECSTR "]",
-						MAC2SECSTR(event->dev_addr));
+					MAC2SECSTR(event->dev_addr));
 			break;
 		} else {
 			manager->local->dev_role = event->dev_role;
 			session->state = SESSION_STATE_WPS;
 		}
-
-		break;
+	}
+	break;
 	case WFD_OEM_EVENT_WPS_DONE:
+	{
 		if (!session) {
 			WDS_LOGE("Unexpected event. Session is NULL [peer: " MACSECSTR "]",
-						MAC2SECSTR(event->dev_addr));
+					MAC2SECSTR(event->dev_addr));
 			break;
 		} else {
 			session->state = SESSION_STATE_KEY_NEG;
 		}
-
-		break;
+	}
+	break;
 	case WFD_OEM_EVENT_STA_CONNECTED:
+	{
 		if (!session) {
 			WDS_LOGE("Unexpected event. Session is NULL [peer: " MACSECSTR "]",
-						MAC2SECSTR(event->dev_addr));
+					MAC2SECSTR(event->dev_addr));
 			break;
 		} else {
 			session->state = SESSION_STATE_COMPLETED;
 		}
-
-		break;
+	}
+	break;
 	default:
 		break;
 	}
