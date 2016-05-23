@@ -2483,7 +2483,7 @@ static int _ws_init_dbus_connection(void)
 #endif /* (TIZEN_MOBILE) && (TIZEN_WLAN_BOARD_SPRD) */
 
 	if (res < 0)
-			WDP_LOGE("Failed to subscribe interface signal");
+		WDP_LOGE("Failed to subscribe interface signal");
 	else
 		WDP_LOGI("Successfully register signal filters");
 
