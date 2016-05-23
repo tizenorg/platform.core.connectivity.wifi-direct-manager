@@ -404,6 +404,7 @@ int wfd_group_remove_member(wfd_group_s *group, unsigned char *addr)
 {
 	__WDS_LOG_FUNC_ENTER__;
 	wfd_device_s *member = NULL;
+	wfd_manager_s *manager = wfd_get_manager();
 
 	if (!group || !addr) {
 		WDS_LOGE("Invalid parameter");
@@ -428,6 +429,18 @@ int wfd_group_remove_member(wfd_group_s *group, unsigned char *addr)
 	group->members = g_list_remove(group->members, member);
 	g_free(member);
 	group->member_count--;
+
+	if (manager->local->dev_role == WFD_DEV_ROLE_GC) {
+		wfd_oem_destroy_group(manager->oem_ops, group->ifname);
+
+	} else if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
+
+		if (wfd_util_is_remove_group_allowed())
+			wfd_oem_destroy_group(manager->oem_ops, group->ifname);
+
+	} else {
+		;//Do Nothing
+	}
 
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;

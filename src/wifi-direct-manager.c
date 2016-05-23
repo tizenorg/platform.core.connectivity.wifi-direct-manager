@@ -783,9 +783,11 @@ int wfd_manager_cancel_connection(wfd_manager_s *manager, unsigned char *peer_ad
 	group = (wfd_group_s*) manager->group;
 	if (group) {
 		wfd_group_remove_member(group, peer_addr);
-		if ((wfd_group_is_autonomous(manager->group) != TRUE) && !group->member_count) {
-			wfd_oem_destroy_group(manager->oem_ops, group->ifname);
-			wfd_destroy_group(manager, group->ifname);
+		if (!group->member_count) {
+			if (wfd_util_is_remove_group_allowed()) {
+				wfd_oem_destroy_group(manager->oem_ops, group->ifname);
+				wfd_destroy_group(manager, group->ifname);
+			}
 		} else {
 			wfd_oem_disconnect(manager->oem_ops, peer_addr);
 		}
@@ -1475,6 +1477,7 @@ static wfd_manager_s *wfd_manager_init()
 	manager->req_wps_mode = WFD_WPS_MODE_PBC;
 	manager->max_station = 8;
 	manager->session_timer = 120;
+	manager->auto_group_remove_enable = TRUE;
 	res = _wfd_local_init_device(manager);
 	if (res < 0) {
 		WDS_LOGE("Failed to initialize local device");
