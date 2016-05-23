@@ -1474,6 +1474,7 @@ static wfd_manager_s *wfd_manager_init()
 	manager->go_intent = 7;
 	manager->req_wps_mode = WFD_WPS_MODE_PBC;
 	manager->max_station = 8;
+	manager->session_timer = 120;
 	res = _wfd_local_init_device(manager);
 	if (res < 0) {
 		WDS_LOGE("Failed to initialize local device");

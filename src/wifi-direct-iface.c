@@ -298,6 +298,14 @@ const gchar wfd_manager_introspection_xml[] = {
 				"<arg type='i' name='error_code' direction='out'/>"
 				"<arg type='s' name='gateway_address' direction='out'/>"
 			"</method>"
+			"<method name='GetSessionTimer'>"
+				"<arg type='i' name='error_code' direction='out'/>"
+				"<arg type='i' name='session_timer' direction='out'/>"
+			"</method>"
+			"<method name='SetSessionTimer'>"
+				"<arg type='i' name='session_timer' direction='in'/>"
+				"<arg type='i' name='error_code' direction='out'/>"
+			"</method>"
 		"</interface>"
 #ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
 		"<interface name='net.wifidirect.service'>"
@@ -1566,8 +1574,27 @@ static void __wfd_manager_config_iface_handler(const gchar *method_name,
 			free(get_str);
 			goto done;
 
+	} else if (!g_strcmp0(method_name, "GetSessionTimer")) {
+
+		int session_timer = 0;
+		ret = WIFI_DIRECT_ERROR_NONE;
+		session_timer = manager->session_timer;
+		WDS_LOGD("Get Session Timer value is %d", session_timer);
+		return_parameters = g_variant_new("(ii)", ret, session_timer);
+		goto done;
+
+	} else if (!g_strcmp0(method_name, "SetSessionTimer")) {
+
+		int session_timer = 0;
+		g_variant_get(parameters, "(i)", &session_timer);
+		WDS_LOGD("Set Session Timer value is %d", session_timer);
+		manager->session_timer = session_timer;
+		ret = WIFI_DIRECT_ERROR_NONE;
+		return_parameters = g_variant_new("(i)", ret);
+		goto done;
+
 	} else {
-		WDS_LOGD("method not handled");
+		WDS_LOGE("method not handled");
 		ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 		goto failed;
 	}
