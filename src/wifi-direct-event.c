@@ -291,7 +291,7 @@ static void __wfd_process_prov_disc_req(wfd_manager_s *manager, wfd_oem_event_s 
 	wfd_group_s *group = (wfd_group_s*) manager->group;
 
 	if (group && group->role == WFD_DEV_ROLE_GC &&
-						event->event_id == WFD_OEM_EVENT_PROV_DISC_REQ) {
+			event->event_id == WFD_OEM_EVENT_PROV_DISC_REQ) {
 		WDS_LOGD("Device has GC role - ignore this provision request");
 		__WDS_LOG_FUNC_EXIT__;
 		return;
@@ -309,8 +309,6 @@ static void __wfd_process_prov_disc_req(wfd_manager_s *manager, wfd_oem_event_s 
 
 	res = _wfd_event_update_peer(manager, edata);
 	peer = wfd_peer_find_by_dev_addr(manager, event->dev_addr);
-	if (peer)
-		peer->state = WFD_PEER_STATE_CONNECTING;
 #else /* CTRL_IFACE_DBUS */
 	peer = wfd_peer_find_by_dev_addr(manager, event->dev_addr);
 	if (!peer) {
@@ -321,11 +319,24 @@ static void __wfd_process_prov_disc_req(wfd_manager_s *manager, wfd_oem_event_s 
 			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
-		peer->state = WFD_PEER_STATE_CONNECTING;
 		wfd_update_peer(manager, peer);
 	}
 	wfd_update_peer_time(manager, event->dev_addr);
 #endif /* CTRL_IFACE_DBUS */
+
+	if (WFD_DEV_ROLE_GO != manager->local->dev_role) {
+		WDS_LOGI("TV is not GO, updated peer data only.");
+
+		manager->local->wps_mode = event->wps_mode;
+		if (event->wps_mode == WFD_WPS_MODE_PBC ||
+				event->wps_mode == WFD_WPS_MODE_KEYPAD) {
+			__WDS_LOG_FUNC_EXIT__;
+			return;
+		}
+	}
+
+	if (peer)
+		peer->state = WFD_PEER_STATE_CONNECTING;
 
 	res = wfd_session_process_event(manager, event);
 	if (res < 0)
@@ -446,7 +457,6 @@ static void __wfd_process_go_neg_req(wfd_manager_s *manager, wfd_oem_event_s *ev
 {
 	__WDS_LOG_FUNC_ENTER__;
 
-	wfd_session_s *session = NULL;
 	wfd_group_s *group = (wfd_group_s*) manager->group;
 	if (group && group->role == WFD_DEV_ROLE_GC) {
 		WDS_LOGD("Device has GC role - ignore this go neg request");
@@ -495,36 +505,11 @@ static void __wfd_process_go_neg_req(wfd_manager_s *manager, wfd_oem_event_s *ev
 
 	if (edata->wps_mode == 0)
 		edata->wps_mode = 1;
+
+	event->wps_mode = edata->wps_mode;
 #endif /* CTRL_IFACE_DBUS */
 
-	session = (wfd_session_s*) manager->session;
-	if (!session) {
-		session = wfd_create_session(manager, event->dev_addr,
-#ifdef CTRL_IFACE_DBUS
-						event->wps_mode, SESSION_DIRECTION_INCOMING);
-#else /* CTRL_IFACE_DBUS */
-						edata->wps_mode, SESSION_DIRECTION_INCOMING);
-#endif /* CTRL_IFACE_DBUS */
-		if (!session) {
-			WDS_LOGE("Failed to create session");
-			__WDS_LOG_FUNC_EXIT__;
-			return;
-		}
-		session->type = SESSION_TYPE_NORMAL;
-		session->state = SESSION_STATE_GO_NEG;
-		wfd_session_timer(session, 1);
-		wfd_state_set(manager, WIFI_DIRECT_STATE_CONNECTING);
-
-		char peer_mac_address[MACSTR_LEN+1] = {0, };
-		g_snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(event->dev_addr));
-		wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
-					     "Connection",
-					     g_variant_new("(iis)", WIFI_DIRECT_ERROR_NONE,
-								    WFD_EVENT_CONNECTION_REQ,
-								    peer_mac_address));
-	} else {
-		wfd_session_process_event(manager, event);
-	}
+	wfd_session_process_event(manager, event);
 	__WDS_LOG_FUNC_EXIT__;
 	return;
 }
