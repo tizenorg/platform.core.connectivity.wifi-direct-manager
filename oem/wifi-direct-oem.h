@@ -164,7 +164,8 @@ typedef struct {
 typedef struct {
 	unsigned int adv_id;
 	unsigned int config_method;
-	int service_type_length;
+	long long unsigned search_id;
+	unsigned char service_type_length;
 	char *service_type;
 } wfd_oem_advertise_service_s;
 #endif /* TIZEN_FEATURE_ASP */
@@ -186,9 +187,6 @@ typedef struct {
 #ifdef TIZEN_FEATURE_WIFI_DISPLAY
 	wfd_oem_display_s display;
 #endif /* TIZEN_FEATURE_WIFI_DISPLAY */
-#if defined(TIZEN_FEATURE_ASP)
-	wfd_oem_advertise_service_s asp_service;
-#endif /* TIZEN_FEATURE_ASP */
 } wfd_oem_device_s;
 
 typedef struct {
@@ -207,7 +205,7 @@ typedef struct {
 #endif /* TIZEN_FEATURE_WIFI_DISPLAY */
 	unsigned char p2p_go_addr[OEM_MACADDR_LEN];
 #if defined(TIZEN_FEATURE_ASP)
-	wfd_oem_advertise_service_s asp_service;
+	int has_asp_services;
 #endif /* TIZEN_FEATURE_ASP */
 } wfd_oem_dev_data_s;
 
@@ -273,6 +271,9 @@ typedef struct {
 	unsigned char ip_addr_peer[OEM_IPADDR_LEN];
 	int edata_type;
 	void *edata;
+#if defined(TIZEN_FEATURE_ASP)
+	void *asp_services;
+#endif /* TIZEN_FEATURE_ASP */
 } wfd_oem_event_s;
 
 typedef enum {

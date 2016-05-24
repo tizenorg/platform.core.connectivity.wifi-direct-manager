@@ -162,6 +162,7 @@ static void __wfd_process_peer_found(wfd_manager_s *manager, wfd_oem_event_s *ev
 	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_oem_dev_data_s *edata = NULL;
+	char peer_mac_address[MACSTR_LEN+1] = {0, };
 	int res = 0;
 
 	edata = (wfd_oem_dev_data_s*) event->edata;
@@ -181,13 +182,38 @@ static void __wfd_process_peer_found(wfd_manager_s *manager, wfd_oem_event_s *ev
 	if (manager->state > WIFI_DIRECT_STATE_ACTIVATING &&
 			manager->state != WIFI_DIRECT_STATE_CONNECTING &&
 			manager->state != WIFI_DIRECT_STATE_DISCONNECTING) {
-		char peer_mac_address[MACSTR_LEN+1] = {0, };
 		snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(edata->p2p_dev_addr));
 		wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
 					     "PeerFound",
 					     g_variant_new("(s)", peer_mac_address));
 	}
 
+#if defined(TIZEN_FEATURE_ASP)
+
+	GList *list;
+	GVariantBuilder *builder = NULL;
+	GVariant *params = NULL;
+	wfd_oem_advertise_service_s *service;
+
+	for(list = (GList *)event->asp_services; list != NULL; list = list->next) {
+		service = (wfd_oem_advertise_service_s *)list->data;
+
+		builder = g_variant_builder_new(G_VARIANT_TYPE ("a{sv}"));
+		g_variant_builder_add(builder, "{sv}", "search_id", g_variant_new("t", service->search_id));
+		g_variant_builder_add(builder, "{sv}", "service_mac", g_variant_new("s", peer_mac_address));
+		g_variant_builder_add(builder, "{sv}", "device_name", g_variant_new("s", edata->name));
+		g_variant_builder_add(builder, "{sv}", "advertisement_id", g_variant_new("u", service->adv_id));
+		g_variant_builder_add(builder, "{sv}", "config_method", g_variant_new("u", service->config_method));
+		if(service->service_type)
+			g_variant_builder_add(builder, "{sv}", "service_type", g_variant_new("s", service->service_type));
+		params = g_variant_new("(a{sv})", builder);
+		g_variant_builder_unref(builder);
+
+		wfd_manager_dbus_emit_signal(WFD_MANAGER_ASP_INTERFACE,
+					     "SearchResult",
+					     params);
+	}
+#endif
  	__WDS_LOG_FUNC_EXIT__;
 	return;
 }
@@ -1383,7 +1409,7 @@ static void __wfd_process_asp_serv_resp(wfd_manager_s *manager, wfd_oem_event_s 
 	g_variant_builder_add(builder, "{sv}", "advertisement_id", g_variant_new("u", service->adv_id));
 	g_variant_builder_add(builder, "{sv}", "config_method", g_variant_new("u", service->config_method));
 	if(service->service_type)
-		g_variant_builder_add(builder, "{sv}", "service_type", g_variant_new("s", service->service_name));
+		g_variant_builder_add(builder, "{sv}", "service_type", g_variant_new("s", service->service_type));
 	if(service->service_info)
 		g_variant_builder_add(builder, "{sv}", "service_info", g_variant_new("s", service->service_info));
 	g_variant_builder_add(builder, "{sv}", "status", g_variant_new("y", service->status));
