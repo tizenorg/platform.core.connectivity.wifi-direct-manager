@@ -264,8 +264,7 @@ static void __wfd_process_prov_disc_req(wfd_manager_s *manager, wfd_oem_event_s 
  	int res = 0;
 	wfd_group_s *group = (wfd_group_s*) manager->group;
 
-	if (group && group->role == WFD_DEV_ROLE_GC &&
-			event->event_id == WFD_OEM_EVENT_PROV_DISC_REQ) {
+	if (group && group->role == WFD_DEV_ROLE_GC) {
 		WDS_LOGD("Device has GC role - ignore this provision request");
 		__WDS_LOG_FUNC_EXIT__;
 		return;
@@ -309,8 +308,16 @@ static void __wfd_process_prov_disc_req(wfd_manager_s *manager, wfd_oem_event_s 
 		}
 	}
 
-	if (peer)
+	if (peer) {
+		if (WFD_PEER_STATE_CONNECTED == peer->state)
+		{
+			WDS_LOGD("Peer is already connected, ignore prov_disc_req");
+			__WDS_LOG_FUNC_EXIT__;
+			return;
+		}
+
 		peer->state = WFD_PEER_STATE_CONNECTING;
+	}
 
 	res = wfd_session_process_event(manager, event);
 	if (res < 0)
