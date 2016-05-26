@@ -87,6 +87,14 @@ typedef enum {
 
 #if defined(TIZEN_FEATURE_ASP)
 typedef enum {
+	WFD_OEM_ASP_WPS_TYPE_NONE = 0x00,  /**< No WPS type */
+	WFD_OEM_ASP_WPS_TYPE_DEFAULT = 0x00,  /**< Default WPS type both P2PS and PIN */
+	WFD_OEM_ASP_WPS_TYPE_PIN_BOTH = 0x02,  /**< WPS type PIN code both display and keypad*/
+	WFD_OEM_ASP_WPS_TYPE_PIN_DISPLAY = 0x03,  /**< WPS type display PIN code only*/
+	WFD_OEM_ASP_WPS_TYPE_PIN_KEYPAD = 0x04,  /**< WPS type keypad to input the PIN only*/
+} asp_wps_type_e;
+
+typedef enum {
 	WFD_OEM_ASP_SESSION_ROLE_NONE = 0x00,  /**< Session network role none */
 	WFD_OEM_ASP_SESSION_ROLE_NEW = 0x01,  /**< Session network role new */
 	WFD_OEM_ASP_SESSION_ROLE_CLIENT = 0x02,  /**< Session network role client */
@@ -135,6 +143,8 @@ typedef enum {
 	WFD_OEM_EVENT_INVITATION_ACCEPTED,
 #if defined(TIZEN_FEATURE_ASP)
 	WFD_OEM_EVENT_ASP_SERV_RESP,
+	WFD_OEM_EVENT_ASP_PROV_START,
+	WFD_OEM_EVENT_ASP_PROV_DONE,
 #endif /* TIZEN_FEATURE_ASP */
 
 	WFD_OEM_EVENT_MAX,
@@ -286,6 +296,7 @@ typedef enum {
 	WFD_OEM_EDATA_TYPE_NEW_SERVICE,
 #if defined(TIZEN_FEATURE_ASP)
 	WFD_OEM_EDATA_TYPE_ASP_SERVICE,
+	WFD_OEM_EDATA_TYPE_ASP_PROV,
 #endif /* TIZEN_FEATURE_ASP */
 } ws_event_type_e;
 
@@ -495,6 +506,24 @@ typedef struct {
 	char *service_info;
 	char *rsp_info;
 } wfd_oem_asp_service_s;
+
+typedef struct {
+	unsigned char session_mac[OEM_MACADDR_LEN];
+	unsigned int session_id;
+	unsigned int adv_id;
+	int network_config;
+	int network_role;
+	int port;
+	int persist;
+	int persistent_group_id;
+	char *session_information;
+	int proto;
+	int status;
+	unsigned char service_mac[OEM_MACADDR_LEN];
+	unsigned char group_mac[OEM_MACADDR_LEN];
+	char wps_pin[OEM_PINSTR_LEN+1];
+	unsigned char ip_addr[OEM_IPADDR_LEN];
+} wfd_oem_asp_prov_s;
 #endif /* TIZEN_FEATURE_ASP */
 typedef struct
 {
@@ -582,6 +611,7 @@ typedef struct _wfd_oem_ops_s {
 	int (*cancel_advertise_service)(wfd_oem_asp_service_s *service);
 	int (*seek_service)(wfd_oem_asp_service_s *service);
 	int (*cancel_seek_service)(wfd_oem_asp_service_s *service);
+	int (*asp_prov_disc_req)(wfd_oem_asp_prov_s *params);
 #endif /* TIZEN_FEATURE_ASP */
 } wfd_oem_ops_s;
 
@@ -646,6 +676,7 @@ int wfd_oem_advertise_service(wfd_oem_ops_s *ops, wfd_oem_asp_service_s *service
 int wfd_oem_cancel_advertise_service(wfd_oem_ops_s *ops, wfd_oem_asp_service_s *service);
 int wfd_oem_seek_service(wfd_oem_ops_s *ops, wfd_oem_asp_service_s *service);
 int wfd_oem_cancel_seek_service(wfd_oem_ops_s *ops, wfd_oem_asp_service_s *service);
+int wfd_oem_asp_prov_disc_req(wfd_oem_ops_s *ops, wfd_oem_asp_prov_s *params);
 #endif /* TIZEN_FEATURE_ASP */
 
 #endif /* __WIFI_DIRECT_OEM_H__ */

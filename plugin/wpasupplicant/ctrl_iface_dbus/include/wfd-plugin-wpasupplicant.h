@@ -464,6 +464,7 @@ int ws_advertise_service(wfd_oem_asp_service_s *service, int replace);
 int ws_cancel_advertise_service(wfd_oem_asp_service_s *service);
 int ws_seek_service(wfd_oem_asp_service_s *service);
 int ws_cancel_seek_service(wfd_oem_asp_service_s *service);
+int ws_asp_prov_disc_req(wfd_oem_asp_prov_s *asp_params);
 #endif /* TIZEN_FEATURE_ASP */
 
 #endif /* __WFD_PLUGIN_WPASUPPLICANT_H__ */
