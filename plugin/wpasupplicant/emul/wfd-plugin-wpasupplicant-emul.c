@@ -78,6 +78,7 @@ static wfd_oem_ops_s supplicant_ops = {
 	.cancel_advertise_service = ws_cancel_advertise_service,
 	.seek_service = ws_seek_service,
 	.cancel_seek_service = ws_cancel_seek_service,
+	.asp_prov_disc_req = ws_asp_prov_disc_req,
 #endif /* TIZEN_FEATURE_ASP */
 	};
 
@@ -505,6 +506,14 @@ int ws_seek_service(wfd_oem_asp_service_s *service)
 }
 
 int ws_cancel_seek_service(wfd_oem_asp_service_s *service)
+{
+	__WDP_LOG_FUNC_ENTER__;
+
+	__WDP_LOG_FUNC_EXIT__;
+	return -1;
+}
+
+int ws_asp_prov_disc_req(wfd_oem_asp_prov_s *asp_params)
 {
 	__WDP_LOG_FUNC_ENTER__;
 

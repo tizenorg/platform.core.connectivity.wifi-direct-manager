@@ -148,6 +148,7 @@ static wfd_oem_ops_s supplicant_ops = {
 	.cancel_advertise_service = ws_cancel_advertise_service,
 	.seek_service = ws_seek_service,
 	.cancel_seek_service = ws_cancel_seek_service,
+	.asp_prov_disc_req = ws_asp_prov_disc_req,
 #endif /* TIZEN_FEATURE_ASP */
 	};
 
@@ -1198,6 +1199,173 @@ static void __ws_extract_serviceaspresponse_details(const char *key, GVariant *v
 	}
 	__WDP_LOG_FUNC_EXIT__;
 }
+
+static void __ws_extract_asp_provision_start_details(const char *key, GVariant *value, void *user_data)
+{
+	wfd_oem_event_s *event = (wfd_oem_event_s *)user_data;
+	wfd_oem_asp_prov_s *asp_params = NULL;
+	if(!event || !event->edata)
+		return;
+
+	asp_params = (wfd_oem_asp_prov_s *)event->edata;
+
+	if (g_strcmp0(key, "peer_object") == 0) {
+		static unsigned char peer_dev[WS_MACSTR_LEN] = {'\0',};
+		const char *path = NULL;
+		char *loc = NULL;
+
+		g_variant_get(value, "o", &path);
+		if(path == NULL)
+			return;
+
+		WDP_LOGD("Retrive Added path [%s]", path);
+		loc = strrchr(path,'/');
+		if(loc != NULL)
+			__ws_mac_compact_to_normal(loc + 1, peer_dev);
+		__ws_txt_to_mac(peer_dev, event->dev_addr);
+
+	} else if (g_strcmp0(key, "adv_id") == 0) {
+		g_variant_get(value, "u", &asp_params->adv_id);
+		WDP_LOGD("Retrive adv_id [%u]", asp_params->adv_id);
+
+	} else if (g_strcmp0(key, "ses_id") == 0) {
+		g_variant_get(value, "u", &asp_params->session_id);
+		WDP_LOGD("Retrive session id [%u]", asp_params->session_id);
+
+	} else if (g_strcmp0(key, "dev_passwd_id") == 0) {
+		g_variant_get(value, "i", &event->wps_mode);
+		WDP_LOGD("Retrive dev_passwd_id [%d]", event->wps_mode);
+
+	} else if (g_strcmp0(key, "conncap") == 0) {
+		g_variant_get(value, "u", &asp_params->network_role);
+		WDP_LOGD("Retrive conncap [%x]", asp_params->network_role);
+
+	} else if (g_strcmp0(key, "adv_mac") == 0) {
+		if(__ws_unpack_ay(asp_params->service_mac, value, WS_MACADDR_LEN))
+			WDP_LOGD("Adv address[" MACSTR "]", MAC2STR(asp_params->service_mac));
+
+	} else if (g_strcmp0(key, "ses_mac") == 0) {
+		if(__ws_unpack_ay(asp_params->session_mac, value, WS_MACADDR_LEN))
+			WDP_LOGD("session address[" MACSTR "]", MAC2STR(asp_params->session_mac));
+
+	} else if (g_strcmp0(key, "session_info") == 0) {
+		const char *session_info = NULL;
+		g_variant_get(value, "s", &session_info);
+		if(session_info != NULL)
+			asp_params->session_information = g_strdup(session_info);
+		WDP_LOGD("Retrive session_info [%s]", asp_params->session_information);
+	}
+	__WDP_LOG_FUNC_EXIT__;
+}
+
+static void __ws_extract_asp_provision_done_details(const char *key, GVariant *value, void *user_data)
+{
+	wfd_oem_event_s *event = (wfd_oem_event_s *)user_data;
+	wfd_oem_asp_prov_s *asp_params = NULL;
+	if(!event || !event->edata)
+		return;
+
+	asp_params = (wfd_oem_asp_prov_s *)event->edata;
+
+
+	if (g_strcmp0(key, "peer_object") == 0) {
+		static unsigned char peer_dev[WS_MACSTR_LEN] = {'\0',};
+		const char *path = NULL;
+		char *loc = NULL;
+
+		g_variant_get(value, "o", &path);
+		if(path == NULL)
+			return;
+
+		WDP_LOGD("Retrive Added path [%s]", path);
+		loc = strrchr(path,'/');
+		if(loc != NULL)
+			__ws_mac_compact_to_normal(loc + 1, peer_dev);
+		__ws_txt_to_mac(peer_dev, event->dev_addr);
+
+		WDP_LOGD("peer address[" MACSTR "]", MAC2STR(event->dev_addr));
+
+	} else if (g_strcmp0(key, "adv_id") == 0) {
+		g_variant_get(value, "u", &asp_params->adv_id);
+		WDP_LOGD("Retrive adv_id [%u]", asp_params->adv_id);
+
+	} else if (g_strcmp0(key, "ses_id") == 0) {
+		g_variant_get(value, "u", &asp_params->session_id);
+		WDP_LOGD("Retrive session id [%u]", asp_params->session_id);
+
+	} else if (g_strcmp0(key, "dev_passwd_id") == 0) {
+		g_variant_get(value, "i", &event->wps_mode);
+		WDP_LOGD("Retrive dev_passwd_id [%d]", event->wps_mode);
+
+	} else if (g_strcmp0(key, "conncap") == 0) {
+		g_variant_get(value, "u", &asp_params->network_role);
+		WDP_LOGD("Retrive network role [%x]", asp_params->network_role);
+
+	} else if (g_strcmp0(key, "status") == 0) {
+		g_variant_get(value, "u", &asp_params->status);
+		WDP_LOGD("Retrive status [%x]", asp_params->status);
+
+	} else if (g_strcmp0(key, "persist") == 0) {
+		g_variant_get(value, "u", &asp_params->persistent_group_id);
+		asp_params->persist = 1;
+		WDP_LOGD("Retrive persist [%u]", asp_params->persistent_group_id);
+
+	}   else if (g_strcmp0(key, "adv_mac") == 0) {
+		if(__ws_unpack_ay(asp_params->service_mac, value, WS_MACADDR_LEN))
+			WDP_LOGD("Adv address[" MACSTR "]", MAC2STR(asp_params->service_mac));
+
+	} else if (g_strcmp0(key, "ses_mac") == 0) {
+		if(__ws_unpack_ay(asp_params->session_mac, value, WS_MACADDR_LEN))
+			WDP_LOGD("session address[" MACSTR "]", MAC2STR(asp_params->session_mac));
+
+	} else if (g_strcmp0(key, "group_mac") == 0) {
+		if(__ws_unpack_ay(asp_params->group_mac, value, WS_MACADDR_LEN))
+			WDP_LOGD("group address[" MACSTR "]", MAC2STR(asp_params->group_mac));
+	}
+	__WDP_LOG_FUNC_EXIT__;
+}
+
+static void __ws_extract_provision_fail_details(const char *key, GVariant *value, void *user_data)
+{
+	wfd_oem_event_s *event = (wfd_oem_event_s *)user_data;
+	wfd_oem_asp_prov_s *asp_params = NULL;
+	if(!event || !event->edata)
+		return;
+
+	asp_params = (wfd_oem_asp_prov_s *)event->edata;
+
+	if (g_strcmp0(key, "peer_object") == 0) {
+		static unsigned char peer_dev[WS_MACSTR_LEN] = {'\0',};
+		const char *path = NULL;
+		char *loc = NULL;
+
+		g_variant_get(value, "o", &path);
+		if(path == NULL)
+			return;
+
+		WDP_LOGD("Retrive Added path [%s]", path);
+		loc = strrchr(path,'/');
+		if(loc != NULL)
+			__ws_mac_compact_to_normal(loc + 1, peer_dev);
+		__ws_txt_to_mac(peer_dev, event->dev_addr);
+
+	} else if (g_strcmp0(key, "adv_id") == 0) {
+		g_variant_get(value, "u", &asp_params->adv_id);
+		WDP_LOGD("Retrive adv_id [%d]", asp_params->adv_id);
+
+	}  else if (g_strcmp0(key, "status") == 0) {
+		g_variant_get(value, "i", &asp_params->status);
+		WDP_LOGD("Retrive status [%d]", asp_params->status);
+
+	} else if (g_strcmp0(key, "deferred_session_resp") == 0) {
+		const char *session_info = NULL;
+		g_variant_get(value, "s", &session_info);
+		if(session_info != NULL)
+			asp_params->session_information = g_strdup(session_info);
+		WDP_LOGD("Retrive deferred_session_resp [%s]", asp_params->session_information);
+	}
+	__WDP_LOG_FUNC_EXIT__;
+}
 #endif /* TIZEN_FEATURE_ASP */
 
 static int _ws_flush()
@@ -1737,6 +1905,47 @@ static void _ws_process_prov_disc_pbc_resp(GDBusConnection *connection,
 	__WDP_LOG_FUNC_EXIT__;
 }
 
+#if defined(TIZEN_FEATURE_ASP)
+static void _ws_process_prov_disc_failure(GDBusConnection *connection,
+		const gchar *object_path, GVariant *parameters)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	GVariantIter *iter = NULL;
+	wfd_oem_event_s event;
+	wfd_oem_asp_prov_s *edata;
+
+	edata = (wfd_oem_asp_prov_s *) g_try_malloc0(sizeof(wfd_oem_asp_prov_s));
+	if (!edata) {
+		WDP_LOGF("Failed to allocate memory for event. [%s]",
+				strerror(errno));
+		__WDP_LOG_FUNC_EXIT__;
+		return;
+	}
+	memset(&event, 0x0, sizeof(wfd_oem_event_s));
+
+	event.edata = (void*) edata;
+	event.event_id = WFD_OEM_EVENT_PROV_DISC_FAIL;
+
+	if(parameters != NULL) {
+		g_variant_get(parameters, "(a{sv})", &iter);
+		if(iter != NULL) {
+			dbus_property_foreach(iter, __ws_extract_provision_fail_details, &event);
+			event.edata_type = WFD_OEM_EDATA_TYPE_ASP_PROV;
+			g_variant_iter_free(iter);
+		}
+	} else {
+		WDP_LOGE("No Properties");
+	}
+
+	g_pd->callback(g_pd->user_data, &event);
+
+	if (event.edata_type == WFD_OEM_EDATA_TYPE_ASP_PROV)
+		g_free(edata->session_information);
+	g_free(edata);
+
+	__WDP_LOG_FUNC_EXIT__;
+}
+#else
 static void _ws_process_prov_disc_failure(GDBusConnection *connection,
 		const gchar *object_path, GVariant *parameters)
 {
@@ -1768,6 +1977,8 @@ static void _ws_process_prov_disc_failure(GDBusConnection *connection,
 
 	__WDP_LOG_FUNC_EXIT__;
 }
+#endif /* TIZEN_FEATURE_ASP */
+
 
 static void _ws_process_group_started(GDBusConnection *connection,
 		const gchar *object_path, GVariant *parameters)
@@ -2207,6 +2418,85 @@ static void _ws_process_invitation_accepted(GDBusConnection *connection,
 	__WDP_LOG_FUNC_EXIT__;
 }
 
+#if defined(TIZEN_FEATURE_ASP)
+static void _ws_process_asp_provision_start(GDBusConnection *connection,
+		const gchar *object_path, GVariant *parameters)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	GVariantIter *iter = NULL;
+	wfd_oem_event_s event;
+	wfd_oem_asp_prov_s *edata;
+
+	edata = (wfd_oem_asp_prov_s *) g_try_malloc0(sizeof(wfd_oem_asp_prov_s));
+	if (!edata) {
+		WDP_LOGF("Failed to allocate memory for event. [%s]",
+				strerror(errno));
+		__WDP_LOG_FUNC_EXIT__;
+		return;
+	}
+	memset(&event, 0x0, sizeof(wfd_oem_event_s));
+
+	event.edata = (void*) edata;
+	event.event_id = WFD_OEM_EVENT_ASP_PROV_START;
+
+	if(parameters != NULL) {
+		g_variant_get(parameters, "(a{sv})", &iter);
+		if(iter != NULL) {
+			dbus_property_foreach(iter, __ws_extract_asp_provision_start_details, &event);
+			event.edata_type = WFD_OEM_EDATA_TYPE_ASP_PROV;
+			g_variant_iter_free(iter);
+		}
+	} else {
+		WDP_LOGE("No Properties");
+	}
+
+	g_pd->callback(g_pd->user_data, &event);
+
+	if (event.edata_type == WFD_OEM_EDATA_TYPE_ASP_PROV)
+		g_free(edata->session_information);
+	g_free(edata);
+
+	__WDP_LOG_FUNC_EXIT__;
+}
+
+static void _ws_process_asp_provision_done(GDBusConnection *connection,
+		const gchar *object_path, GVariant *parameters)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	GVariantIter *iter = NULL;
+	wfd_oem_event_s event;
+	wfd_oem_asp_prov_s *edata;
+
+	edata = (wfd_oem_asp_prov_s *) g_try_malloc0(sizeof(wfd_oem_asp_prov_s));
+	if (!edata) {
+		WDP_LOGF("Failed to allocate memory for event. [%s]",
+				strerror(errno));
+		__WDP_LOG_FUNC_EXIT__;
+		return;
+	}
+	memset(&event, 0x0, sizeof(wfd_oem_event_s));
+
+	event.edata = (void*) edata;
+	event.event_id = WFD_OEM_EVENT_ASP_PROV_DONE;
+
+	if(parameters != NULL) {
+		g_variant_get(parameters, "(a{sv})", &iter);
+		if(iter != NULL) {
+			dbus_property_foreach(iter, __ws_extract_asp_provision_done_details, &event);
+			event.edata_type = WFD_OEM_EDATA_TYPE_ASP_PROV;
+			g_variant_iter_free(iter);
+		}
+	} else {
+		WDP_LOGE("No Properties");
+	}
+
+	g_pd->callback(g_pd->user_data, &event);
+	g_free(edata);
+
+	__WDP_LOG_FUNC_EXIT__;
+}
+#endif /* TIZEN_FEATURE_ASP */
+
 static struct {
 	const char *interface;
 	const char *member;
@@ -2310,6 +2600,16 @@ static struct {
 		SUPPLICANT_P2PDEVICE,
 		"ServiceASPResponse",
 		_ws_process_service_asp_response
+	},
+	{
+		SUPPLICANT_P2PDEVICE,
+		"ASPProvisionStart",
+		_ws_process_asp_provision_start
+	},
+	{
+		SUPPLICANT_P2PDEVICE,
+		"ASPProvisionDone",
+		_ws_process_asp_provision_done
 	},
 #endif /* TIZEN_FEATURE_ASP */
 	{
@@ -6147,6 +6447,86 @@ int ws_cancel_seek_service(wfd_oem_asp_service_s *service)
 	}
 	if(res == 0)
 		__ws_remove_seek(seek);
+
+	__WDP_LOG_FUNC_EXIT__;
+	return res;
+}
+
+int ws_asp_prov_disc_req(wfd_oem_asp_prov_s *asp_params)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	GDBusConnection *g_dbus = NULL;
+	GVariantBuilder *builder = NULL;
+	GVariantBuilder *mac_builder = NULL;
+	GVariant *value = NULL;
+	dbus_method_param_s params;
+	static char peer_path[DBUS_OBJECT_PATH_MAX] = {'\0',};
+	int config_method = 0x1000;
+	int res = 0;
+	int i = 0;
+
+	if (!asp_params) {
+		WDP_LOGE("Invalid parameter");
+		return -1;
+	}
+	g_dbus = g_pd->g_dbus;
+	if (!g_dbus) {
+		WDP_LOGE("DBus connection is NULL");
+		return -1;
+	}
+
+	if(asp_params->network_config == 2)
+		config_method = 0x8;
+	else if(asp_params->network_config == 3)
+		config_method = 0x100;
+
+	memset(&params, 0x0, sizeof(dbus_method_param_s));
+
+	dbus_set_method_param(&params, "ASPProvisionDiscoveryRequest", g_pd->iface_path, g_dbus);
+
+	g_snprintf(peer_path, DBUS_OBJECT_PATH_MAX, "%s/Peers/"
+			COMPACT_MACSTR, g_pd->iface_path, MAC2STR(asp_params->service_mac));
+	WDP_LOGD("get peer path [%s]", peer_path);
+
+	builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}") );
+	g_variant_builder_add (builder, "{sv}", "peer", g_variant_new_object_path(peer_path));
+
+	g_variant_builder_add (builder, "{sv}", "adv_id", g_variant_new_uint32(asp_params->adv_id));
+	g_variant_builder_add (builder, "{sv}", "session_id", g_variant_new_uint32(asp_params->session_id));
+	g_variant_builder_add (builder, "{sv}", "role", g_variant_new_byte(asp_params->network_role));
+	g_variant_builder_add (builder, "{sv}", "method", g_variant_new_int32(config_method));
+	if(asp_params->status > 0)
+		g_variant_builder_add (builder, "{sv}", "status", g_variant_new_int32(asp_params->status));
+	if(asp_params->session_information)
+		g_variant_builder_add (builder, "{sv}", "info", g_variant_new_string(asp_params->session_information));
+
+	mac_builder = g_variant_builder_new (G_VARIANT_TYPE ("ay"));
+	for(i = 0; i < OEM_MACADDR_LEN; i++)
+		g_variant_builder_add(mac_builder, "y", asp_params->service_mac[i]);
+	g_variant_builder_add (builder, "{sv}", "adv_mac",
+			g_variant_new ("ay", mac_builder));
+	g_variant_builder_unref (mac_builder);
+
+	mac_builder = g_variant_builder_new (G_VARIANT_TYPE ("ay"));
+	for(i = 0; i < OEM_MACADDR_LEN; i++)
+		g_variant_builder_add(mac_builder, "y", asp_params->session_mac[i]);
+	g_variant_builder_add (builder, "{sv}", "session_mac",
+			g_variant_new ("ay", mac_builder));
+	g_variant_builder_unref (mac_builder);
+
+	value = g_variant_new ("(a{sv})", builder);
+	g_variant_builder_unref (builder);
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
+	WDP_LOGD("params [%s]", g_variant_print(value, TRUE));
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
+
+	params.params = value;
+
+	res = dbus_method_call(&params, SUPPLICANT_P2PDEVICE, NULL, NULL);
+	if (res < 0)
+		WDP_LOGE("Failed to send command to wpa_supplicant");
+	else
+		WDP_LOGD("Succeeded to send connection command to peer[" MACSTR "]", MAC2STR(asp_params->service_mac));
 
 	__WDP_LOG_FUNC_EXIT__;
 	return res;
