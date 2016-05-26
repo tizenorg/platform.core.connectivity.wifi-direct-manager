@@ -488,4 +488,13 @@ int wfd_oem_cancel_seek_service(wfd_oem_ops_s *ops, wfd_oem_asp_service_s *servi
 
 	return ops->cancel_seek_service(service);
 }
+
+int wfd_oem_asp_prov_disc_req(wfd_oem_ops_s *ops, wfd_oem_asp_prov_s *params)
+{
+	if (!ops || !ops->asp_prov_disc_req) {
+		return -1;
+	}
+
+	return ops->asp_prov_disc_req(params);
+}
 #endif /* TIZEN_FEATURE_ASP */
