@@ -283,6 +283,7 @@ typedef enum {
 	WS_GROUP_INFO_PASS,	// passphrase=
 	WS_GROUP_INFO_GO_DEV_ADDR,	// go_dev_addr=
 	WS_GROUP_INFO_STATUS,		// status=
+	WS_GROUP_INFO_PERSISTENT,	// [PERSISTENT]
 #ifdef TIZEN_FEATURE_IP_OVER_EAPOL
 	WS_GROUP_INFO_IP_ADDR,	//ip_addr=
 	WS_GROUP_INFO_IP_MASK,	//ip_mask=
