@@ -34,6 +34,7 @@
 #define IPSTR "%d.%d.%d.%d"
 #define ZEROIP "0.0.0.0"
 #define ISZEROIP(a) !(a[0] | a[1] | a[2] | a[3])
+#define ISZEROMACADDR(a) !(a[0] | a[1] | a[2] | a[3] | a[4] | a[5])
 #define MAC2SECSTR(a) (a)[0], (a)[4], (a)[5]
 #define MACSECSTR "%02x:%02x:%02x"
 #define IP2SECSTR(a) (a)[0], (a)[3]
