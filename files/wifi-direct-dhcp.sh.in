@@ -10,9 +10,11 @@ DEFAULT_IP="192.168.49.1"
 DEFAULT_NET="192.168.49.1/24"
 DEFAULT_BRD="192.168.49.255"
 
-#interface=`/sbin/ifconfig|/bin/grep ^${INTERFACE_NAME}|@BIN_DIR@/cut -d" " -f1`
-interface=`/sbin/ifconfig|/bin/grep ^${INTERFACE_NAME}|@BIN_DIR@/cut -d":" -f1`
-#interface=`@SBIN_DIR@/ip link|/bin/grep ^${INTERFACE_NAME}|@BIN_DIR@/cut -d":" -f2`
+if [ ! -f @SBIN_DIR@/ip ]; then
+	interface=`@SBIN_DIR@/ifconfig|/bin/grep ^${INTERFACE_NAME}|@BIN_DIR@/cut -d":" -f1`
+else
+	interface=`@SBIN_DIR@/ip link|/bin/grep ^${INTERFACE_NAME}|@BIN_DIR@/cut -d":" -f2`
+fi
 echo "Target is ${TARGET} and interface ${INTERFACE_PREFIX}: ${interface}."
 
 start_dhcp_server()
@@ -24,7 +26,11 @@ start_dhcp_server()
 
 	/bin/rm /@TZ_SYS_VAR@/lib/misc/dhcpd.leases
 	/bin/touch @TZ_SYS_VAR@/lib/misc/dhcpd.leases
-	@SBIN_DIR@/ip addr add ${DEFAULT_NET} brd ${DEFAULT_BRD} dev ${interface}
+	if [ ! -f @SBIN_DIR@/ip ]; then
+		@SBIN_DIR@/ifconfig ${interface} ${DEFAULT_IP} up
+	else
+		@SBIN_DIR@/ip addr add ${DEFAULT_NET} brd ${DEFAULT_BRD} dev ${interface}
+	fi
 	@SBIN_DIR@/dhcpd -S -i ${interface} @TZ_SYS_RO_ETC@/wifi-direct/dhcpd.conf -f &
 
 	route=`/bin/cat @TZ_SYS_RO_ETC@/wifi-direct/dhcpd.conf | /bin/grep router | /bin/awk '{print $3}'`
