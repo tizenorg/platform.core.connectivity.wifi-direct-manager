@@ -979,14 +979,20 @@ static void __wfd_process_sta_connected(wfd_manager_s *manager, wfd_oem_event_s 
 {
 	__WDS_LOG_FUNC_ENTER__;
 
-	wfd_session_s *session = NULL;
+	wfd_session_s *session = (wfd_session_s*) manager->session;
+	wfd_group_s *group = (wfd_group_s*) manager->group;
 	wfd_device_s *peer = NULL;
-	wfd_group_s *group = NULL;
 	char peer_mac_address[MACSTR_LEN+1] = {0, };
 
 	// FIXME: Move this code to plugin
 	if (!memcmp(event->intf_addr, manager->local->intf_addr, MACADDR_LEN)) {
 		WDS_LOGD("Ignore this event");
+		__WDS_LOG_FUNC_EXIT__;
+		return;
+	}
+
+	if (ISZEROMACADDR(event->dev_addr)) {
+		WDS_LOGD("Legacy Peer Connected [Peer: " MACSTR "]", MAC2STR(event->intf_addr));
 		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
@@ -1086,6 +1092,12 @@ static void __wfd_process_sta_disconnected(wfd_manager_s *manager, wfd_oem_event
 		return;
 	}
 
+	if (ISZEROMACADDR(event->dev_addr)) {
+		WDS_LOGD("Legacy Peer Disconnected [Peer: " MACSTR "]", MAC2STR(event->intf_addr));
+		__WDS_LOG_FUNC_EXIT__;
+		return;
+	}
+
 #ifdef CTRL_IFACE_DBUS
 	peer = wfd_group_find_member_by_addr(group, event->dev_addr);
 #else /* CTRL_IFACE_DBUS */
@@ -1117,9 +1129,10 @@ static void __wfd_process_sta_disconnected(wfd_manager_s *manager, wfd_oem_event
 	}
 	memcpy(peer_addr, peer->dev_addr, MACADDR_LEN);
 
-	/* If state is not DISCONNECTING, connection is finished by peer.
-	*  Required the check also, when Device is Group Owner and state is DISCOVERING.
-	*/
+	/**
+	 * If state is not DISCONNECTING, connection is finished by peer.
+	 *  Required the check also, when Device is Group Owner and state is DISCOVERING.
+	 */
 	if (manager->state >= WIFI_DIRECT_STATE_CONNECTED ||
 				(manager->state == WIFI_DIRECT_STATE_DISCOVERING &&
 				 manager->local->dev_role == WFD_DEV_ROLE_GO)) {

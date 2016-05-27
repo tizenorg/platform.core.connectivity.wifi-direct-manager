@@ -154,6 +154,9 @@ static wfd_oem_ops_s supplicant_ops = {
 
 static ws_dbus_plugin_data_s *g_pd;
 
+static int is_peer_joined_notified = 0;
+static int is_peer_disconnected_notified = 0;
+
 #ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
 static GList *service_list;
 #endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
@@ -169,6 +172,10 @@ static void _p2pdevice_signal_cb(GDBusConnection *connection,
 		const gchar *signal, GVariant *parameters, gpointer user_data);
 
 static void _group_signal_cb(GDBusConnection *connection,
+		const gchar *sender, const gchar *object_path, const gchar *interface,
+		const gchar *signal, GVariant *parameters, gpointer user_data);
+
+static void _interface_signal_cb(GDBusConnection *connection,
 		const gchar *sender, const gchar *object_path, const gchar *interface,
 		const gchar *signal, GVariant *parameters, gpointer user_data);
 
@@ -2681,6 +2688,100 @@ static void _p2pdevice_signal_cb(GDBusConnection *connection,
 }
 
 
+static void _ws_process_sta_authorized(GDBusConnection *connection,
+		const gchar *object_path, GVariant *parameters)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	wfd_oem_event_s event;
+	const gchar* mac_str = NULL;
+
+	if (is_peer_joined_notified) {
+		is_peer_joined_notified = 0;
+		__WDP_LOG_FUNC_EXIT__;
+		return;
+	}
+
+	memset(&event, 0x0, sizeof(wfd_oem_event_s));
+	g_variant_get(parameters, "(&s)", &mac_str);
+	__ws_txt_to_mac((unsigned char *)mac_str, event.intf_addr);
+
+	event.event_id = WFD_OEM_EVENT_STA_CONNECTED;
+	event.edata_type = WFD_OEM_EDATA_TYPE_NONE;
+
+	g_pd->callback(g_pd->user_data, &event);
+	__WDP_LOG_FUNC_EXIT__;
+}
+
+static void _ws_process_sta_deauthorized(GDBusConnection *connection,
+		const gchar *object_path, GVariant *parameters)
+{
+	__WDP_LOG_FUNC_ENTER__;
+	wfd_oem_event_s event;
+	const gchar* mac_str = NULL;
+
+	if (is_peer_disconnected_notified) {
+		is_peer_disconnected_notified = 0;
+		__WDP_LOG_FUNC_EXIT__;
+		return;
+	}
+
+	memset(&event, 0x0, sizeof(wfd_oem_event_s));
+	g_variant_get(parameters, "(&s)", &mac_str);
+	__ws_txt_to_mac((unsigned char *)mac_str, event.intf_addr);
+
+	event.event_id = WFD_OEM_EVENT_STA_DISCONNECTED;
+	event.edata_type = WFD_OEM_EDATA_TYPE_NONE;
+
+	g_pd->callback(g_pd->user_data, &event);
+	__WDP_LOG_FUNC_EXIT__;
+}
+
+static struct {
+	const char *interface;
+	const char *member;
+	void (*function) (GDBusConnection *connection,const gchar *object_path,
+			GVariant *parameters);
+} ws_interface_signal_map[] = {
+	{
+		SUPPLICANT_INTERFACE,
+		"StaAuthorized",
+		_ws_process_sta_authorized
+	},
+	{
+		SUPPLICANT_INTERFACE,
+		"StaDeauthorized",
+		_ws_process_sta_deauthorized
+	},
+	{
+		NULL,
+		NULL,
+		NULL
+	}
+};
+
+static void _interface_signal_cb(GDBusConnection *connection,
+		const gchar *sender, const gchar *object_path, const gchar *interface,
+		const gchar *signal, GVariant *parameters, gpointer user_data)
+{
+	int i = 0;
+#if defined (TIZEN_DEBUG_DBUS_VALUE)
+	DEBUG_SIGNAL(sender, object_path, interface, signal, parameters);
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
+
+	if (!g_pd) {
+		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
+		__WDP_LOG_FUNC_EXIT__;
+		return;
+	}
+
+	for (i = 0; ws_interface_signal_map[i].member != NULL; i++) {
+		if (!g_strcmp0(signal, ws_interface_signal_map[i].member) &&
+				ws_interface_signal_map[i].function != NULL)
+			ws_interface_signal_map[i].function(connection, object_path, parameters);
+	}
+}
+
+
 static void __ws_parse_peer_joined(char *peer_path,
 		unsigned char *dev_addr, unsigned char *ip_addr, GVariant *parameter)
 {
@@ -2755,6 +2856,8 @@ static void _group_signal_cb(GDBusConnection *connection,
 				__ws_peer_property, event.edata);
 
 		g_pd->callback(g_pd->user_data, &event);
+		is_peer_joined_notified = 1;
+
 		g_free(edata);
 
 	} else if (!g_strcmp0(signal,"PeerDisconnected")) {
@@ -2771,6 +2874,7 @@ static void _group_signal_cb(GDBusConnection *connection,
 		__ws_path_to_addr(peer_path, event.dev_addr, parameters);
 
 		g_pd->callback(g_pd->user_data, &event);
+		is_peer_disconnected_notified = 1;
 	}
 }
 
@@ -2793,7 +2897,21 @@ static void __register_p2pdevice_signal(GVariant *value, void *user_data)
 	g_strlcpy(pd_data->iface_path, path, DBUS_OBJECT_PATH_MAX);
 
 	WDP_LOGD("interface object path [%s]", interface_path);
-	/* subscribe interface p2p signal */
+
+	/* subscribe Interface iface signal */
+	WDP_LOGD("Register Interface iface signal");
+	pd_data->p2pdevice_sub_id = g_dbus_connection_signal_subscribe(
+		pd_data->g_dbus,
+		SUPPLICANT_SERVICE, /* bus name */
+		SUPPLICANT_IFACE, /* interface */
+		NULL, /* member */
+		NULL, /* object path */
+		NULL, /* arg0 */
+		G_DBUS_SIGNAL_FLAGS_NONE,
+		_interface_signal_cb,
+		NULL, NULL);
+
+	/* subscribe P2PDevice iface signal */
 	WDP_LOGD("register P2PDevice iface signal");
 	pd_data->p2pdevice_sub_id = g_dbus_connection_signal_subscribe(
 		pd_data->g_dbus,
