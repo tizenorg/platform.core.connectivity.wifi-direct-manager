@@ -234,6 +234,7 @@ typedef struct {
 typedef struct {
 	char ssid[OEM_DEV_NAME_LEN+1];
 	int freq;
+	int is_persistent;
 	char pass[OEM_PASS_PHRASE_LEN+1];
 	unsigned char go_dev_addr[OEM_MACADDR_LEN];
 #ifdef TIZEN_FEATURE_IP_OVER_EAPOL

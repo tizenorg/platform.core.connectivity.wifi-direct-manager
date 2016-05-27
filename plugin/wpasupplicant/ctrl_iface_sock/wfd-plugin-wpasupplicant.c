@@ -155,6 +155,7 @@ ws_string_s ws_group_info_strs[] = {
 	{"passphrase", WS_GROUP_INFO_PASS},
 	{"go_dev_addr", WS_GROUP_INFO_GO_DEV_ADDR},
 	{"status", WS_GROUP_INFO_STATUS},
+	{"[PERSISTENT]", WS_GROUP_INFO_PERSISTENT},
 #ifdef TIZEN_FEATURE_IP_OVER_EAPOL
 	{"ip_addr", WS_GROUP_INFO_IP_ADDR},
 	{"ip_mask", WS_GROUP_INFO_IP_MASK},
@@ -1675,6 +1676,10 @@ static wfd_oem_group_data_s *_convert_msg_to_group_info(char *msg)
 			res = _ws_txt_to_mac(infos[i].string, edata->go_dev_addr);
 			if (res < 0)
 				memset(edata->go_dev_addr, 0x00, OEM_MACADDR_LEN);
+			break;
+		case WS_GROUP_INFO_PERSISTENT:
+			edata->is_persistent = TRUE;
+			WDP_LOGD("Is Persistent : [%s]", group->is_persistent?"YES":"NO");
 			break;
 #ifdef TIZEN_FEATURE_IP_OVER_EAPOL
 		case WS_GROUP_INFO_IP_ADDR:

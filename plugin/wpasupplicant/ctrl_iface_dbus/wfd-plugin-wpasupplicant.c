@@ -922,6 +922,10 @@ void __ws_extract_group_details(const char *key, GVariant *value, void *user_dat
 			event->dev_role = WFD_OEM_DEV_ROLE_GO;
 		else if (!strncmp(role, "client", 6))
 			event->dev_role = WFD_OEM_DEV_ROLE_GC;
+	} else if (g_strcmp0(key, "persistent") == 0) {
+		g_variant_get(value, "b", &group->is_persistent);
+		WDP_LOGD("Is Persistent : [%s]", group->is_persistent?"YES":"NO");
+
 #ifdef TIZEN_FEATURE_IP_OVER_EAPOL
 	} else if (g_strcmp0(key, "IpAddr") == 0) {
 
