@@ -4,14 +4,14 @@ PROGRAM="@SBIN_DIR@/wpa_supplicant"
 
 start()
 {
-	HARDWARE_MODEL=`/bin/grep Hardware /proc/cpuinfo | /bin/awk "{print \\$3}"`
-	/bin/echo "Hardware Model=${HARDWARE_MODEL}"
+	HARDWARE_MODEL=`@BIN_DIR@/grep Hardware /proc/cpuinfo | @BIN_DIR@/awk "{print \\$3}"`
+	@BIN_DIR@/echo "Hardware Model=${HARDWARE_MODEL}"
 
 	if [ -e @TZ_SYS_ETC@/p2p_supp.conf ]; then
 		echo "File exist: @TZ_SYS_ETC@/p2p_supp.conf"
 	else
 		echo "File not exist. Reinstall: @TZ_SYS_ETC@/p2p_supp.conf"
-		 /bin/cp @TZ_SYS_RO_ETC@/wifi-direct/p2p_supp.conf @TZ_SYS_ETC@/
+		@BIN_DIR@/cp @TZ_SYS_RO_ETC@/wifi-direct/p2p_supp.conf @TZ_SYS_ETC@/
 	fi
 	## For Hawk-P Platform, Hardware model is Samsung
 	if [ $HARDWARE_MODEL = "Samsung" ];then
@@ -27,7 +27,7 @@ start_p2p0()
 		echo "File exist: @TZ_SYS_ETC@/p2p_supp.conf"
 	else
 		echo "File not exist. Reinstall: @TZ_SYS_ETC@/p2p_supp.conf"
-		 /bin/cp @TZ_SYS_RO_ETC@/wifi-direct/p2p_supp.conf @TZ_SYS_ETC@/
+		 @BIN_DIR@/cp @TZ_SYS_RO_ETC@/wifi-direct/p2p_supp.conf @TZ_SYS_ETC@/
 	fi
 	@SBIN_DIR@/wpa_supplicant -t -B -ddd -Dnl80211 -ip2p0 -c@TZ_SYS_ETC@/p2p_supp.conf -f/var/log/wpa_supplicant.log
 }
@@ -35,14 +35,14 @@ start_p2p0()
 start_dbus()
 {
 	program=${PROGRAM}
-	run=`/bin/ps -eo comm|/bin/grep ${program}`
+	run=`@BIN_DIR@/ps -eo comm| @BIN_DIR@/grep ${program}`
 	if [ "X${run}" == "X" ]; then
 		echo "${program} is not running"
 		if [ -e @TZ_SYS_ETC@/p2p_supp.conf ]; then
 			echo "File exist: @TZ_SYS_ETC@/p2p_supp.conf"
 		else
 			echo "File not exist. Reinstall: @TZ_SYS_ETC@/p2p_supp.conf"
-			 /bin/cp @TZ_SYS_RO_ETC@/wifi-direct/p2p_supp.conf @TZ_SYS_ETC@/
+			 @BIN_DIR@/cp @TZ_SYS_RO_ETC@/wifi-direct/p2p_supp.conf @TZ_SYS_ETC@/
 		fi
 		@SBIN_DIR@/wpa_supplicant -t -B -u -ddd -K -f/var/log/wpa_supplicant.log
 	else
