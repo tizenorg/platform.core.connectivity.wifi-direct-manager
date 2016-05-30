@@ -3285,111 +3285,99 @@ gboolean _ws_util_execute_file(const char *file_path,
 }
 
 #ifndef TIZEN_WIFI_MODULE_BUNDLE
+gboolean _ws_util_interface_up(const char *ifname)
+{
+	int fd;
+	struct ifreq ifr;
+
+	fd = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+	if (fd < 0)
+		return FALSE;
+
+	memset(&ifr, 0, sizeof(ifr));
+	g_strlcpy((char *)ifr.ifr_name, ifname, sizeof(ifr.ifr_name));
+
+	if (ioctl(fd, SIOCGIFFLAGS, &ifr) < 0) {
+		close(fd);
+		return FALSE;
+	}
+
+	ifr.ifr_flags |= (IFF_UP | IFF_DYNAMIC);
+	if (ioctl(fd, SIOCSIFFLAGS, &ifr) < 0) {
+		close(fd);
+		return FALSE;
+	}
+
+	close(fd);
+
+	WDP_LOGI("Successfully activated [%s] interface", ifname);
+	return TRUE;
+}
+
+gboolean _ws_util_interface_down(const char *ifname)
+{
+	int fd;
+	struct ifreq ifr;
+
+	fd = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+	if (fd < 0)
+		return FALSE;
+
+	memset(&ifr, 0, sizeof(ifr));
+	g_strlcpy((char *)ifr.ifr_name, ifname, sizeof(ifr.ifr_name));
+
+	if (ioctl(fd, SIOCGIFFLAGS, &ifr) < 0) {
+		close(fd);
+		return FALSE;
+	}
+
+	ifr.ifr_flags = (ifr.ifr_flags & ~IFF_UP) | IFF_DYNAMIC;
+	if (ioctl(fd, SIOCSIFFLAGS, &ifr) < 0) {
+		close(fd);
+		return FALSE;
+	}
+
+	close(fd);
+
+	WDP_LOGI("Successfully de-activated [%s] interface", ifname);
+	return TRUE;
+}
+
 static int __ws_p2p_firmware_start(void)
 {
-	GError *error = NULL;
-	GVariant *reply = NULL;
-	GVariant *param = NULL;
-	GDBusConnection *connection = NULL;
-	const char *device = "p2p";
+	gboolean rv = FALSE;
+	const char *path = "/usr/bin/wlan.sh";
+	char *const args[] = { "/usr/bin/wlan.sh", "p2p", NULL };
+	char *const envs[] = { NULL };
 
-	connection = g_bus_get_sync(G_BUS_TYPE_SYSTEM, NULL, &error);
-	if (connection == NULL) {
-		if(error != NULL){
-			WDP_LOGE("Error! Failed to connect to the D-BUS daemon: [%s]",
-					error->message);
-			g_error_free(error);
-		}
-		__WDP_LOG_FUNC_EXIT__;
+	rv = _ws_util_execute_file(path, args, envs);
+	if (rv != TRUE)
 		return -1;
-	}
-	param = g_variant_new("(s)", device);
 
-	reply = g_dbus_connection_call_sync (connection,
-			NETCONFIG_SERVICE, /* bus name */
-			NETCONFIG_WIFI_PATH, /* object path */
-			NETCONFIG_WIFI_INTERFACE ".Firmware", /* interface name */
-			"Start", /* method name */
-			param, /* GVariant *params */
-			NULL, /* reply_type */
-			G_DBUS_CALL_FLAGS_NONE, /* flags */
-			NETCONFIG_DBUS_REPLY_TIMEOUT , /* timeout */
-			NULL, /* cancellable */
-			&error); /* error */
+	rv = _ws_util_interface_up(COMMON_IFACE_NAME);
+	if (rv != TRUE)
+		return -1;
 
-	if(error != NULL){
-		if(strstr(error->message, ".AlreadyExists") != NULL) {
-			WDP_LOGD("p2p already enabled");
-			g_error_free(error);
-
-		} else {
-			WDP_LOGE("Error! Failed to call net-config method: [%s]",
-					error->message);
-			g_error_free(error);
-			if(reply)
-				 g_variant_unref(reply);
-			g_object_unref(connection);
-			__WDP_LOG_FUNC_EXIT__;
-			return -1;
-		}
-	}
-	if(reply)
-		 g_variant_unref(reply);
-	g_object_unref(connection);
+	WDP_LOGI("Successfully loaded p2p device driver");
 	return 0;
 }
 
 static int __ws_p2p_firmware_stop(void)
 {
-	GError *error = NULL;
-	GVariant *reply = NULL;
-	GVariant *param = NULL;
-	GDBusConnection *connection = NULL;
-	const char *device = "p2p";
+	gboolean rv = FALSE;
+	const char *path = "/usr/bin/wlan.sh";
+	char *const args[] = { "/usr/bin/wlan.sh", "stop", NULL };
+	char *const envs[] = { NULL };
 
-	connection = g_bus_get_sync(G_BUS_TYPE_SYSTEM, NULL, &error);
-	if (connection == NULL) {
-		if(error != NULL){
-			WDP_LOGE("Error! Failed to connect to the D-BUS daemon: [%s]",
-					error->message);
-			g_error_free(error);
-		}
-		__WDP_LOG_FUNC_EXIT__;
+	rv = _ws_util_interface_down(COMMON_IFACE_NAME);
+	if (rv != TRUE)
 		return -1;
-	}
-	param = g_variant_new("(s)", device);
 
-	reply = g_dbus_connection_call_sync (connection,
-			NETCONFIG_SERVICE, /* bus name */
-			NETCONFIG_WIFI_PATH, /* object path */
-			NETCONFIG_WIFI_INTERFACE ".Firmware", /* interface name */
-			"Stop", /* method name */
-			param, /* GVariant *params */
-			NULL, /* reply_type */
-			G_DBUS_CALL_FLAGS_NONE, /* flags */
-			NETCONFIG_DBUS_REPLY_TIMEOUT , /* timeout */
-			NULL, /* cancellable */
-			&error); /* error */
+	rv = _ws_util_execute_file(path, args, envs);
+	if (rv < 0)
+		return -1;
 
-	if(error != NULL){
-		if(strstr(error->message, ".AlreadyExists") != NULL) {
-			WDP_LOGD("p2p already disabled");
-			g_error_free(error);
-
-		} else {
-			WDP_LOGE("Error! Failed to call net-config method: [%s]",
-					error->message);
-			g_error_free(error);
-			if(reply)
-				 g_variant_unref(reply);
-			g_object_unref(connection);
-			__WDP_LOG_FUNC_EXIT__;
-			return -1;
-		}
-	}
-	if(reply)
-		 g_variant_unref(reply);
-	g_object_unref(connection);
+	WDP_LOGI("Successfully removed p2p device driver");
 	return 0;
 }
 #endif
