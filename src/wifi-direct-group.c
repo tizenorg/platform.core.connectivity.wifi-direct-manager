@@ -83,7 +83,6 @@ wfd_group_s *wfd_create_group(void *data, wfd_oem_event_s *group_info)
 	group->ifname[IFACE_NAME_LEN] = '\0';
 	group->role = group_info->dev_role;
 	memcpy(group->go_dev_addr, edata->go_dev_addr, MACADDR_LEN);
-	group->pending = 0;
 
 	g_strlcpy(group->ssid, edata->ssid, DEV_NAME_LEN + 1);
 	g_strlcpy(group->passphrase, edata->pass, PASSPHRASE_LEN_MAX + 1);
@@ -129,7 +128,7 @@ wfd_group_s *wfd_create_pending_group(void *data, unsigned char * bssid)
 	}
 
 	memcpy(group->bssid, bssid, MACADDR_LEN);
-	group->pending = 1;
+	group->flags &= WFD_GROUP_FLAG_NONE;
 
 	__WDS_LOG_FUNC_EXIT__;
 	return group;
@@ -159,11 +158,6 @@ int wfd_group_complete(void *data, wfd_oem_event_s *group_info)
 	group = manager->group;
 	if (!group) {
 		WDS_LOGE("Group not found");
-		return -1;
-	}
-
-	if (!group->pending) {
-		WDS_LOGE("This is not pending group");
 		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}
@@ -171,45 +165,58 @@ int wfd_group_complete(void *data, wfd_oem_event_s *group_info)
 	g_strlcpy(group->ifname, group_info->ifname, IFACE_NAME_LEN + 1);
 	group->role = group_info->dev_role;
 	memcpy(group->go_dev_addr, edata->go_dev_addr, MACADDR_LEN);
-	group->pending = 0;
 
 	g_strlcpy(group->ssid, edata->ssid, DEV_NAME_LEN + 1);
 	g_strlcpy(group->passphrase, edata->pass, PASSPHRASE_LEN_MAX + 1);
 	memset(manager->local->passphrase, 0x0, PASSPHRASE_LEN_MAX + 1);
 	group->freq = edata->freq;
+	if (edata->is_persistent)
+		group->flags |= WFD_GROUP_FLAG_PERSISTENT;
 
 	manager->local->dev_role = group_info->dev_role;
 
 	session = manager->session;
 	peer = wfd_session_get_peer(session);
 	if (!peer && !(group->flags & WFD_GROUP_FLAG_AUTONOMOUS)) {
-		WDS_LOGD("Failed to find peer by device address[" MACSECSTR "]",
-						MAC2SECSTR(edata->go_dev_addr));
-		return -1;
+		if (!session && (group->flags & WFD_GROUP_FLAG_PERSISTENT)) {
+			WDS_LOGE("Group created by supplicant is persistent group.");
+			/**
+			 * TODO: Add handling for Reinvoked Persistent Group.
+			 */
+			__WDS_LOG_FUNC_EXIT__;
+			return -1;
+		} else {
+			WDS_LOGD("Failed to find peer by device address[" MACSECSTR "]",
+							MAC2SECSTR(edata->go_dev_addr));
+			__WDS_LOG_FUNC_EXIT__;
+			return -1;
+		}
 	}
 
 	if (group->role == WFD_DEV_ROLE_GO) {
 		wfd_util_dhcps_start(group->ifname);
 		WDS_LOGD("Role is Group Owner. DHCP Server started");
 	} else {
-		if(!peer) {
+		if (!peer) {
 			WDS_LOGE("Peer is not in the session");
+			__WDS_LOG_FUNC_EXIT__;
 			return -1;
 		}
+
 		WDS_LOGD("Role is Group Client.complete session and add peer to member");
 		memcpy(peer->intf_addr, group->go_dev_addr, MACADDR_LEN);
 		wfd_group_add_member(group, peer->dev_addr);
 		session->state = SESSION_STATE_COMPLETED;
-		/* memcpy(peer->intf_addr, event->intf_addr, MACADDR_LEN); */
 		peer->state = WFD_PEER_STATE_CONNECTED;
 #ifdef TIZEN_FEATURE_IP_OVER_EAPOL
-		if(edata->ip_addr[3] && edata->ip_addr_go[3]) {
+		if (edata->ip_addr[3] && edata->ip_addr_go[3]) {
 			peer->ip_type = WFD_IP_TYPE_OVER_EAPOL;
 			memcpy(peer->client_ip_addr, edata->ip_addr, IPADDR_LEN);
 			WDS_LOGE("Peer's client IP [" IPSTR "]", IP2STR((char*) &peer->client_ip_addr));
 			memcpy(peer->go_ip_addr, edata->ip_addr_go, IPADDR_LEN);
 			WDS_LOGE("Peer's GO IP [" IPSTR "]", IP2STR((char*) &peer->go_ip_addr));
 		}
+
 		if(peer->ip_type != WFD_IP_TYPE_OVER_EAPOL)
 #endif /* TIZEN_FEATURE_IP_OVER_EAPOL */
 		wfd_util_dhcpc_start(group->ifname, peer);
@@ -430,16 +437,16 @@ int wfd_group_remove_member(wfd_group_s *group, unsigned char *addr)
 	g_free(member);
 	group->member_count--;
 
-	if (manager->local->dev_role == WFD_DEV_ROLE_GC) {
-		wfd_oem_destroy_group(manager->oem_ops, group->ifname);
-
-	} else if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
-
-		if (wfd_util_is_remove_group_allowed())
+	if (group->role == WFD_DEV_ROLE_GO) {
+		if (!group->member_count && wfd_util_is_remove_group_allowed()) {
 			wfd_oem_destroy_group(manager->oem_ops, group->ifname);
-
+			wfd_destroy_group(manager, group->ifname);
+			wfd_peer_clear_all(manager);
+		}
 	} else {
-		;//Do Nothing
+		wfd_oem_destroy_group(manager->oem_ops, group->ifname);
+		wfd_destroy_group(manager, group->ifname);
+		wfd_peer_clear_all(manager);
 	}
 
 	__WDS_LOG_FUNC_EXIT__;
