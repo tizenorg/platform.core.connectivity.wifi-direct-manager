@@ -743,53 +743,21 @@ static void __wfd_process_group_created(wfd_manager_s *manager, wfd_oem_event_s 
 {
 	__WDS_LOG_FUNC_ENTER__;
 
-	wfd_group_s *group = NULL;
-	wfd_session_s *session = NULL;
+	wfd_group_s *group = (wfd_group_s*) manager->group;
+	wfd_session_s *session = (wfd_session_s*) manager->session;
 
-	group = (wfd_group_s*) manager->group;
-	session = (wfd_session_s*)manager->session;
-#ifdef CTRL_IFACE_DBUS
-	if(event->dev_role == WFD_DEV_ROLE_GC && !group) {
-
+	if (!group) {
 		group = wfd_create_pending_group(manager, event->intf_addr);
 		if (!group) {
 			WDS_LOGE("Failed to create pending group");
 			__WDS_LOG_FUNC_EXIT__;
 			return;
 		}
+
 		manager->group = group;
 	}
-#endif /* CTRL_IFACE_DBUS */
-	if (!group) {
-		if (!session) {
-			WDS_LOGE("Unexpected Event. Group should be removed(Client)");
-			wfd_oem_destroy_group(manager->oem_ops, event->ifname);
-			__WDS_LOG_FUNC_EXIT__;
-			return;
-		}
 
-		group = wfd_create_group(manager, event);
-		if (!group) {
-			WDS_LOGE("Failed to create group");
-			__WDS_LOG_FUNC_EXIT__;
-			return;
-		}
-	} else {
-		if (!session && !(group->flags & WFD_GROUP_FLAG_AUTONOMOUS)) {
-			WDS_LOGE("Unexpected Event. Group should be removed(Owner)");
-			wfd_oem_destroy_group(manager->oem_ops, group->ifname);
-			__WDS_LOG_FUNC_EXIT__;
-			return;
-		}
-
-		if (group->pending) {
-			wfd_group_complete(manager, event);
-		} else {
-			WDS_LOGE("Unexpected event. Group already exist");
-			__WDS_LOG_FUNC_EXIT__;
-			return;
-		}
-	}
+	wfd_group_complete(manager, event);
 
 	if (group->role == WFD_DEV_ROLE_GC && session) {
 #ifdef TIZEN_FEATURE_IP_OVER_EAPOL
@@ -967,6 +935,30 @@ static void __wfd_process_sta_connected(wfd_manager_s *manager, wfd_oem_event_s 
 
 	if (ISZEROMACADDR(event->dev_addr)) {
 		WDS_LOGD("Legacy Peer Connected [Peer: " MACSTR "]", MAC2STR(event->intf_addr));
+
+		peer = wfd_peer_find_by_dev_addr(manager, event->intf_addr);
+		if (!peer) {
+			WDS_LOGI("Add legacy peer");
+			peer = wfd_add_peer(manager, event->intf_addr, "LEGACY-PEER");
+			if (!peer) {
+				WDS_LOGE("Failed to add Legacy peer.");
+				__WDS_LOG_FUNC_EXIT__;
+				return;
+			}
+		}
+
+		memcpy(peer->intf_addr, event->intf_addr, MACADDR_LEN);
+		peer->state = WFD_PEER_STATE_CONNECTED;
+		wfd_group_add_member(group, peer->dev_addr);
+
+		g_snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(peer->dev_addr));
+		wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+					     "Connection",
+					     g_variant_new("(iis)", WIFI_DIRECT_ERROR_NONE,
+								    WFD_EVENT_CONNECTION_RSP,
+								    peer_mac_address));
+
+		wfd_util_dhcps_wait_ip_leased(peer);
 		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
@@ -1068,6 +1060,22 @@ static void __wfd_process_sta_disconnected(wfd_manager_s *manager, wfd_oem_event
 
 	if (ISZEROMACADDR(event->dev_addr)) {
 		WDS_LOGD("Legacy Peer Disconnected [Peer: " MACSTR "]", MAC2STR(event->intf_addr));
+		g_snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(event->intf_addr));
+		wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+					     "Disconnection",
+					     g_variant_new("(iis)", WIFI_DIRECT_ERROR_NONE,
+								    WFD_EVENT_DISCONNECTION_IND,
+								    peer_mac_address));
+
+		wfd_group_remove_member(group, event->intf_addr);
+
+		if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
+			wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
+			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
+		} else {
+			wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
+			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
+		}
 		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
