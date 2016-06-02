@@ -46,9 +46,9 @@ typedef struct {
 	char ssid[DEV_NAME_LEN+1];
 	unsigned char bssid[MACADDR_LEN];
 	unsigned char go_dev_addr[MACADDR_LEN];
-	int flags;		// Autonomous, Persistent
-	int role;		// local device role
-	int freq;		// MHz
+	int flags;	/* Autonomous, Persistent */
+	int role;		/* local device role */
+	int freq;		/* MHz */
 	GList *members;
 	int member_count;
 	char passphrase[PASSPHRASE_LEN_MAX + 1];

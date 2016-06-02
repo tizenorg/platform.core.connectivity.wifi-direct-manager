@@ -202,19 +202,19 @@ typedef enum {
 	WS_EVENT_FIND_STOPED,
 	WS_EVENT_PROV_DISC_PBC_REQ,
 	WS_EVENT_PROV_DISC_SHOW_PIN,
-	WS_EVENT_PROV_DISC_ENTER_PIN,	// 5
+	WS_EVENT_PROV_DISC_ENTER_PIN,	/* 5 */
 	WS_EVENT_PROV_DISC_PBC_RESP,
 	WS_EVENT_PROV_DISC_FAILURE,
 
 	WS_EVENT_GO_NEG_REQUEST,
 	WS_EVENT_GO_NEG_FAILURE,
-	WS_EVENT_GO_NEG_SUCCESS,	// 10
+	WS_EVENT_GO_NEG_SUCCESS,	/* 10*/
 
 	WS_EVENT_WPS_FAIL,
 	WS_EVENT_GROUP_FORMATION_FAILURE,
 	WS_EVENT_WPS_SUCCESS,
 	WS_EVENT_WPS_REG_SUCCESS,
-	WS_EVENT_GROUP_FORMATION_SUCCESS,	// 15
+	WS_EVENT_GROUP_FORMATION_SUCCESS,	/* 15*/
 
 	WS_EVENT_STA_CONNECTED,
 
@@ -223,10 +223,10 @@ typedef enum {
 
 	WS_EVENT_STA_DISCONNECTED,
 
-	WS_EVENT_GROUP_STARTED,
+	WS_EVENT_GROUP_STARTED,	/* 20 */
 	WS_EVENT_GROUP_REMOVED,
 
-	WS_EVENT_TERMINATING,	// 24
+	WS_EVENT_TERMINATING,
 
 #ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
 	WS_EVENT_SERV_DISC_RESP,
@@ -238,15 +238,15 @@ typedef enum {
 typedef enum {
 	WS_DEV_INFO_NONE = -1,
 
-	WS_DEV_INFO_P2P_DEV_ADDR,	// p2p_dev_addr=
-	WS_DEV_INFO_DEV_NAME,	// name=
-	WS_DEV_INFO_DEV_TYPE,	// pri_dev_type=
-	WS_DEV_INFO_CONFIG_METHODS,	// config_methods=
-	WS_DEV_INFO_DEV_CAP,	// dev_capab=
-	WS_DEV_INFO_GROUP_CAP,	// group_capab=
-	WS_DEV_INFO_P2P_GO_ADDR,	// p2p_go_addr=
+	WS_DEV_INFO_P2P_DEV_ADDR,	/* p2p_dev_addr= */
+	WS_DEV_INFO_DEV_NAME,	/* name= */
+	WS_DEV_INFO_DEV_TYPE,	/* pri_dev_type= */
+	WS_DEV_INFO_CONFIG_METHODS,	/* config_methods= */
+	WS_DEV_INFO_DEV_CAP,	/* dev_capab= */
+	WS_DEV_INFO_GROUP_CAP,	/* group_capab= */
+	WS_DEV_INFO_P2P_GO_ADDR,	/* p2p_go_addr= */
 #ifdef TIZEN_FEATURE_WIFI_DISPLAY
-	WS_DEV_INFO_WFD_DEV_INFO, 	// wfd_dev_info=
+	WS_DEV_INFO_WFD_DEV_INFO,	/* wfd_dev_info= */
 #endif
 	WS_DEV_INFO_LIMIT,
 } ws_dev_info_id_e;
@@ -254,9 +254,9 @@ typedef enum {
 typedef enum {
 	WS_CONN_INFO_NONE = -1,
 
-	WS_CONN_INFO_DEV_PWD_ID, // dev_passwd_id=
-	WS_CONN_INFO_STATUS,		// status=
-	WS_CONN_INFO_ERROR,		// config_error=
+	WS_CONN_INFO_DEV_PWD_ID, /* dev_passwd_id= */
+	WS_CONN_INFO_STATUS,		/* status= */
+	WS_CONN_INFO_ERROR,		/* config_error= */
 
 	WS_CONN_INFO_LIMIT,
 } ws_conn_info_id_e;
@@ -264,13 +264,13 @@ typedef enum {
 typedef enum {
 	WS_INVITE_INFO_NONE = -1,
 
-	WS_INVITE_INFO_SRC_ADDR,	// sa=
-	WS_INVITE_INFO_GO_DEV_ADDR,	// go_dev_addr=
-	WS_INVITE_INFO_BSSID,		// bssid=
-	WS_INVITE_INFO_LISTEN,	// listen=
-	WS_INVITE_INFO_FREQ,			// op_freq=
-	WS_INVITE_INFO_PERSISTENT_ID, // persistent_id=
-	WS_INVITE_INFO_STATUS,	// status=
+	WS_INVITE_INFO_SRC_ADDR,	/* sa= */
+	WS_INVITE_INFO_GO_DEV_ADDR,	/* go_dev_addr= */
+	WS_INVITE_INFO_BSSID,		/* bssid= */
+	WS_INVITE_INFO_LISTEN,	/* listen= */
+	WS_INVITE_INFO_FREQ,			/* op_freq= */
+	WS_INVITE_INFO_PERSISTENT_ID, /* persistent_id= */
+	WS_INVITE_INFO_STATUS,	/* status= */
 
 	WS_INVITE_INFO_LIMIT,
 } ws_invite_info_id_e;
@@ -278,22 +278,21 @@ typedef enum {
 typedef enum {
 	WS_GROUP_INFO_NONE = -1,
 
-	WS_GROUP_INFO_SSID,	// ssid=
-	WS_GROUP_INFO_FREQ,	// freq=
-	WS_GROUP_INFO_PASS,	// passphrase=
-	WS_GROUP_INFO_GO_DEV_ADDR,	// go_dev_addr=
-	WS_GROUP_INFO_STATUS,		// status=
-	WS_GROUP_INFO_PERSISTENT,	// [PERSISTENT]
+	WS_GROUP_INFO_SSID,	/* ssid= */
+	WS_GROUP_INFO_FREQ,	/* freq= */
+	WS_GROUP_INFO_PASS,	/* passphrase= */
+	WS_GROUP_INFO_GO_DEV_ADDR,	/* go_dev_addr= */
+	WS_GROUP_INFO_STATUS,		/* status= */
+	WS_GROUP_INFO_PERSISTENT,	/* [PERSISTENT] */
 #ifdef TIZEN_FEATURE_IP_OVER_EAPOL
-	WS_GROUP_INFO_IP_ADDR,	//ip_addr=
-	WS_GROUP_INFO_IP_MASK,	//ip_mask=
-	WS_GROUP_INFO_GO_IP_ADDR, //go_ip_addr=
+	WS_GROUP_INFO_IP_ADDR,	/* ip_addr= */
+	WS_GROUP_INFO_IP_MASK,	/* ip_mask= */
+	WS_GROUP_INFO_GO_IP_ADDR, /* go_ip_addr= */
 #endif /* TIZEN_FEATURE_IP_OVER_EAPOL */
 	WS_GROUP_INFO_LIMIT,
 } ws_group_info_id_e;
 
-enum
-{
+enum {
 	WS_PEER_INFO_NONE = -1,
 
 	WS_PEER_INFO_AGE,
@@ -439,7 +438,7 @@ typedef enum {
 	 * obtained from the Registrar (via a display or other out-of-band
 	 * method). This value may be further augmented with the optional
 	 * "Identity" attribute in M1. */
-	WS_DEV_PASSWD_ID_REGISTRAR_SPECIFIED = 0x0005,	// ENTER-PIN
+	WS_DEV_PASSWD_ID_REGISTRAR_SPECIFIED = 0x0005,	/* ENTER-PIN */
 } ws_dev_passwd_id_e;
 
 typedef enum {
@@ -515,7 +514,7 @@ typedef struct {
 } ws_sock_data_s;
 
 typedef struct {
-	int initialized;	// check whether plugin is initialized or not. block init function if initialized
+	int initialized;	/* check whether plugin is initialized or not. block init function if initialized */
 	int activated;
 	int concurrent;
 	int global_sock;

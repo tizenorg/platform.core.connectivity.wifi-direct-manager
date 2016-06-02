@@ -64,7 +64,7 @@ static int macaddr_atoe(const char *p, unsigned char mac[])
 	return (i == 6);
 }
 
-// introspection xml to register interfaces
+/* introspection xml to register interfaces */
 const gchar wfd_manager_introspection_xml[] = {
 	"<node name='/net/wifidirect'>"
 		"<interface name='net.wifidirect'>"
@@ -806,7 +806,8 @@ static void __wfd_manager_manage_iface_handler(const gchar *method_name,
 
 		builder_peers = g_variant_builder_new(G_VARIANT_TYPE("aa{sv}"));
 
-		// even though status is not CONNECTED, this command can be excuted only when group exist
+		/* even though status is not CONNECTED,
+		 * this command can be excuted only when group exist */
 		if (!manager->group && manager->state < WIFI_DIRECT_STATE_CONNECTED) {
 			WDS_LOGD("It's not connected state [%d]", manager->state);
 			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
@@ -967,7 +968,8 @@ done:
 
 failed:
 
-//g_dbus_method_invocation_return_dbus_error(invocation, WFD_MANAGER_SERVICE ".Error", ".OperationFailed");
+/*g_dbus_method_invocation_return_dbus_error
+ * (invocation, WFD_MANAGER_SERVICE ".Error", ".OperationFailed"); */
 
 	wfd_error_set_gerror(ret, &err);
 	dbus_error_name = g_dbus_error_encode_gerror(err);
@@ -1364,7 +1366,7 @@ static void __wfd_manager_config_iface_handler(const gchar *method_name,
 
 		g_variant_get(parameters, "(i)", &type);
 		ret = wfd_manager_set_req_wps_mode(type);
-		if(ret < 0) {
+		if (ret < 0) {
 			WDS_LOGE("Failed to set request wps mode");
 			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 			goto failed;
@@ -1441,7 +1443,7 @@ static void __wfd_manager_config_iface_handler(const gchar *method_name,
 
 		g_variant_get(parameters, "(i)", &go_intent);
 		ret = wfd_manager_set_go_intent(go_intent);
-		if(ret < 0) {
+		if (ret < 0) {
 			WDS_LOGE("Failed to set GO intent");
 			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 			goto failed;
@@ -1470,7 +1472,7 @@ static void __wfd_manager_config_iface_handler(const gchar *method_name,
 		g_variant_get(parameters, "(i)", &max_client);
 
 		ret = wfd_manager_set_max_station(max_client);
-		if(ret < 0) {
+		if (ret < 0) {
 			WDS_LOGE("Failed to set max station");
 			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 			goto failed;
@@ -1485,7 +1487,7 @@ static void __wfd_manager_config_iface_handler(const gchar *method_name,
 
 		g_variant_get(parameters, "(b)", &mode);
 		ret = wfd_manager_set_autoconnection(mode);
-		if(ret < 0) {
+		if (ret < 0) {
 			WDS_LOGE("Failed to set autoconnection");
 			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 			goto failed;
@@ -1854,7 +1856,7 @@ static void __wfd_manager_display_iface_handler(const gchar *method_name,
 		WDS_LOGD("type %d port %d hdcp %d", type, port, hdcp);
 
 		ret = wfd_manager_set_display_device(type, port, hdcp);
-		if(ret < 0) {
+		if (ret < 0) {
 			WDS_LOGE("Failed to set display device settings");
 			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 			goto failed;
@@ -1868,7 +1870,7 @@ static void __wfd_manager_display_iface_handler(const gchar *method_name,
 		int availability;
 		g_variant_get(parameters, "(i)", &availability);
 
-		if(manager->state < WIFI_DIRECT_STATE_ACTIVATED) {
+		if (manager->state < WIFI_DIRECT_STATE_ACTIVATED) {
 			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
 			goto failed;
 		}
@@ -1892,13 +1894,13 @@ static void __wfd_manager_display_iface_handler(const gchar *method_name,
 		g_variant_get(parameters, "(&s)", &mac_address);
 		macaddr_atoe(mac_address, mac_addr);
 
-		if(manager->state < WIFI_DIRECT_STATE_ACTIVATED) {
+		if (manager->state < WIFI_DIRECT_STATE_ACTIVATED) {
 			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
 			goto failed;
 		}
 
 		peer = wfd_manager_get_peer_by_addr(manager, mac_addr);
-		if(!peer) {
+		if (!peer) {
 			WDS_LOGE("Failed to get peer");
 			ret = WIFI_DIRECT_ERROR_INVALID_PARAMETER;
 			goto failed;
@@ -1916,13 +1918,13 @@ static void __wfd_manager_display_iface_handler(const gchar *method_name,
 		g_variant_get(parameters, "(&s)", &mac_address);
 		macaddr_atoe(mac_address, mac_addr);
 
-		if(manager->state < WIFI_DIRECT_STATE_ACTIVATED) {
+		if (manager->state < WIFI_DIRECT_STATE_ACTIVATED) {
 			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
 			goto failed;
 		}
 
 		peer = wfd_manager_get_peer_by_addr(manager, mac_addr);
-		if(!peer) {
+		if (!peer) {
 			WDS_LOGE("Failed to get peer");
 			ret = WIFI_DIRECT_ERROR_INVALID_PARAMETER;
 			goto failed;
@@ -1940,13 +1942,13 @@ static void __wfd_manager_display_iface_handler(const gchar *method_name,
 		g_variant_get(parameters, "(&s)", &mac_address);
 		macaddr_atoe(mac_address, mac_addr);
 
-		if(manager->state < WIFI_DIRECT_STATE_ACTIVATED) {
+		if (manager->state < WIFI_DIRECT_STATE_ACTIVATED) {
 			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
 			goto failed;
 		}
 
 		peer = wfd_manager_get_peer_by_addr(manager, mac_addr);
-		if(!peer) {
+		if (!peer) {
 			WDS_LOGE("Failed to get peer");
 			ret = WIFI_DIRECT_ERROR_INVALID_PARAMETER;
 			goto failed;
@@ -1964,13 +1966,13 @@ static void __wfd_manager_display_iface_handler(const gchar *method_name,
 		g_variant_get(parameters, "(&s)", &mac_address);
 		macaddr_atoe(mac_address, mac_addr);
 
-		if(manager->state < WIFI_DIRECT_STATE_ACTIVATED) {
+		if (manager->state < WIFI_DIRECT_STATE_ACTIVATED) {
 			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
 			goto failed;
 		}
 
 		peer = wfd_manager_get_peer_by_addr(manager, mac_addr);
-		if(!peer) {
+		if (!peer) {
 			WDS_LOGE("Failed to get peer");
 			ret = WIFI_DIRECT_ERROR_INVALID_PARAMETER;
 			goto failed;
@@ -1988,13 +1990,13 @@ static void __wfd_manager_display_iface_handler(const gchar *method_name,
 		g_variant_get(parameters, "(&s)", &mac_address);
 		macaddr_atoe(mac_address, mac_addr);
 
-		if(manager->state < WIFI_DIRECT_STATE_ACTIVATED) {
+		if (manager->state < WIFI_DIRECT_STATE_ACTIVATED) {
 			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
 			goto failed;
 		}
 
 		peer = wfd_manager_get_peer_by_addr(manager, mac_addr);
-		if(!peer) {
+		if (!peer) {
 			WDS_LOGE("Failed to get peer");
 			ret = WIFI_DIRECT_ERROR_INVALID_PARAMETER;
 			goto failed;
@@ -2224,9 +2226,9 @@ failed:
 static struct {
 	guint reg_id;
 	const gchar *iface_name;
-        void (*function) (const gchar *method_name,
-			 GVariant    *parameters,
-			 GDBusMethodInvocation *invocation);
+	void (*function) (const gchar *method_name,
+			GVariant    *parameters,
+			GDBusMethodInvocation *invocation);
 } wfd_manager_iface_map[] = {
 	{
 		0,
@@ -2271,7 +2273,7 @@ static struct {
 	}
 };
 
-// GDBus method handler
+/* GDBus method handler */
 static void wfd_manager_method_call_handler (GDBusConnection       *connection,
 					     const gchar           *sender,
 					     const gchar           *object_path,
@@ -2299,8 +2301,8 @@ static void wfd_manager_method_call_handler (GDBusConnection       *connection,
 	}
 }
 
-static const GDBusInterfaceVTable wfd_manager_interface_vtable =
-				{wfd_manager_method_call_handler, NULL, NULL};
+static const GDBusInterfaceVTable wfd_manager_interface_vtable = {
+		wfd_manager_method_call_handler, NULL, NULL};
 
 void wfd_manager_dbus_unregister(void)
 {
