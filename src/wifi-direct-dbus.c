@@ -31,7 +31,7 @@
 #include "wifi-direct-log.h"
 
 static GDBusConnection *g_connection = NULL;
-static guint g_owner_id = 0;  //Name Owner ID
+static guint g_owner_id = 0;  /* Name Owner ID */
 
 static GDBusConnection *__dbus_get_gdbus_conn(void)
 {
@@ -114,8 +114,8 @@ gboolean wfd_manager_dbus_iface_unregister(guint reg_id)
 		return FALSE;
 	}
 
-	if(reg_id > 0) {
-		if(g_dbus_connection_unregister_object (connection, reg_id) == FALSE)
+	if (reg_id > 0) {
+		if (g_dbus_connection_unregister_object(connection, reg_id) == FALSE)
 			WDS_LOGE("netconfig network migration unregister object");
 	}
 	return TRUE;
@@ -131,7 +131,7 @@ gboolean wfd_manager_dbus_init(void)
 	}
 
 	g_connection = g_bus_get_sync(G_BUS_TYPE_SYSTEM, NULL, &Error);
-	if(g_connection == NULL) {
+	if (g_connection == NULL) {
 		WDS_LOGE("Failed to get connection, Error[%s]", Error->message);
 		g_error_free(Error);
 		return FALSE;
@@ -210,11 +210,11 @@ GVariant* wfd_manager_dbus_pack_ay(const unsigned char *src, int size)
 
 	builder = g_variant_builder_new(G_VARIANT_TYPE("ay"));
 
-	for(i = 0; i < size; i++)
+	for (i = 0; i < size; i++)
 		g_variant_builder_add(builder, "y", src[i]);
 
 	iter = g_variant_new("ay", builder);
 
-	g_variant_builder_unref (builder);
+	g_variant_builder_unref(builder);
 	return iter;
 }

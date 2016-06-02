@@ -84,8 +84,9 @@ static void wfd_error_too_many_client(GError **error)
 			*/
 }
 
-void wfd_error_set_gerror(wifi_direct_error_e error_code, GError **error) {
-	switch(error_code) {
+void wfd_error_set_gerror(wifi_direct_error_e error_code, GError **error)
+{
+	switch (error_code) {
 	case WIFI_DIRECT_ERROR_INVALID_PARAMETER:
 		wfd_error_invalid_parameter(error);
 		break;

@@ -177,7 +177,7 @@ typedef struct {
 	int max_station;
 	int autoconnection;
 	unsigned char autoconnection_peer[MACADDR_LEN];
-	char auto_pin[PINSTR_LEN+1];	// for NFC Printer
+	char auto_pin[PINSTR_LEN+1];	/* for NFC Printer */
 	int scan_mode;
 
 	GList *peers;
