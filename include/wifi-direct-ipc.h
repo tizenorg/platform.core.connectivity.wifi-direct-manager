@@ -186,8 +186,7 @@ typedef enum {
 /**
  * Wi-Fi Direct configuration data structure for IPC
  */
-typedef struct
-{
+typedef struct {
 	char device_name[WIFI_DIRECT_MAX_DEVICE_NAME_LEN + 1];
 	int channel;
 	wfd_wps_type_e wps_config;
@@ -205,8 +204,7 @@ typedef struct
 /**
  * Wi-Fi Direct buffer structure to store result of peer discovery for IPC
  */
-typedef struct
-{
+typedef struct {
 	char device_name[WIFI_DIRECT_MAX_DEVICE_NAME_LEN + 1];
 	unsigned char mac_address[6];
 	unsigned char intf_address[6];
@@ -226,8 +224,7 @@ typedef struct
 /**
  * Wi-Fi Direct buffer structure to store information of connected peer
  */
-typedef struct
-{
+typedef struct {
 	char device_name[WIFI_DIRECT_MAX_DEVICE_NAME_LEN + 1];
 	unsigned char ip_address[4];
 	unsigned char mac_address[6];
@@ -241,8 +238,7 @@ typedef struct
 } wfd_connected_peer_info_s;
 
 
-typedef struct
-{
+typedef struct {
 	int network_id;
 	char ssid[WIFI_DIRECT_MAX_SSID_LEN + 1];
 	unsigned char go_mac_address[6];

@@ -12,9 +12,8 @@ int dbus_set_method_param(dbus_method_param_s *params, char *method_name,
 {
 	__WDP_LOG_FUNC_ENTER__;
 
-	if(params == NULL || connection == NULL || object_path == NULL ||
-		 method_name == NULL)
-	{
+	if (params == NULL || connection == NULL || object_path == NULL ||
+		 method_name == NULL) {
 		WDP_LOGE("Invalid Arguments!");
 		return -1;
 	}
@@ -34,7 +33,7 @@ int dbus_method_call(dbus_method_param_s *params, char *interface_name,
 	GVariant *reply = NULL;
 	GError *error = NULL;
 
-	if(!params || !params->connection) {
+	if (!params || !params->connection) {
 		WDP_LOGE("Invalid parameters");
 		__WDP_LOG_FUNC_EXIT__;
 		return -1;
@@ -42,7 +41,7 @@ int dbus_method_call(dbus_method_param_s *params, char *interface_name,
 
 	WDP_LOGD("method [%s]", params->method_name);
 
-	reply = g_dbus_connection_call_sync (
+	reply = g_dbus_connection_call_sync(
 			params->connection,
 			SUPPLICANT_SERVICE, /* bus name */
 			params->object_path, /* object path */
@@ -55,21 +54,21 @@ int dbus_method_call(dbus_method_param_s *params, char *interface_name,
 			NULL, /* cancellable */
 			&error); /* error */
 
-	if(error != NULL) {
-		WDP_LOGE("Error! Failed to call method: [%s]",error->message);
+	if (error != NULL) {
+		WDP_LOGE("Error! Failed to call method: [%s]", error->message);
 		g_error_free(error);
-		if(reply)
+		if (reply)
 			g_variant_unref(reply);
 		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
-	if(reply != NULL) {
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+	if (reply != NULL) {
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 		DEBUG_PARAMS(reply);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
-		if(function)
+		if (function)
 			function(reply, user_data);
 		g_variant_unref(reply);
 	} else {
@@ -88,7 +87,7 @@ void dbus_property_foreach(GVariantIter *iter,
 	gchar *key = NULL;
 	GVariant *value = NULL;
 
-	while(g_variant_iter_loop(iter, "{sv}", &key, &value)) {
+	while (g_variant_iter_loop(iter, "{sv}", &key, &value)) {
 
 		if (key) {
 			if (strcmp(key, "Properties") == 0) {
@@ -104,7 +103,7 @@ void dbus_property_foreach(GVariantIter *iter,
 			}
 		}
 	}
-	if(function)
+	if (function)
 		function(NULL, NULL, user_data);
 	__WDP_LOG_FUNC_EXIT__;
 	return;
@@ -131,11 +130,11 @@ int dbus_property_get_all(const char *path, GDBusConnection *connection,
 	}
 
 	param = g_variant_new("(s)", interface);
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	DEBUG_PARAMS(param);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
-	reply = g_dbus_connection_call_sync (
+	reply = g_dbus_connection_call_sync(
 			connection,
 			SUPPLICANT_SERVICE, /* bus name */
 			path, /* object path */
@@ -148,24 +147,24 @@ int dbus_property_get_all(const char *path, GDBusConnection *connection,
 			NULL, /* cancellable */
 			&error); /* error */
 
-	if(error != NULL) {
+	if (error != NULL) {
 		WDP_LOGE("Error! Failed to get properties: [%s]",	error->message);
 		g_error_free(error);
 		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
 
-	if(reply != NULL) {
+	if (reply != NULL) {
 		g_variant_get(reply, "(a{sv})", &iter);
 
-		if(iter != NULL){
+		if (iter != NULL) {
 
 			gchar *key = NULL;
 			GVariant *value = NULL;
 
-			while(g_variant_iter_loop(iter, "{sv}", &key, &value)) {
+			while (g_variant_iter_loop(iter, "{sv}", &key, &value)) {
 
-				if(strcmp(key, "Properties") == 0){
+				if (strcmp(key, "Properties") == 0) {
 					GVariantIter *iter_raw = NULL;
 					g_variant_get(value, "a{sv}", &iter_raw);
 					dbus_property_foreach(iter_raw, function, user_data);
@@ -179,7 +178,7 @@ int dbus_property_get_all(const char *path, GDBusConnection *connection,
 	} else{
 		WDP_LOGD("No properties");
 	}
-	if(function)
+	if (function)
 		function(NULL, NULL, user_data);
 	__WDP_LOG_FUNC_EXIT__;
 	return 0;

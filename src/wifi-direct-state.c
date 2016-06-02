@@ -39,28 +39,27 @@
 static char *_wfd_state_string(int state)
 {
 	switch (state) {
-		case WIFI_DIRECT_STATE_DEACTIVATED:
-			return "DEACTIVATED";
-		case WIFI_DIRECT_STATE_DEACTIVATING:
-			return "DEACTIVATING";
-		case WIFI_DIRECT_STATE_ACTIVATING:
-			return "ACTIVATING";
-		case WIFI_DIRECT_STATE_ACTIVATED:
-			return "ACTIVATED";
-		case WIFI_DIRECT_STATE_DISCOVERING:
-			return "DISCOVERING";
-		case WIFI_DIRECT_STATE_CONNECTING:
-			return "CONNECTING";
-		case WIFI_DIRECT_STATE_DISCONNECTING:
-			return "DISCONNECTING";
-		case WIFI_DIRECT_STATE_CONNECTED:
-			return "CONNECTED";
-		case WIFI_DIRECT_STATE_GROUP_OWNER:
-			return "GROUP_OWNER";
-		default:
-			return "Unknown State";
+	case WIFI_DIRECT_STATE_DEACTIVATED:
+		return "DEACTIVATED";
+	case WIFI_DIRECT_STATE_DEACTIVATING:
+		return "DEACTIVATING";
+	case WIFI_DIRECT_STATE_ACTIVATING:
+		return "ACTIVATING";
+	case WIFI_DIRECT_STATE_ACTIVATED:
+		return "ACTIVATED";
+	case WIFI_DIRECT_STATE_DISCOVERING:
+		return "DISCOVERING";
+	case WIFI_DIRECT_STATE_CONNECTING:
+		return "CONNECTING";
+	case WIFI_DIRECT_STATE_DISCONNECTING:
+		return "DISCONNECTING";
+	case WIFI_DIRECT_STATE_CONNECTED:
+		return "CONNECTED";
+	case WIFI_DIRECT_STATE_GROUP_OWNER:
+		return "GROUP_OWNER";
+	default:
+		return "Unknown State";
 	}
-	
 }
 
 int wfd_state_set(wfd_manager_s *manager, int state)

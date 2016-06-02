@@ -202,19 +202,19 @@ int wfd_peer_clear_all(void *data)
 	}
 
 	temp = g_list_first(manager->peers);
-	while(temp) {
+	while (temp) {
 		peer = (wfd_device_s*) temp->data;
 		g_free(peer);
 		temp = g_list_next(temp);
 		manager->peer_count--;
 	}
 
-	if(manager->peers) {
+	if (manager->peers) {
 		g_list_free(manager->peers);
 		manager->peers = NULL;
 	}
 
-	if (manager->peer_count){
+	if (manager->peer_count) {
 		WDS_LOGE("Peer count is not synced. left count=%d", manager->peer_count);
 		manager->peer_count = 0;
 		return 1;

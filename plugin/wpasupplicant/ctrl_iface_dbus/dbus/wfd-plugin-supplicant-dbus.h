@@ -33,7 +33,7 @@
 
 #define SIGNAL_PROPERTIES_CHANGED "PropertiesChanged"
 
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 #define DEBUG_PARAMS(parameters) \
 	do {\
 		gchar *parameters_debug_str = NULL;\
@@ -49,7 +49,7 @@
 			WDP_LOGD("Key : [%s]", key);\
 		if (value) {\
 			DEBUG_PARAMS(value);\
-		}\
+		} \
 	} while (0)
 
 #define DEBUG_SIGNAL(sender_name, object_path, interface_name, signal_name, parameters)\
@@ -73,7 +73,7 @@ typedef struct {
 	char object_path[DBUS_OBJECT_PATH_MAX];
 	char method_name[DBUS_METHOD_NAME_MAX];
 	GVariant *params;
-}dbus_method_param_s;
+} dbus_method_param_s;
 
 int dbus_set_method_param(dbus_method_param_s *params, char *method_name,
 		char *object_path, GDBusConnection *connection);
@@ -88,4 +88,4 @@ int dbus_property_get_all(const char *path, GDBusConnection *connection,
 void dbus_property_foreach(GVariantIter *iter,
 		dbus_property_function function, void *user_data);
 
-#endif //WFD_PLUGIN_SUPPLICANT_DBUS_H
+#endif /* WFD_PLUGIN_SUPPLICANT_DBUS_H */
