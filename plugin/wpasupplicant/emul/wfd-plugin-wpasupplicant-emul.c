@@ -281,7 +281,6 @@ int ws_invite(unsigned char *peer_addr, wfd_oem_invite_param_s *param)
 	return -1;
 }
 
-// Only group owner can use this command
 int ws_wps_start(unsigned char *peer_addr, int wps_mode, const char *pin)
 {
 	__WDP_LOG_FUNC_ENTER__;

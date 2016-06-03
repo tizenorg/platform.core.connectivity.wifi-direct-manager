@@ -44,7 +44,7 @@
 #define VCONFKEY_DHCPC_SERVER_IP "memory/private/wifi_direct_manager/dhcpc_server_ip"
 #define VCONFKEY_LOCAL_IP "memory/private/wifi_direct_manager/p2p_local_ip"
 #define DHCP_DUMP_FILE "/tmp/dhcp-client-table"
-#define MAX_DHCP_DUMP_SIZE 64    // Single lease format: [99:66:dd:00:11:aa 192.168.16.20 00:00:60]
+#define MAX_DHCP_DUMP_SIZE 64    /* Single lease format: [99:66:dd:00:11:aa 192.168.16.20 00:00:60] */
 
 #define SOCK_FD_MIN 3
 

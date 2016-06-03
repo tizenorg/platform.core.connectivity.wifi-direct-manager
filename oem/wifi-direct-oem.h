@@ -109,30 +109,30 @@ typedef enum {
 	WFD_OEM_EVENT_PEER_DISAPPEARED,
 	WFD_OEM_EVENT_DISCOVERY_FINISHED,
 
-	WFD_OEM_EVENT_PROV_DISC_REQ,	// 5
+	WFD_OEM_EVENT_PROV_DISC_REQ,	/* 5 */
 	WFD_OEM_EVENT_PROV_DISC_RESP,
 	WFD_OEM_EVENT_PROV_DISC_FAIL,
 
 	WFD_OEM_EVENT_GO_NEG_REQ,
 	WFD_OEM_EVENT_GO_NEG_FAIL,
-	WFD_OEM_EVENT_GO_NEG_DONE,	// 10
+	WFD_OEM_EVENT_GO_NEG_DONE,	/* 10 */
 	WFD_OEM_EVENT_WPS_FAIL,
 	WFD_OEM_EVENT_WPS_DONE,
 	WFD_OEM_EVENT_KEY_NEG_FAIL,
 	WFD_OEM_EVENT_KEY_NEG_DONE,
 
-	WFD_OEM_EVENT_CONN_FAIL,	// 15
+	WFD_OEM_EVENT_CONN_FAIL,	/* 15 */
 	WFD_OEM_EVENT_CONN_DONE,
 
 	WFD_OEM_EVENT_GROUP_CREATED,
 	WFD_OEM_EVENT_GROUP_DESTROYED,
 
 	WFD_OEM_EVENT_INVITATION_REQ,
-	WFD_OEM_EVENT_INVITATION_RES,	// 20
+	WFD_OEM_EVENT_INVITATION_RES,	/* 20 */
 	WFD_OEM_EVENT_STA_CONNECTED,
 	WFD_OEM_EVENT_STA_DISCONNECTED,
 
-	WFD_OEM_EVENT_TERMINATING,	// 25
+	WFD_OEM_EVENT_TERMINATING,	/* 25 */
 
 #ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
 	WFD_OEM_EVENT_SERV_DISC_RESP,
@@ -273,10 +273,10 @@ typedef struct {
 
 typedef struct {
 	int event_id;
-	unsigned char dev_addr[OEM_MACADDR_LEN];	// device address
+	unsigned char dev_addr[OEM_MACADDR_LEN];	/* device address */
 	unsigned char intf_addr[OEM_MACADDR_LEN];
 	int wps_mode;
-	char wps_pin[OEM_PINSTR_LEN+1];	// just for DISPLAY
+	char wps_pin[OEM_PINSTR_LEN+1];	/* just for DISPLAY */
 	char ifname[OEM_IFACE_NAME_LEN+1];
 	int dev_role;
 	unsigned char ip_addr_peer[OEM_IPADDR_LEN];
@@ -355,7 +355,7 @@ typedef struct {
 
 typedef struct {
 	int wps_mode;
-	int conn_flags;	// join, auth, persistent
+	int conn_flags;	/* join, auth, persistent */
 	int go_intent;
 	int freq;
 	char wps_pin[OEM_PINSTR_LEN+1];
@@ -402,7 +402,7 @@ typedef enum {
 typedef enum {
 	WFD_OEM_BONJOUR_RDATA_PTR = 0x0c,
 	WFD_OEM_BONJOUR_RDATA_TXT = 0x10,
-}wfd_oem_bonjour_rdata_type_e;
+} wfd_oem_bonjour_rdata_type_e;
 
 typedef struct {
 	/** Device address for which service discovery is requested */
@@ -473,7 +473,7 @@ typedef enum {
 
 typedef enum {
 	WFD_OEM_AUTH_ALG_OPEN = 0x01, /* OPEN */
-}wfd_oem_auth_alg_e;
+} wfd_oem_auth_alg_e;
 
 typedef enum {
 	WFD_OEM_PERSISTENT_MODE_GC = 0x0,
@@ -481,8 +481,7 @@ typedef enum {
 } wfd_oem_persistent_mode_e;
 
 #if defined(TIZEN_FEATURE_ASP)
-typedef enum
-{
+typedef enum {
 	WFD_OEM_TYPE_ADVERTISE,
 	WFD_OEM_TYPE_SEEK,
 	WFD_OEM_TYPE_MAX,
@@ -526,8 +525,7 @@ typedef struct {
 	unsigned char ip_addr[OEM_IPADDR_LEN];
 } wfd_oem_asp_prov_s;
 #endif /* TIZEN_FEATURE_ASP */
-typedef struct
-{
+typedef struct {
 	int network_id;
 	char ssid[OEM_DEV_NAME_LEN + 1];
 	unsigned char go_mac_address[OEM_MACADDR_LEN];
@@ -580,7 +578,6 @@ typedef struct _wfd_oem_ops_s {
 	int (*get_go_intent) (int *go_intent);
 	int (*set_go_intent) (int go_intent);
 	int (*set_country) (char *ccode);
-//	int (*get_country) (char **ccode);
 
 	int (*get_persistent_groups) (wfd_oem_persistent_group_s **groups, int *group_count);
 	int (*remove_persistent_group) (char *ssid, unsigned char *bssid);

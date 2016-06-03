@@ -44,7 +44,8 @@
 #include "wifi-direct-log.h"
 
 
-// Check the group instance which has same interface name, before using this function
+/* Check the group instance which has same interface name,
+ * before using this function */
 wfd_group_s *wfd_create_group(void *data, wfd_oem_event_s *group_info)
 {
 	__WDS_LOG_FUNC_ENTER__;
@@ -99,7 +100,7 @@ wfd_group_s *wfd_create_group(void *data, wfd_oem_event_s *group_info)
 	return group;
 }
 
-// Used for CTRL-EVENT_CONNECTED event that comes before group created
+/* Used for CTRL-EVENT_CONNECTED event that comes before group created */
 wfd_group_s *wfd_create_pending_group(void *data, unsigned char * bssid)
 {
 	__WDS_LOG_FUNC_ENTER__;
@@ -217,7 +218,7 @@ int wfd_group_complete(void *data, wfd_oem_event_s *group_info)
 			WDS_LOGE("Peer's GO IP [" IPSTR "]", IP2STR((char*) &peer->go_ip_addr));
 		}
 
-		if(peer->ip_type != WFD_IP_TYPE_OVER_EAPOL)
+		if (peer->ip_type != WFD_IP_TYPE_OVER_EAPOL)
 #endif /* TIZEN_FEATURE_IP_OVER_EAPOL */
 		wfd_util_dhcpc_start(group->ifname, peer);
 	}
@@ -257,7 +258,7 @@ int wfd_destroy_group(void *data, char *ifname)
 	memset(manager->local->ip_addr, 0x0, IPADDR_LEN);
 
 	temp = g_list_first(group->members);
-	while(temp && count < group->member_count) {
+	while (temp && count < group->member_count) {
 		member = temp->data;
 		WDS_LOGD("%dth member[%s] will be removed", count, member->dev_name);
 		g_free(member);
@@ -393,9 +394,8 @@ int wfd_group_add_member(wfd_group_s *group, unsigned char *addr)
 	}
 
 	member = wfd_peer_find_by_addr(manager, addr);
-	if (!member) {
+	if (!member)
 		WDS_LOGE("Peer not found");
-	}
 
 	group->members = g_list_prepend(group->members, member);
 	group->member_count++;
