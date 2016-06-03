@@ -11,9 +11,9 @@ DEFAULT_NET="192.168.49.1/24"
 DEFAULT_BRD="192.168.49.255"
 
 if [ ! -f @SBIN_DIR@/ip ]; then
-	interface=`@SBIN_DIR@/ifconfig|/bin/grep ^${INTERFACE_NAME}|@BIN_DIR@/cut -d":" -f1`
+	interface=`@SBIN_DIR@/ifconfig -a|/bin/grep ${INTERFACE_NAME}|@BIN_DIR@/cut -d":" -f1`
 else
-	interface=`@SBIN_DIR@/ip link|/bin/grep ^${INTERFACE_NAME}|@BIN_DIR@/cut -d":" -f2`
+	interface=`@SBIN_DIR@/ip link|/bin/grep ${INTERFACE_NAME}|@BIN_DIR@/cut -d":" -f2`
 fi
 echo "Target is ${TARGET} and interface ${INTERFACE_PREFIX}: ${interface}."
 
