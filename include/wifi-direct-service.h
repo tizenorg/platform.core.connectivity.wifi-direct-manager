@@ -40,7 +40,7 @@ typedef enum {
 typedef enum {
 	WFD_BONJOUR_RDATA_PTR = 0x0c,
 	WFD_BONJOUR_RDATA_TXT = 0x10,
-}wfd_bonjour_rdata_type_e;
+} wfd_bonjour_rdata_type_e;
 
 typedef struct {
 	int version;

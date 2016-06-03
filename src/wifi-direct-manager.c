@@ -85,9 +85,8 @@ static int _wfd_local_init_device(wfd_manager_s *manager)
 	wfd_util_set_dev_name_notification();
 
 	res = wfd_util_get_local_dev_mac(local->dev_addr);
-	if (res < 0) {
+	if (res < 0)
 		WDS_LOGE("Failed to get local device MAC address");
-	}
 
 	memcpy(local->intf_addr, local->dev_addr, MACADDR_LEN);
 	local->intf_addr[4] ^= 0x80;
@@ -100,7 +99,7 @@ static int _wfd_local_init_device(wfd_manager_s *manager)
 	local->services = NULL;
 	local->service_count = 0;
 #endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
-	// TODO: initialize other local device datas
+	/* TODO: initialize other local device datas */
 	manager->local = local;
 
 	__WDS_LOG_FUNC_EXIT__;
@@ -118,7 +117,7 @@ static int _wfd_local_deinit_device(wfd_manager_s *manager)
 
 	wfd_util_unset_dev_name_notification();
 
-	// TODO: free member of local device
+	/* TODO: free member of local device */
 	g_free(manager->local);
 
 	__WDS_LOG_FUNC_EXIT__;
@@ -184,7 +183,7 @@ int wfd_local_set_dev_name(char *dev_name)
 		wfd_oem_set_dev_name(g_manager->oem_ops, dev_name);
 		WDS_LOGD("Device name changed.");
 	} else {
-		WDS_LOGE("Device name can't changed: state is %d",g_manager->state);
+		WDS_LOGE("Device name can't changed: state is %d", g_manager->state);
 	}
 
 	__WDS_LOG_FUNC_EXIT__;
@@ -380,7 +379,7 @@ int wfd_manager_get_autoconnection(int *autoconnection)
 	}
 
 	*autoconnection = g_manager->autoconnection;
-	WDS_LOGD("Local autoconnection [%s]", *autoconnection ? "TRUE":"FALSE");
+	WDS_LOGD("Local autoconnection [%s]", *autoconnection ? "TRUE" : "FALSE");
 
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
@@ -542,9 +541,8 @@ int wfd_manager_activate(wfd_manager_s *manager)
 #endif /* TIZEN_FEATURE_DEFAULT_CONNECTION_AGENT */
 
 	res = wfd_util_get_local_dev_mac(manager->local->dev_addr);
-	if (res < 0) {
+	if (res < 0)
 		WDS_LOGE("Failed to get local device MAC address");
-	}
 
 	memcpy(manager->local->intf_addr, manager->local->dev_addr, MACADDR_LEN);
 	manager->local->intf_addr[4] ^= 0x80;
@@ -594,7 +592,7 @@ int wfd_manager_deactivate(wfd_manager_s *manager)
 		}
 #if defined(TIZEN_WLAN_CONCURRENT_ENABLE) && defined(TIZEN_MOBILE)
 	} else {
-		// FIXME: We should do something to stop p2p feature of Driver
+		/* FIXME: We should do something to stop p2p feature of Driver */
 		res = wfd_oem_deactivate(manager->oem_ops, res);
 		if (res < 0) {
 			WDS_LOGE("Failed to deactivate");
@@ -707,7 +705,7 @@ int wfd_manager_accept_connection(wfd_manager_s *manager, unsigned char *peer_ad
 		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
 	}
 
-	// TODO: check peer_addr with session's peer_addr
+	/* TODO: check peer_addr with session's peer_addr */
 
 	if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
 		WDS_LOGD("My device is GO and peer want to join my group, so WPS will be started");
@@ -837,7 +835,7 @@ int wfd_manager_reject_connection(wfd_manager_s *manager, unsigned char *peer_ad
 	res = wfd_session_reject(session, peer_addr);
 	if (res < 0) {
 		WDS_LOGE("Failed to reject connection");
-		// TODO: check whether set state and break
+		/* TODO: check whether set state and break */
 	}
 	wfd_destroy_session(manager);
 
@@ -1010,7 +1008,7 @@ int wfd_manager_get_peer_info(wfd_manager_s *manager, unsigned char *addr, wfd_d
 	}
 
 	peer_dev = wfd_peer_find_by_addr(manager, addr);
-	if(!peer_dev) {
+	if (!peer_dev) {
 		peer_dev = (wfd_device_s*) g_try_malloc0(sizeof(wfd_device_s));
 		if (!peer_dev) {
 			WDS_LOGE("Failed to allocate memory for peer device. [%s]", strerror(errno));
@@ -1447,13 +1445,11 @@ wfd_device_s *wfd_manager_get_peer_by_addr(wfd_manager_s *manager, unsigned char
 {
 	__WDS_LOG_FUNC_ENTER__;
 	wfd_device_s *peer = NULL;
-	if(manager->group) {
+	if (manager->group)
 		peer = wfd_group_find_member_by_addr(manager->group, peer_addr);
-	}
 
-	if(peer) {
+	if (peer)
 		return peer;
-	}
 
 	peer = wfd_peer_find_by_addr(manager, peer_addr);
 
@@ -1482,7 +1478,7 @@ static wfd_manager_s *wfd_manager_init()
 	if (res < 0) {
 		WDS_LOGE("Failed to initialize local device");
 		g_free(manager);
-		return NULL;		// really stop manager?
+		return NULL;		/* really stop manager? */
 	}
 	WDS_LOGD("Succeeded to initialize local device");
 
@@ -1546,7 +1542,7 @@ static void *wfd_plugin_init(wfd_manager_s *manager)
 	int (*plugin_load)(wfd_oem_ops_s **ops) = NULL;
 	plugin_load = (int (*)(wfd_oem_ops_s **ops)) dlsym(handle, "wfd_plugin_load");
 	if (!plugin_load) {
-		WDS_LOGE( "Failed to load symbol. Error = [%s]", strerror(errno));
+		WDS_LOGE("Failed to load symbol. Error = [%s]", strerror(errno));
 		dlclose(handle);
 		__WDS_LOG_FUNC_EXIT__;
 		return NULL;
@@ -1591,16 +1587,16 @@ int main(int argc, char *argv[])
 	__WDS_LOG_FUNC_ENTER__;
 	GMainLoop *main_loop = NULL;
 
-#if !GLIB_CHECK_VERSION(2,32,0)
+#if !GLIB_CHECK_VERSION(2, 32, 0)
 	if (!g_thread_supported())
 		g_thread_init(NULL);
 #endif
 
-#if !GLIB_CHECK_VERSION(2,36,0)
+#if !GLIB_CHECK_VERSION(2, 36, 0)
 	g_type_init();
 #endif
 
-	// TODO: Parsing argument
+	/* TODO: Parsing argument */
 	/* Wi-Fi direct connection for S-Beam can be optimized using argument */
 
 	/**

@@ -63,7 +63,7 @@ static gboolean _session_timeout_cb(gpointer *user_data)
 	WDS_LOGD("Session timer expired");
 
 	peer_addr = wfd_session_get_peer_addr(session);
-	if(peer_addr != NULL)
+	if (peer_addr != NULL)
 		g_snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
 	else
 		g_snprintf(peer_mac_address, MACSTR_LEN, "%s", "");
@@ -153,7 +153,8 @@ int wfd_session_timer(wfd_session_s *session, int start)
 	return 0;
 }
 
-// Check the session instance which has same peer address, before using this function
+/* Check the session instance which has same peer address,
+ * before using this function */
 wfd_session_s *wfd_create_session(void *data, unsigned char *peer_addr, int wps_mode, int direction)
 {
 	__WDS_LOG_FUNC_ENTER__;
@@ -242,13 +243,13 @@ int wfd_destroy_session(void *data)
 
 	session = (wfd_session_s*) manager->session;
 	if (!session) {
-		WDS_LOGE("Session not found");	// self prevent 13029
+		WDS_LOGE("Session not found");	/* self prevent */
 		return -1;
 	}
 	wfd_session_timer(session, 0);
 	peer = session->peer;
 
-	if(peer) {
+	if (peer) {
 		if (session->state == SESSION_STATE_COMPLETED)
 			peer->state = WFD_PEER_STATE_CONNECTED;
 		else
@@ -288,8 +289,11 @@ int wfd_session_start(wfd_session_s *session)
 		return -1;
 	}
 
-	// Check: Invitation Received in Incomming case -> send prov_disc join
-	// Check: User select peer to connect with in Outgoing case -> send prov_disc wps_mdde
+	/* Check: Invitation Received in Incomming case ->
+	 * send prov_disc join
+	 *
+	 * Check: User select peer to connect with in Outgoing case ->
+	 * send prov_disc wps_mode */
 
 	wfd_oem_stop_scan(manager->oem_ops);
 
@@ -303,7 +307,7 @@ int wfd_session_start(wfd_session_s *session)
 		WDS_LOGD("Failed to send provision discovery request to peer [" MACSECSTR "]",
 									MAC2SECSTR(peer->dev_addr));
 		wfd_destroy_session(manager);
-		// TODO: send notification to App
+		/* TODO: send notification to App */
 		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}
@@ -330,12 +334,12 @@ int wfd_session_stop(wfd_session_s *session)
 
 	if (session->state > SESSION_STATE_CREATED) {
 		peer = session->peer;
-		if (session->direction == SESSION_DIRECTION_INCOMING) {
+		if (session->direction == SESSION_DIRECTION_INCOMING)
 			res  = wfd_oem_reject_connection(manager->oem_ops, peer->dev_addr);
-		} else if (session->direction == SESSION_DIRECTION_OUTGOING) {
+		else if (session->direction == SESSION_DIRECTION_OUTGOING)
 			res = wfd_oem_cancel_connection(manager->oem_ops, peer->dev_addr);
-		}
-		if (res < 0) {
+
+			if (res < 0) {
 			WDS_LOGE("Failed to reject or cancel connection");
 			__WDS_LOG_FUNC_EXIT__;
 			return -1;
@@ -382,12 +386,11 @@ int wfd_session_connect(wfd_session_s *session)
 		param.conn_flags |= WFD_OEM_CONN_TYPE_JOIN;
 	param.go_intent = session->go_intent;
 	param.freq = session->freq;
-	if(manager->local->group_flags & WFD_GROUP_FLAG_PERSISTENT)
+	if (manager->local->group_flags & WFD_GROUP_FLAG_PERSISTENT)
 		param.conn_flags |= WFD_OEM_CONN_TYPE_PERSISTENT;
 
-	if (session->wps_pin[0] != '\0') {
+	if (session->wps_pin[0] != '\0')
 		g_strlcpy(param.wps_pin, session->wps_pin, OEM_PINSTR_LEN + 1);
-	}
 
 	/* To connect with windows phone,set go_intent value to 2.
 	*  As windows phone does not connect when local device act as GO.
@@ -398,7 +401,7 @@ int wfd_session_connect(wfd_session_s *session)
 	 if ((peer->pri_dev_type == 1) ||
 				 ((peer->pri_dev_type == 10) && (peer->sec_dev_type == 1))) {
 		param.go_intent = 2;
-		WDS_LOGD("go_intent set to %d, Windows device",param.go_intent);
+		WDS_LOGD("go_intent set to %d, Windows device", param.go_intent);
 	 }
 
 	WDS_LOGD("connection go_intent: %d", param.go_intent);
@@ -489,7 +492,7 @@ int wfd_session_reject(wfd_session_s *session, unsigned char *peer_addr)
 	}
 
 	wfd_destroy_session(manager);
-	// TODO: send notification to App
+	/* TODO: send notification to App */
 
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
@@ -608,7 +611,7 @@ int wfd_session_wps(wfd_session_s *session)
 		memset(&param, 0x00, sizeof(wfd_oem_conn_param_s));
 		param.wps_mode = session->wps_mode;
 		param.conn_flags |= WFD_OEM_CONN_TYPE_JOIN;
-		param.freq = session->freq;	// currently not used
+		param.freq = session->freq;	/* currently not used */
 		g_strlcpy(param.wps_pin, session->wps_pin, OEM_PINSTR_LEN + 1);
 		res = wfd_oem_connect(manager->oem_ops, peer->dev_addr, &param);
 	}
@@ -795,7 +798,7 @@ int wfd_session_process_event(wfd_manager_s *manager, wfd_oem_event_s *event)
 	break;
 	case WFD_OEM_EVENT_PROV_DISC_RESP:
 	{
-		if (!session) {		// TODO: check validity of Event
+		if (!session) {		/* TODO: check validity of Event */
 			WDS_LOGE("Unexpected event. Session is NULL [peer: " MACSECSTR "]",
 										MAC2SECSTR(event->dev_addr));
 			break;
