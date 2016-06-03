@@ -103,7 +103,7 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	return 0;
 }
 
- gboolean _wfd_connection_retry(gpointer *data)
+gboolean _wfd_connection_retry(gpointer *data)
 {
 	wfd_session_s *session = (wfd_session_s*) data;
 	if (!session) {
@@ -113,21 +113,21 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 	}
 
 	switch (session->state) {
-		case SESSION_STATE_STARTED:
-			WDS_LOGD("PD again");
-			wfd_session_start(session);
-			break;
-		case SESSION_STATE_GO_NEG:
-			WDS_LOGD("Negotiation again");
-			wfd_session_connect(session);
-			break;
-		case SESSION_STATE_WPS:
-			WDS_LOGD("WPS again");
-			wfd_session_wps(session);
-			break;
-		default:
-			WDS_LOGE("Invalid session state [%d]", session->state);
-			break;
+	case SESSION_STATE_STARTED:
+		WDS_LOGD("PD again");
+		wfd_session_start(session);
+	break;
+	case SESSION_STATE_GO_NEG:
+		WDS_LOGD("Negotiation again");
+		wfd_session_connect(session);
+	break;
+	case SESSION_STATE_WPS:
+		WDS_LOGD("WPS again");
+		wfd_session_wps(session);
+	break;
+	default:
+		WDS_LOGE("Invalid session state [%d]", session->state);
+	break;
 	}
 	__WDS_LOG_FUNC_EXIT__;
 	return G_SOURCE_REMOVE;
@@ -135,7 +135,7 @@ static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *da
 
 static void __wfd_process_deactivated(wfd_manager_s *manager, wfd_oem_event_s *event)
 {
- 	__WDS_LOG_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
 				     "Deactivation",
@@ -195,16 +195,16 @@ static void __wfd_process_peer_found(wfd_manager_s *manager, wfd_oem_event_s *ev
 	GVariant *params = NULL;
 	wfd_oem_advertise_service_s *service;
 
-	for(list = (GList *)event->asp_services; list != NULL; list = list->next) {
+	for (list = (GList *)event->asp_services; list != NULL; list = list->next) {
 		service = (wfd_oem_advertise_service_s *)list->data;
 
-		builder = g_variant_builder_new(G_VARIANT_TYPE ("a{sv}"));
+		builder = g_variant_builder_new(G_VARIANT_TYPE("a{sv}"));
 		g_variant_builder_add(builder, "{sv}", "search_id", g_variant_new("t", service->search_id));
 		g_variant_builder_add(builder, "{sv}", "service_mac", g_variant_new("s", peer_mac_address));
 		g_variant_builder_add(builder, "{sv}", "device_name", g_variant_new("s", edata->name));
 		g_variant_builder_add(builder, "{sv}", "advertisement_id", g_variant_new("u", service->adv_id));
 		g_variant_builder_add(builder, "{sv}", "config_method", g_variant_new("u", service->config_method));
-		if(service->service_type)
+		if (service->service_type)
 			g_variant_builder_add(builder, "{sv}", "service_type", g_variant_new("s", service->service_type));
 		params = g_variant_new("(a{sv})", builder);
 		g_variant_builder_unref(builder);
@@ -214,24 +214,24 @@ static void __wfd_process_peer_found(wfd_manager_s *manager, wfd_oem_event_s *ev
 					     params);
 	}
 #endif
- 	__WDS_LOG_FUNC_EXIT__;
+	__WDS_LOG_FUNC_EXIT__;
 	return;
 }
 
 static void __wfd_process_peer_disappeared(wfd_manager_s *manager, wfd_oem_event_s *event)
 {
- 	__WDS_LOG_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_session_s *session = NULL;
 	wfd_device_s *peer = NULL;
 	char peer_mac_address[MACSTR_LEN+1] = {0, };
 
 	session = manager->session;
-	if(session != NULL && session->peer != NULL) {
+	if (session != NULL && session->peer != NULL) {
 		peer = session->peer;
 		WDS_LOGD("session peer [" MACSTR "] lost peer ["  MACSTR "]", MAC2STR(peer->dev_addr),
 						MAC2STR(event->dev_addr));
-		if(memcmp(peer->dev_addr, event->dev_addr, MACADDR_LEN) == 0) {
+		if (memcmp(peer->dev_addr, event->dev_addr, MACADDR_LEN) == 0) {
 			WDS_LOGD("peer already in connection");
 			return;
 		}
@@ -244,13 +244,13 @@ static void __wfd_process_peer_disappeared(wfd_manager_s *manager, wfd_oem_event
 				     "PeerLost",
 				     g_variant_new("(s)", peer_mac_address));
 
- 	__WDS_LOG_FUNC_EXIT__;
- 	return;
+	__WDS_LOG_FUNC_EXIT__;
+	return;
 }
 
 static void __wfd_process_discovery_finished(wfd_manager_s *manager, wfd_oem_event_s *event)
 {
- 	__WDS_LOG_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	if (manager->state != WIFI_DIRECT_STATE_DISCOVERING &&
 			manager->state != WIFI_DIRECT_STATE_ACTIVATED) {
@@ -284,10 +284,10 @@ static void __wfd_process_discovery_finished(wfd_manager_s *manager, wfd_oem_eve
 
 static void __wfd_process_prov_disc_req(wfd_manager_s *manager, wfd_oem_event_s *event)
 {
- 	__WDS_LOG_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_device_s *peer = NULL;
- 	int res = 0;
+	int res = 0;
 	wfd_group_s *group = (wfd_group_s*) manager->group;
 
 	if (group && group->role == WFD_DEV_ROLE_GC) {
@@ -335,8 +335,7 @@ static void __wfd_process_prov_disc_req(wfd_manager_s *manager, wfd_oem_event_s 
 	}
 
 	if (peer) {
-		if (WFD_PEER_STATE_DISCOVERED < peer->state)
-		{
+		if (WFD_PEER_STATE_DISCOVERED < peer->state) {
 			WDS_LOGD("Peer already connected/connecting, ignore this provision request");
 			__WDS_LOG_FUNC_EXIT__;
 			return;
@@ -355,7 +354,7 @@ static void __wfd_process_prov_disc_req(wfd_manager_s *manager, wfd_oem_event_s 
 
 static void __wfd_process_prov_disc_resp(wfd_manager_s *manager, wfd_oem_event_s *event)
 {
- 	__WDS_LOG_FUNC_ENTER__;
+	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_device_s *peer = NULL;
 	int res = 0;
@@ -521,8 +520,8 @@ static void __wfd_process_go_neg_req(wfd_manager_s *manager, wfd_oem_event_s *ev
 	return;
 }
 
- static void __wfd_process_go_neg_fail(wfd_manager_s *manager, wfd_oem_event_s *event)
- {
+static void __wfd_process_go_neg_fail(wfd_manager_s *manager, wfd_oem_event_s *event)
+{
 	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_session_s *session = NULL;
@@ -596,7 +595,7 @@ static void __wfd_process_go_neg_done(wfd_manager_s *manager, wfd_oem_event_s *e
 	}
 
 	session = (wfd_session_s*) manager->session;
-	if(session && session->peer) {
+	if (session && session->peer) {
 		peer = session->peer;
 		memcpy(peer->intf_addr, edata->peer_intf_addr, MACADDR_LEN);
 	}
@@ -788,14 +787,14 @@ static void __wfd_process_group_created(wfd_manager_s *manager, wfd_oem_event_s 
 	if (group->role == WFD_DEV_ROLE_GC && session) {
 #ifdef TIZEN_FEATURE_IP_OVER_EAPOL
 		wfd_device_s *peer = session->peer;
-		if(peer == NULL) {
+		if (peer == NULL) {
 			WDS_LOGE("Unexpected event. Peer doesn't exist");
 			return;
 		}
 
 		wfd_update_peer(manager, peer);
 
-		if(peer->ip_type == WFD_IP_TYPE_OVER_EAPOL) {
+		if (peer->ip_type == WFD_IP_TYPE_OVER_EAPOL) {
 			char peer_mac_address[MACSTR_LEN+1] = {0, };
 
 			wfd_util_ip_over_eap_assign(peer, event->ifname);
@@ -845,7 +844,7 @@ static void __wfd_process_group_destroyed(wfd_manager_s *manager, wfd_oem_event_
 								    WFD_EVENT_DISCONNECTION_RSP,
 								    peer_mac_address));
 
-	} else if (manager->state == WIFI_DIRECT_STATE_CONNECTING && manager->session){
+	} else if (manager->state == WIFI_DIRECT_STATE_CONNECTING && manager->session) {
 		wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
 					     "Connection",
 					     g_variant_new("(iis)", WIFI_DIRECT_ERROR_CONNECTION_FAILED,
@@ -939,7 +938,7 @@ static void __wfd_process_invitation_res(wfd_manager_s *manager, wfd_oem_event_s
 {
 	__WDS_LOG_FUNC_ENTER__;
 
- 	__WDS_LOG_FUNC_EXIT__;
+	__WDS_LOG_FUNC_EXIT__;
 	return;
 }
 
@@ -952,7 +951,7 @@ static void __wfd_process_sta_connected(wfd_manager_s *manager, wfd_oem_event_s 
 	wfd_device_s *peer = NULL;
 	char peer_mac_address[MACSTR_LEN+1] = {0, };
 
-	// FIXME: Move this code to plugin
+	/* FIXME: Move this code to plugin */
 	if (!memcmp(event->intf_addr, manager->local->intf_addr, MACADDR_LEN)) {
 		WDS_LOGD("Ignore this event");
 		__WDS_LOG_FUNC_EXIT__;
@@ -1047,7 +1046,7 @@ static void __wfd_process_sta_connected(wfd_manager_s *manager, wfd_oem_event_s 
 		memcpy(peer->go_ip_addr, manager->local->ip_addr, IPADDR_LEN);
 		WDS_LOGE("Peer's GO IP [" IPSTR "]", IP2STR((char*) &peer->go_ip_addr));
 	}
-	if(peer->ip_type == WFD_IP_TYPE_OVER_EAPOL) {
+	if (peer->ip_type == WFD_IP_TYPE_OVER_EAPOL) {
 		char peer_mac_address[MACSTR_LEN+1] = {0,};
 		char assigned_ip_address[IPSTR_LEN+1] = {0,};
 
@@ -1343,7 +1342,7 @@ static void __wfd_process_serv_disc_resp(wfd_manager_s *manager, wfd_oem_event_s
 		WDS_LOGD("%d service data found", event->dev_role);
 
 		temp = g_list_first(services);
-		while(temp && count < event->dev_role) {
+		while (temp && count < event->dev_role) {
 			service = (wfd_oem_new_service_s*) temp->data;
 			service_type = service->protocol;
 			if (service->protocol == WFD_OEM_SERVICE_TYPE_BONJOUR) {
@@ -1369,12 +1368,12 @@ next:
 	} else if (event->edata_type == WFD_OEM_EDATA_TYPE_SERVICE) {
 		wfd_oem_service_data_s *edata = (wfd_oem_service_data_s*) event->edata;
 
-		if(!edata) {
+		if (!edata) {
 			service_type = -1;
 		} else {
 			service_type = edata->type;
 			g_snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(event->dev_addr));
-			switch(edata->type) {
+			switch (edata->type) {
 				WDS_LOGE("Unknown type [type ID: %d]", edata->type);
 			}
 		}
@@ -1402,7 +1401,7 @@ static void __wfd_process_serv_disc_started(wfd_manager_s *manager, wfd_oem_even
 
 #if defined(TIZEN_FEATURE_ASP)
 static void __wfd_process_asp_serv_resp(wfd_manager_s *manager, wfd_oem_event_s *event)
- {
+{
 	__WDS_LOG_FUNC_ENTER__;
 
 	wfd_oem_asp_service_s *service = NULL;
@@ -1410,20 +1409,20 @@ static void __wfd_process_asp_serv_resp(wfd_manager_s *manager, wfd_oem_event_s 
 	GVariant *params = NULL;
 
 	service = (wfd_oem_asp_service_s *)event->edata;
-	if(service == NULL) {
+	if (service == NULL) {
 		WDS_LOGE("P2P service found event has NULL information");
 		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
 
-	builder = g_variant_builder_new(G_VARIANT_TYPE ("a{sv}"));
+	builder = g_variant_builder_new(G_VARIANT_TYPE("a{sv}"));
 	g_variant_builder_add(builder, "{sv}", "search_id", g_variant_new("u", service->search_id));
 	g_variant_builder_add(builder, "{sv}", "service_mac", g_variant_new("s", event->dev_addr));
 	g_variant_builder_add(builder, "{sv}", "advertisement_id", g_variant_new("u", service->adv_id));
 	g_variant_builder_add(builder, "{sv}", "config_method", g_variant_new("u", service->config_method));
-	if(service->service_type)
+	if (service->service_type)
 		g_variant_builder_add(builder, "{sv}", "service_type", g_variant_new("s", service->service_type));
-	if(service->service_info)
+	if (service->service_info)
 		g_variant_builder_add(builder, "{sv}", "service_info", g_variant_new("s", service->service_info));
 	g_variant_builder_add(builder, "{sv}", "status", g_variant_new("y", service->status));
 	params = g_variant_new("(a{sv})", builder);
@@ -1435,12 +1434,12 @@ static void __wfd_process_asp_serv_resp(wfd_manager_s *manager, wfd_oem_event_s 
 
 	__WDS_LOG_FUNC_EXIT__;
 	return;
- }
+}
 #endif /* TIZEN_FEATURE_ASP */
 
 static struct {
- const int event_id;
- void (*function) (wfd_manager_s *manager, wfd_oem_event_s *event);
+	const int event_id;
+	void (*function) (wfd_manager_s *manager, wfd_oem_event_s *event);
 } wfd_oem_event_map[] = {
 	{
 		WFD_OEM_EVENT_NONE,
@@ -1567,10 +1566,10 @@ static struct {
 		WFD_OEM_EVENT_MAX,
 		NULL
 	}
- };
+};
 
- int wfd_process_event(void *user_data, void *data)
- {
+int wfd_process_event(void *user_data, void *data)
+{
 	__WDS_LOG_FUNC_ENTER__;
 	wfd_manager_s *manager = NULL;
 	wfd_oem_event_s *event = NULL;
@@ -1586,7 +1585,7 @@ static struct {
 	WDS_LOGD("Event[%d] from " MACSECSTR, event->event_id,
 						MAC2SECSTR(event->dev_addr));
 
-	if(event->event_id > WFD_OEM_EVENT_NONE &&
+	if (event->event_id > WFD_OEM_EVENT_NONE &&
 			event->event_id < WFD_OEM_EVENT_MAX)
 		 wfd_oem_event_map[event->event_id].function(manager, event);
 	else
@@ -1594,4 +1593,4 @@ static struct {
 
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
- }
+}

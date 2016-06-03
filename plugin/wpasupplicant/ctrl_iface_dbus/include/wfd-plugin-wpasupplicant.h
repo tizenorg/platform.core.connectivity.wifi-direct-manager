@@ -42,7 +42,7 @@
 
 #define CONF_FILE_PATH "/etc/wpa_supplicant/wpa_supplicant.conf"
 
-#if defined (TIZEN_MOBILE) || defined (TIZEN_COMMON)
+#if defined(TIZEN_MOBILE) || defined(TIZEN_COMMON)
 #define COMMON_IFACE_NAME "wlan0"
 
 #	if defined TIZEN_WLAN_BOARD_SPRD
@@ -308,7 +308,7 @@ typedef enum {
 	 * obtained from the Registrar (via a display or other out-of-band
 	 * method). This value may be further augmented with the optional
 	 * "Identity" attribute in M1. */
-	WS_DEV_PASSWD_ID_REGISTRAR_SPECIFIED = 0x0005,	// ENTER-PIN
+	WS_DEV_PASSWD_ID_REGISTRAR_SPECIFIED = 0x0005,	/* ENTER-PIN */
 
 #if defined(TIZEN_FEATURE_ASP)
 	WS_DEV_PASSWD_ID_P2PS = 0x0008,
@@ -384,7 +384,7 @@ typedef struct {
 } ws_network_info_s;
 
 typedef struct {
-	int initialized;	// check whether plugin is initialized or not. block init function if initialized
+	int initialized;	/* check whether plugin is initialized or not. block init function if initialized */
 	int activated;
 	int concurrent;
 

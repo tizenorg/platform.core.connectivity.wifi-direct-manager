@@ -404,8 +404,8 @@ static void __ws_path_to_addr(char *peer_path,
 	g_strlcpy(peer_path, path, DBUS_OBJECT_PATH_MAX);
 	WDP_LOGD("Retrive Added path [%s]", peer_path);
 
-	loc = strrchr(peer_path,'/');
-	if(loc != NULL)
+	loc = strrchr(peer_path, '/');
+	if (loc != NULL)
 		__ws_mac_compact_to_normal(loc + 1, peer_dev);
 
 	__ws_txt_to_mac(peer_dev, dev_addr);
@@ -431,9 +431,9 @@ static int __ws_unpack_ay(unsigned char *dst, GVariant *src, int size)
 		return -1;
 	}
 
-	while (g_variant_iter_loop (iter, "y", &dst[length])) {
+	while (g_variant_iter_loop(iter, "y", &dst[length])) {
 		length++;
-		if(length >= size)
+		if (length >= size)
 			break;
 	}
 	g_variant_iter_free(iter);
@@ -448,7 +448,7 @@ static int __ws_unpack_ay(unsigned char *dst, GVariant *src, int size)
 
 #ifdef TIZEN_FEATURE_WIFI_DISPLAY
 static int __parsing_wfd_info(unsigned char *wfd_dev_info,
-		wfd_oem_display_s *display )
+		wfd_oem_display_s* display)
 {
 	__WDP_LOG_FUNC_ENTER__;
 
@@ -474,7 +474,7 @@ static int __parsing_wfd_info(unsigned char *wfd_dev_info,
 
 	WDP_LOGD("type [%d],availability [%d],hdcp_support [%d],ctrl_port [%d] "
 			"max_tput[%d]", display->type, display->availability,
-			display->hdcp_support, display->port,display->max_tput);
+			display->hdcp_support, display->port, display->max_tput);
 
 	__WDP_LOG_FUNC_EXIT__;
 	return 0;
@@ -493,7 +493,7 @@ static int _ws_get_local_dev_mac(unsigned char *dev_mac)
 	errno = 0;
 	fd = fopen(file_path, "r");
 	if (!fd) {
-		WDP_LOGE("Failed to open MAC info file [%s] (%s)",file_path, strerror(errno));
+		WDP_LOGE("Failed to open MAC info file [%s] (%s)", file_path, strerror(errno));
 		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
@@ -528,7 +528,7 @@ static void _supplicant_signal_cb(GDBusConnection *connection,
 		const gchar *sender, const gchar *object_path, const gchar *interface,
 		const gchar *signal, GVariant *parameters, gpointer user_data)
 {
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	DEBUG_SIGNAL(sender, object_path, interface, signal, parameters);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
@@ -537,10 +537,10 @@ static void _supplicant_signal_cb(GDBusConnection *connection,
 		return;
 	}
 
-	if (!g_strcmp0(signal,"InterfaceAdded")) {
+	if (!g_strcmp0(signal, "InterfaceAdded")) {
 		WDP_LOGD("InterfaceAdded");
 
-	} else if (!g_strcmp0(signal,"InterfaceRemoved")) {
+	} else if (!g_strcmp0(signal, "InterfaceRemoved")) {
 		WDP_LOGD("InterfaceRemoved");
 		static char interface_path[DBUS_OBJECT_PATH_MAX] = {'\0',};
 		const char *path = NULL;
@@ -570,7 +570,7 @@ static void _supplicant_signal_cb(GDBusConnection *connection,
 			memset(g_pd->iface_path, 0x0, DBUS_OBJECT_PATH_MAX);
 		}
 #endif /* TIZEN_WLAN_CONCURRENT_ENABLE && TIZEN_MOBILE */
-	} else if(!g_strcmp0(signal,"PropertiesChanged")){
+	} else if (!g_strcmp0(signal, "PropertiesChanged")) {
 		WDP_LOGD("PropertiesChanged");
 	}
 }
@@ -580,11 +580,11 @@ static void __ws_get_peer_property(const char *key, GVariant *value, void *user_
 	__WDP_LOG_FUNC_ENTER__;
 
 	wfd_oem_device_s *peer = (wfd_oem_device_s *)user_data;
-	if(!peer) {
+	if (!peer) {
 		__WDP_LOG_FUNC_EXIT__;
 		return;
 	}
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	CHECK_KEY_VALUE(key, value);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
@@ -631,7 +631,7 @@ static void __ws_get_peer_property(const char *key, GVariant *value, void *user_
 	} else if (g_strcmp0(key, "PrimaryDeviceType") == 0) {
 		unsigned char primarydevicetype[WS_DEVTYPE_LEN] = {0,};
 
-		if(__ws_unpack_ay(primarydevicetype, value, WS_DEVTYPE_LEN)) {
+		if (__ws_unpack_ay(primarydevicetype, value, WS_DEVTYPE_LEN)) {
 			peer->pri_dev_type = primarydevicetype[1];
 			peer->sec_dev_type = primarydevicetype[WS_DEVTYPE_LEN -1];
 		}
@@ -641,7 +641,7 @@ static void __ws_get_peer_property(const char *key, GVariant *value, void *user_
 	} else if (g_strcmp0(key, "IEs") == 0) {
 		unsigned char ies[WFD_SUBELEM_LEN_DEV_INFO + 3] = {0,};
 
-		if(__ws_unpack_ay(ies, value, WFD_SUBELEM_LEN_DEV_INFO + 3))
+		if (__ws_unpack_ay(ies, value, WFD_SUBELEM_LEN_DEV_INFO + 3))
 			__parsing_wfd_info(ies, &(peer->display));
 #endif /* TIZEN_FEATURE_WIFI_DISPLAY */
 	} else if (g_strcmp0(key, "DeviceAddress") == 0) {
@@ -659,7 +659,7 @@ static void __ws_get_peer_property(const char *key, GVariant *value, void *user_
 		if (__ws_unpack_ay(peer->go_dev_addr, value, WS_MACADDR_LEN))
 			WDP_LOGD("GODevice address [" MACSTR "]", MAC2STR(peer->go_dev_addr));
 
-		if(!ISZEROMACADDR(peer->go_dev_addr))
+		if (!ISZEROMACADDR(peer->go_dev_addr))
 			peer->dev_role = WFD_OEM_DEV_ROLE_GC;
 	} else {
 		WDP_LOGD("Unknown value");
@@ -671,13 +671,13 @@ static void __ws_get_peer_property(const char *key, GVariant *value, void *user_
 static void __ws_peer_property(const char *key, GVariant *value, void *user_data)
 {
 	__WDP_LOG_FUNC_ENTER__;
-	if(!user_data) {
+	if (!user_data) {
 		__WDP_LOG_FUNC_EXIT__;
 		return;
 	}
 
 	wfd_oem_dev_data_s *peer = (wfd_oem_dev_data_s *)user_data;
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	CHECK_KEY_VALUE(key, value);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 	if (g_strcmp0(key, "DeviceName") == 0) {
@@ -734,7 +734,7 @@ static void __ws_peer_property(const char *key, GVariant *value, void *user_data
 	} else if (g_strcmp0(key, "IEs") == 0) {
 		unsigned char ies[WFD_SUBELEM_LEN_DEV_INFO + 3] = {0,};
 
-		if(__ws_unpack_ay(ies, value, WFD_SUBELEM_LEN_DEV_INFO + 3))
+		if (__ws_unpack_ay(ies, value, WFD_SUBELEM_LEN_DEV_INFO + 3))
 			__parsing_wfd_info(ies, &(peer->display));
 #endif /* TIZEN_FEATURE_WIFI_DISPLAY */
 	} else if (g_strcmp0(key, "DeviceAddress") == 0) {
@@ -753,16 +753,16 @@ static void __ws_peer_property(const char *key, GVariant *value, void *user_data
 		if (__ws_unpack_ay(go_dev_addr, value, WS_MACADDR_LEN))
 			WDP_LOGD("[" MACSTR "]", MAC2STR(go_dev_addr));
 
-		if(!ISZEROMACADDR(go_dev_addr))
+		if (!ISZEROMACADDR(go_dev_addr))
 			peer->dev_role = WFD_OEM_DEV_ROLE_GC;
 #if defined(TIZEN_FEATURE_ASP)
 	} else if (g_strcmp0(key, "AdvertiseService") == 0) {
 		WDP_LOGD("size [%d]", g_variant_get_size(value));
-		if (g_variant_get_size(value) != 0) {
+		if (g_variant_get_size(value) != 0)
 			peer->has_asp_services = 1;
-		} else {
+		else
 			peer->has_asp_services = 0;
-		}
+
 #endif /* TIZEN_FEATURE_ASP */
 	} else {
 		WDP_LOGD("Unknown value");
@@ -775,9 +775,9 @@ void __ws_interface_property(const char *key, GVariant *value, void *user_data)
 {
 	__WDP_LOG_FUNC_ENTER__;
 	wfd_oem_event_s *event = (wfd_oem_event_s *)user_data;
-	if(!event)
+	if (!event)
 		return;
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	CHECK_KEY_VALUE(key, value);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 	if (g_strcmp0(key, "Ifname") == 0) {
@@ -796,11 +796,11 @@ void __ws_group_property(const char *key, GVariant *value, void *user_data)
 {
 	__WDP_LOG_FUNC_ENTER__;
 	wfd_oem_event_s *event = (wfd_oem_event_s *)user_data;
-	if(!event || !event->edata)
+	if (!event || !event->edata)
 		return;
 
 	wfd_oem_group_data_s *group = (wfd_oem_group_data_s *)event->edata;
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	CHECK_KEY_VALUE(key, value);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 	if (g_strcmp0(key, "Role") == 0) {
@@ -852,11 +852,11 @@ void __ws_extract_invitation_details(const char *key, GVariant *value, void *use
 {
 	__WDP_LOG_FUNC_ENTER__;
 	wfd_oem_event_s *event = (wfd_oem_event_s *)user_data;
-	if(!event || !event->edata)
+	if (!event || !event->edata)
 		return;
 
 	wfd_oem_invite_data_s *invitation = (wfd_oem_invite_data_s *)event->edata;
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	CHECK_KEY_VALUE(key, value);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 	if (g_strcmp0(key, "sa") == 0) {
@@ -889,7 +889,7 @@ void __ws_extract_group_details(const char *key, GVariant *value, void *user_dat
 {
 	__WDP_LOG_FUNC_ENTER__;
 	wfd_oem_event_s *event = (wfd_oem_event_s *)user_data;
-	if(!event || !event->edata)
+	if (!event || !event->edata)
 		return;
 
 	if (!g_pd) {
@@ -900,7 +900,7 @@ void __ws_extract_group_details(const char *key, GVariant *value, void *user_dat
 #ifdef TIZEN_FEATURE_IP_OVER_EAPOL
 	wfd_oem_group_data_s *group = (wfd_oem_group_data_s *)event->edata;
 #endif /* TIZEN_FEATURE_IP_OVER_EAPOL */
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	CHECK_KEY_VALUE(key, value);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 	if (g_strcmp0(key, "interface_object") == 0) {
@@ -926,7 +926,7 @@ void __ws_extract_group_details(const char *key, GVariant *value, void *user_dat
 			event->dev_role = WFD_OEM_DEV_ROLE_GC;
 	} else if (g_strcmp0(key, "persistent") == 0) {
 		g_variant_get(value, "b", &group->is_persistent);
-		WDP_LOGD("Is Persistent : [%s]", group->is_persistent?"YES":"NO");
+		WDP_LOGD("Is Persistent : [%s]", group->is_persistent ? "YES" : "NO");
 
 #ifdef TIZEN_FEATURE_IP_OVER_EAPOL
 	} else if (g_strcmp0(key, "IpAddr") == 0) {
@@ -974,11 +974,11 @@ void __ws_extract_gonegfailaure_details(const char *key, GVariant *value, void *
 {
 	__WDP_LOG_FUNC_ENTER__;
 	wfd_oem_event_s *event = (wfd_oem_event_s *)user_data;
-	if(!event || !event->edata)
+	if (!event || !event->edata)
 		return;
 
 	wfd_oem_conn_data_s *conn = (wfd_oem_conn_data_s *)event->edata;
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	CHECK_KEY_VALUE(key, value);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 	if (g_strcmp0(key, "peer_object") == 0) {
@@ -1004,11 +1004,11 @@ void __ws_extract_gonegsuccess_details(const char *key, GVariant *value, void *u
 {
 	__WDP_LOG_FUNC_ENTER__;
 	wfd_oem_event_s *event = (wfd_oem_event_s *)user_data;
-	if(!event || !event->edata)
+	if (!event || !event->edata)
 		return;
 
 	wfd_oem_conn_data_s *edata = (wfd_oem_conn_data_s *)event->edata;
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	CHECK_KEY_VALUE(key, value);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 	if (g_strcmp0(key, "peer_object") == 0) {
@@ -1018,7 +1018,7 @@ void __ws_extract_gonegsuccess_details(const char *key, GVariant *value, void *u
 	} else if (g_strcmp0(key, "passphrase") == 0) {
 
 	} else if (g_strcmp0(key, "role_go") == 0) {
-		//local device role
+		/* local device role */
 		const char *role = NULL;
 
 		g_variant_get(value, "&s", &role);
@@ -1036,12 +1036,12 @@ void __ws_extract_gonegsuccess_details(const char *key, GVariant *value, void *u
 
 	} else if (g_strcmp0(key, "peer_device_addr") == 0) {
 
-		if(__ws_unpack_ay(edata->peer_device_addr, value, WS_MACADDR_LEN))
+		if (__ws_unpack_ay(edata->peer_device_addr, value, WS_MACADDR_LEN))
 			WDP_LOGD("Device address[" MACSTR "]", MAC2STR(edata->peer_device_addr));
 
-	} else if(g_strcmp0(key, "peer_interface_addr") == 0) {
+	} else if (g_strcmp0(key, "peer_interface_addr") == 0) {
 
-		if(__ws_unpack_ay(edata->peer_intf_addr, value, WS_MACADDR_LEN))
+		if (__ws_unpack_ay(edata->peer_intf_addr, value, WS_MACADDR_LEN))
 			WDP_LOGD("Interface address [" MACSTR "]", MAC2STR(edata->peer_intf_addr));
 
 	} else if (g_strcmp0(key, "wps_method") == 0) {
@@ -1071,10 +1071,10 @@ void __ws_extract_peer_service(wfd_oem_event_s *data, unsigned char *service_hex
 	int length = 0;
 	int res = 0;
 
-	while(ptr + 2 < WS_MAX_SERVICE_LEN &&
+	while (ptr + 2 < WS_MAX_SERVICE_LEN &&
 			(length = (service_hex[ptr+1]*256) + service_hex[ptr]) > 0) {
 		segment = (char*) g_try_malloc0(length*2+1);
-		if(segment) {
+		if (segment) {
 			__ws_byte_to_hex(segment, length * 2 + 1, &service_hex[ptr + 3], length);
 			res = __ws_segment_to_service(segment, &new_service);
 			if (res < 0) {
@@ -1100,9 +1100,9 @@ void __ws_extract_servicediscoveryresponse_details(const char *key, GVariant *va
 	__WDP_LOG_FUNC_ENTER__;
 	wfd_oem_event_s *event = (wfd_oem_event_s *)user_data;
 
-	if(!event)
+	if (!event)
 		return;
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	CHECK_KEY_VALUE(key, value);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 	if (g_strcmp0(key, "peer_object") == 0) {
@@ -1111,12 +1111,12 @@ void __ws_extract_servicediscoveryresponse_details(const char *key, GVariant *va
 		char *loc = NULL;
 
 		g_variant_get(value, "&o", &path);
-		if(path == NULL)
+		if (path == NULL)
 			return;
 
 		WDP_LOGD("Retrive Added path [%s]", path);
-		loc = strrchr(path,'/');
-		if(loc != NULL)
+		loc = strrchr(path, '/');
+		if (loc != NULL)
 			__ws_mac_compact_to_normal(loc + 1, peer_dev);
 		__ws_txt_to_mac(peer_dev, event->dev_addr);
 
@@ -1134,7 +1134,7 @@ void __ws_extract_servicediscoveryresponse_details(const char *key, GVariant *va
 		}
 
 		memset(service_hex, 0x0, WS_MAX_SERVICE_LEN);
-		while (g_variant_iter_loop (iter, "y", &service_hex[byte_length]))
+		while (g_variant_iter_loop(iter, "y", &service_hex[byte_length]))
 			byte_length++;
 		g_variant_iter_free(iter);
 
@@ -1150,7 +1150,7 @@ static void __ws_extract_serviceaspresponse_details(const char *key, GVariant *v
 {
 	__WDP_LOG_FUNC_ENTER__;
 	wfd_oem_event_s *event = (wfd_oem_event_s *)user_data;
-	if(!event || !event->edata)
+	if (!event || !event->edata)
 		return;
 
 	wfd_oem_asp_service_s *service = (wfd_oem_asp_service_s *)event->edata;
@@ -1161,12 +1161,12 @@ static void __ws_extract_serviceaspresponse_details(const char *key, GVariant *v
 		char *loc = NULL;
 
 		g_variant_get(value, "o", &path);
-		if(path == NULL)
+		if (path == NULL)
 			return;
 
 		WDP_LOGD("Retrive Added path [%s]", path);
-		loc = strrchr(path,'/');
-		if(loc != NULL)
+		loc = strrchr(path, '/');
+		if (loc != NULL)
 			__ws_mac_compact_to_normal(loc + 1, peer_dev);
 		__ws_txt_to_mac(peer_dev, event->dev_addr);
 
@@ -1197,14 +1197,14 @@ static void __ws_extract_serviceaspresponse_details(const char *key, GVariant *v
 	} else if (g_strcmp0(key, "svc_str") == 0) {
 		const char *svc_str = NULL;
 		g_variant_get(value, "s", &svc_str);
-		if(svc_str != NULL)
+		if (svc_str != NULL)
 			service->service_type = g_strdup(svc_str);
 		WDP_LOGD("Retrive srv_name [%s]", service->service_type);
 
 	} else if (g_strcmp0(key, "info") == 0) {
 		const char *info = NULL;
 		g_variant_get(value, "s", &info);
-		if(info != NULL)
+		if (info != NULL)
 			service->service_info = g_strdup(info);
 		WDP_LOGD("Retrive srv_info [%s]", service->service_info);
 	}
@@ -1235,7 +1235,7 @@ static void __ws_extract_asp_provision_start_details(const char *key, GVariant *
 		}
 
 		WDP_LOGD("Retrive Added path [%s]", path);
-		loc = strrchr(path,'/');
+		loc = strrchr(path, '/');
 		if (loc != NULL)
 			__ws_mac_compact_to_normal(loc + 1, peer_dev);
 		__ws_txt_to_mac(peer_dev, event->dev_addr);
@@ -1257,11 +1257,11 @@ static void __ws_extract_asp_provision_start_details(const char *key, GVariant *
 		WDP_LOGD("Retrive conncap [%x]", asp_params->network_role);
 
 	} else if (g_strcmp0(key, "adv_mac") == 0) {
-		if(__ws_unpack_ay(asp_params->service_mac, value, WS_MACADDR_LEN))
+		if (__ws_unpack_ay(asp_params->service_mac, value, WS_MACADDR_LEN))
 			WDP_LOGD("Adv address[" MACSTR "]", MAC2STR(asp_params->service_mac));
 
 	} else if (g_strcmp0(key, "ses_mac") == 0) {
-		if(__ws_unpack_ay(asp_params->session_mac, value, WS_MACADDR_LEN))
+		if (__ws_unpack_ay(asp_params->session_mac, value, WS_MACADDR_LEN))
 			WDP_LOGD("session address[" MACSTR "]", MAC2STR(asp_params->session_mac));
 
 	} else if (g_strcmp0(key, "session_info") == 0) {
@@ -1299,7 +1299,7 @@ static void __ws_extract_asp_provision_done_details(const char *key, GVariant *v
 		}
 
 		WDP_LOGD("Retrive Added path [%s]", path);
-		loc = strrchr(path,'/');
+		loc = strrchr(path, '/');
 		if (loc != NULL)
 			__ws_mac_compact_to_normal(loc + 1, peer_dev);
 		__ws_txt_to_mac(peer_dev, event->dev_addr);
@@ -1332,15 +1332,15 @@ static void __ws_extract_asp_provision_done_details(const char *key, GVariant *v
 		WDP_LOGD("Retrive persist [%u]", asp_params->persistent_group_id);
 
 	}   else if (g_strcmp0(key, "adv_mac") == 0) {
-		if(__ws_unpack_ay(asp_params->service_mac, value, WS_MACADDR_LEN))
+		if (__ws_unpack_ay(asp_params->service_mac, value, WS_MACADDR_LEN))
 			WDP_LOGD("Adv address[" MACSTR "]", MAC2STR(asp_params->service_mac));
 
 	} else if (g_strcmp0(key, "ses_mac") == 0) {
-		if(__ws_unpack_ay(asp_params->session_mac, value, WS_MACADDR_LEN))
+		if (__ws_unpack_ay(asp_params->session_mac, value, WS_MACADDR_LEN))
 			WDP_LOGD("session address[" MACSTR "]", MAC2STR(asp_params->session_mac));
 
 	} else if (g_strcmp0(key, "group_mac") == 0) {
-		if(__ws_unpack_ay(asp_params->group_mac, value, WS_MACADDR_LEN))
+		if (__ws_unpack_ay(asp_params->group_mac, value, WS_MACADDR_LEN))
 			WDP_LOGD("group address[" MACSTR "]", MAC2STR(asp_params->group_mac));
 	}
 	__WDP_LOG_FUNC_EXIT__;
@@ -1351,7 +1351,7 @@ static void __ws_extract_provision_fail_details(const char *key, GVariant *value
 	__WDP_LOG_FUNC_ENTER__;
 	wfd_oem_event_s *event = (wfd_oem_event_s *)user_data;
 	wfd_oem_asp_prov_s *asp_params = NULL;
-	if(!event || !event->edata) {
+	if (!event || !event->edata) {
 		__WDP_LOG_FUNC_EXIT__;
 		return;
 	}
@@ -1370,7 +1370,7 @@ static void __ws_extract_provision_fail_details(const char *key, GVariant *value
 		}
 
 		WDP_LOGD("Retrive Added path [%s]", path);
-		loc = strrchr(path,'/');
+		loc = strrchr(path, '/');
 		if (loc != NULL)
 			__ws_mac_compact_to_normal(loc + 1, peer_dev);
 		__ws_txt_to_mac(peer_dev, event->dev_addr);
@@ -1386,7 +1386,7 @@ static void __ws_extract_provision_fail_details(const char *key, GVariant *value
 	} else if (g_strcmp0(key, "deferred_session_resp") == 0) {
 		const char *session_info = NULL;
 		g_variant_get(value, "&s", &session_info);
-		if(session_info != NULL)
+		if (session_info != NULL)
 			asp_params->session_information = g_strdup(session_info);
 		WDP_LOGD("Retrive deferred_session_resp [%s]", asp_params->session_information);
 	}
@@ -1493,11 +1493,11 @@ int ws_get_advertise_service(const char *peer_path, GList **asp_services)
 	}
 
 	param = g_variant_new("(ss)", SUPPLICANT_P2P_PEER, "AdvertiseService");
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	DEBUG_PARAMS(param);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
-	reply = g_dbus_connection_call_sync (
+	reply = g_dbus_connection_call_sync(
 			g_dbus,
 			SUPPLICANT_SERVICE, /* bus name */
 			peer_path, /* object path */
@@ -1510,11 +1510,11 @@ int ws_get_advertise_service(const char *peer_path, GList **asp_services)
 			NULL, /* cancellable */
 			&error); /* error */
 
-	if(error != NULL) {
+	if (error != NULL) {
 		WDP_LOGE("Error! Failed to get peer advertise service: [%s]",
 				error->message);
 		g_error_free(error);
-		if(reply)
+		if (reply)
 			g_variant_unref(reply);
 		__WDP_LOG_FUNC_EXIT__;
 		return -1;
@@ -1522,7 +1522,7 @@ int ws_get_advertise_service(const char *peer_path, GList **asp_services)
 
 	if (reply != NULL) {
 
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 		DEBUG_PARAMS(reply);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
@@ -1541,11 +1541,11 @@ int ws_get_advertise_service(const char *peer_path, GList **asp_services)
 
 		while (1) {
 			/* 4byte advertisement ID, 2 byte config method, 1byte length */
+
 			cnt = 0;
 			memset(desc, 0x0, 7);
-			while (cnt < 7 && g_variant_iter_loop (iter, "y", &desc[cnt])) {
+			while (cnt < 7 && g_variant_iter_loop(iter, "y", &desc[cnt]))
 				cnt++;
-			}
 
 			if (cnt != 7 || desc[6] == 0) {
 				WDP_LOGE("Invalid descriptor header length cnt [%d]", cnt);
@@ -1566,9 +1566,8 @@ int ws_get_advertise_service(const char *peer_path, GList **asp_services)
 			WDP_LOGD("adv_id[%u] config_method[%u]  length[%hhu]", adv_id, config_method, length);
 
 			cnt = 0;
-			while (cnt < length && g_variant_iter_loop (iter, "y", &value[cnt])) {
+			while (cnt < length && g_variant_iter_loop(iter, "y", &value[cnt]))
 				cnt++;
-			}
 
 			if (cnt != length) {
 				WDP_LOGE("Length doesn't matched with header value cnt [%d]", cnt);
@@ -1599,7 +1598,7 @@ GLIST_ITER_START(seek_list, seek)
 				seek = NULL;
 			}
 GLIST_ITER_END()
-			if(seek != NULL && seek->service_info != NULL) {
+			if (seek != NULL && seek->service_info != NULL) {
 				WDP_LOGD("service info exists, service discovery will be performed");
 			} else {
 				WDP_LOGD("service info doesn't exists. Add service to list");
@@ -1641,16 +1640,16 @@ static void _ws_process_device_found(GDBusConnection *connection,
 			__ws_peer_property, event.edata);
 
 #if defined(TIZEN_FEATURE_ASP)
-	if(edata->has_asp_services)
+	if (edata->has_asp_services)
 		ws_get_advertise_service(peer_path, (GList **)&(event.asp_services));
 #endif /* TIZEN_FEATURE_ASP */
 
 	g_pd->callback(g_pd->user_data, &event);
 #if defined(TIZEN_FEATURE_ASP)
-	if(event.asp_services != NULL) {
+	if (event.asp_services != NULL) {
 		GList *l;
 		wfd_oem_advertise_service_s *service;
-		for(l = (GList *)event.asp_services; l != NULL; l = l->next) {
+		for (l = (GList *)event.asp_services; l != NULL; l = l->next) {
 			service = (wfd_oem_advertise_service_s *)l->data;
 			g_free(service->service_type);
 			g_free(service);
@@ -1731,8 +1730,8 @@ static void _ws_process_prov_disc_req_display_pin(GDBusConnection *connection,
 	g_strlcpy(peer_path, path, DBUS_OBJECT_PATH_MAX);
 	WDP_LOGD("Retrive Added path [%s]", peer_path);
 
-	loc = strrchr(peer_path,'/');
-	if(loc != NULL)
+	loc = strrchr(peer_path, '/');
+	if (loc != NULL)
 		__ws_mac_compact_to_normal(loc + 1, peer_dev);
 	__ws_txt_to_mac(peer_dev, event.dev_addr);
 	WDP_LOGD("peer mac [" MACSTR "]", MAC2STR(event.dev_addr));
@@ -1781,8 +1780,8 @@ static void _ws_process_prov_disc_resp_display_pin(GDBusConnection *connection,
 	g_strlcpy(peer_path, path, DBUS_OBJECT_PATH_MAX);
 	WDP_LOGD("Retrive Added path [%s]", peer_path);
 
-	loc = strrchr(peer_path,'/');
-	if(loc != NULL)
+	loc = strrchr(peer_path, '/');
+	if (loc != NULL)
 		__ws_mac_compact_to_normal(loc + 1, peer_dev);
 	__ws_txt_to_mac(peer_dev, event.dev_addr);
 	WDP_LOGD("peer mac [" MACSTR "]", MAC2STR(event.dev_addr));
@@ -1993,8 +1992,8 @@ static void _ws_process_prov_disc_failure(GDBusConnection *connection,
 	WDP_LOGD("Retrive Added path [%s]", peer_path);
 	WDP_LOGD("Retrive Failure stateus [%d]", prov_status);
 
-	loc = strrchr(peer_path,'/');
-	if(loc != NULL)
+	loc = strrchr(peer_path, '/');
+	if (loc != NULL)
 		__ws_mac_compact_to_normal(loc + 1, peer_dev);
 	__ws_txt_to_mac(peer_dev, event.dev_addr);
 	WDP_LOGE("peer mac [" MACSTR "]", MAC2STR(event.dev_addr));
@@ -2027,7 +2026,7 @@ static void _ws_process_group_started(GDBusConnection *connection,
 	event.edata_type = WFD_OEM_EDATA_TYPE_GROUP;
 	event.event_id = WFD_OEM_EVENT_GROUP_CREATED;
 
-	if(parameters != NULL){
+	if (parameters != NULL) {
 		g_variant_get(parameters, "(a{sv})", &iter);
 
 		if (iter != NULL) {
@@ -2065,7 +2064,7 @@ static void _ws_process_go_neg_success(GDBusConnection *connection,
 	event.edata_type = WFD_OEM_EDATA_TYPE_CONN;
 	event.event_id = WFD_OEM_EVENT_GO_NEG_DONE;
 
-	if (parameters != NULL){
+	if (parameters != NULL) {
 		g_variant_get(parameters, "(a{sv})", &iter);
 
 		if (iter != NULL) {
@@ -2164,8 +2163,8 @@ static void _ws_process_go_neg_request(GDBusConnection *connection,
 		event.wps_mode = WFD_OEM_WPS_MODE_NONE;
 	edata->device_go_intent = device_go_intent;
 
-	loc = strrchr(peer_path,'/');
-	if(loc != NULL)
+	loc = strrchr(peer_path, '/');
+	if (loc != NULL)
 		__ws_mac_compact_to_normal(loc + 1, peer_dev);
 	__ws_txt_to_mac(peer_dev, event.dev_addr);
 	WDP_LOGD("peer mac [" MACSTR "]", MAC2STR(event.dev_addr));
@@ -2224,8 +2223,6 @@ static void _ws_process_invitation_result(GDBusConnection *connection,
 	wfd_oem_event_s event;
 	memset(&event, 0x0, sizeof(wfd_oem_event_s));
 
-//	g_pd->callback(g_pd->user_data, event);
-
 	__WDP_LOG_FUNC_EXIT__;
 }
 
@@ -2261,9 +2258,9 @@ static void _ws_process_service_discovery_response(GDBusConnection *connection,
 
 	event.event_id = WFD_OEM_EVENT_SERV_DISC_RESP;
 
-	if(parameters != NULL) {
+	if (parameters != NULL) {
 		g_variant_get(parameters, "(a{sv})", &iter);
-		if(iter != NULL) {
+		if (iter != NULL) {
 			dbus_property_foreach(iter, __ws_extract_servicediscoveryresponse_details, &event);
 			event.edata_type = WFD_OEM_EDATA_TYPE_NEW_SERVICE;
 			g_variant_iter_free(iter);
@@ -2303,9 +2300,9 @@ static void _ws_process_service_asp_response(GDBusConnection *connection,
 	event.edata_type = WFD_OEM_EDATA_TYPE_ASP_SERVICE;
 	event.event_id = WFD_OEM_EVENT_ASP_SERV_RESP;
 
-	if(parameters != NULL) {
+	if (parameters != NULL) {
 		g_variant_get(parameters, "(a{sv})", &iter);
-		if(iter != NULL) {
+		if (iter != NULL) {
 			dbus_property_foreach(iter, __ws_extract_serviceaspresponse_details, &event);
 			g_variant_iter_free(iter);
 		}
@@ -2313,9 +2310,9 @@ static void _ws_process_service_asp_response(GDBusConnection *connection,
 		WDP_LOGE("No Properties");
 	}
 GLIST_ITER_START(seek_list, tmp)
-	if(tmp->tran_id == service->tran_id) {
+	if (tmp->tran_id == service->tran_id) {
 		WDP_LOGD("srv_trans_id matched [%d] search_id [%llu]"
-				,tmp->tran_id, tmp->search_id);
+				, tmp->tran_id, tmp->search_id);
 		service->search_id = tmp->search_id;
 		break;
 	} else {
@@ -2323,7 +2320,7 @@ GLIST_ITER_START(seek_list, tmp)
 	}
 GLIST_ITER_END()
 
-	if(tmp->service_info != NULL)
+	if (tmp->service_info != NULL)
 		g_pd->callback(g_pd->user_data, &event);
 	else
 		WDP_LOGD("service info is not required, don't notify to user");
@@ -2343,8 +2340,6 @@ static void _ws_process_persistent_group_added(GDBusConnection *connection,
 	wfd_oem_event_s event;
 	memset(&event, 0x0, sizeof(wfd_oem_event_s));
 
-//	g_pd->callback(g_pd->user_data, &event);
-
 	__WDP_LOG_FUNC_EXIT__;
 }
 
@@ -2354,8 +2349,6 @@ static void _ws_process_persistent_group_removed(GDBusConnection *connection,
 	__WDP_LOG_FUNC_ENTER__;
 	wfd_oem_event_s event;
 	memset(&event, 0x0, sizeof(wfd_oem_event_s));
-
-//	g_pd->callback(g_pd->user_data, &event);
 
 	__WDP_LOG_FUNC_EXIT__;
 }
@@ -2383,7 +2376,7 @@ static void _ws_process_wps_failed(GDBusConnection *connection,
 		GVariant *value = NULL;
 
 		while (g_variant_iter_loop(iter, "{sv}", &key, &value)) {
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 			CHECK_KEY_VALUE(key, value);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 		}
@@ -2432,7 +2425,7 @@ static void _ws_process_invitation_accepted(GDBusConnection *connection,
 
 			while (g_variant_iter_loop(iter, "{sv}", &key, &value)) {
 				CHECK_KEY_VALUE(key, value);
-				if(g_strcmp0(key, "sa") == 0)
+				if (g_strcmp0(key, "sa") == 0)
 					if (__ws_unpack_ay(event.dev_addr, value, WS_MACADDR_LEN))
 						WDP_LOGI("[" MACSTR "]", MAC2STR(event.dev_addr));
 			}
@@ -2526,7 +2519,7 @@ static void _ws_process_asp_provision_done(GDBusConnection *connection,
 static struct {
 	const char *interface;
 	const char *member;
-	void (*function) (GDBusConnection *connection,const gchar *object_path,
+	void (*function) (GDBusConnection *connection, const gchar *object_path,
 			GVariant *parameters);
 } ws_p2pdevice_signal_map[] = {
 	{
@@ -2675,7 +2668,7 @@ static void _p2pdevice_signal_cb(GDBusConnection *connection,
 		const gchar *signal, GVariant *parameters, gpointer user_data)
 {
 	int i = 0;
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	DEBUG_SIGNAL(sender, object_path, interface, signal, parameters);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
@@ -2743,7 +2736,7 @@ static void _ws_process_sta_deauthorized(GDBusConnection *connection,
 static struct {
 	const char *interface;
 	const char *member;
-	void (*function) (GDBusConnection *connection,const gchar *object_path,
+	void (*function) (GDBusConnection *connection, const gchar *object_path,
 			GVariant *parameters);
 } ws_interface_signal_map[] = {
 	{
@@ -2768,7 +2761,7 @@ static void _interface_signal_cb(GDBusConnection *connection,
 		const gchar *signal, GVariant *parameters, gpointer user_data)
 {
 	int i = 0;
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	DEBUG_SIGNAL(sender, object_path, interface, signal, parameters);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
@@ -2803,14 +2796,14 @@ static void __ws_parse_peer_joined(char *peer_path,
 	g_strlcpy(peer_path, path, DBUS_OBJECT_PATH_MAX);
 	WDP_LOGD("Retrive Added path [%s]", peer_path);
 
-	loc = strrchr(peer_path,'/');
-	if(loc != NULL)
+	loc = strrchr(peer_path, '/');
+	if (loc != NULL)
 		__ws_mac_compact_to_normal(loc + 1, peer_dev);
 	__ws_txt_to_mac(peer_dev, dev_addr);
 	WDP_LOGD("peer mac [" MACSTR "]", MAC2STR(dev_addr));
 #ifdef TIZEN_FEATURE_IP_OVER_EAPOL
-	for(i = 0; i < OEM_IPADDR_LEN; i++)
-		g_variant_iter_loop (iter, "y", &ip_addr[i]);
+	for (i = 0; i < OEM_IPADDR_LEN; i++)
+		g_variant_iter_loop(iter, "y", &ip_addr[i]);
 	g_variant_iter_free(iter);
 
 	WDP_LOGD("peer ip [" IPSTR "]", IP2STR(ip_addr));
@@ -2825,7 +2818,7 @@ static void _group_signal_cb(GDBusConnection *connection,
 		const gchar *sender, const gchar *object_path, const gchar *interface,
 		const gchar *signal, GVariant *parameters, gpointer user_data)
 {
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	DEBUG_SIGNAL(sender, object_path, interface, signal, parameters);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
@@ -2834,7 +2827,7 @@ static void _group_signal_cb(GDBusConnection *connection,
 		return;
 	}
 
-	if (!g_strcmp0(signal,"PeerJoined")) {
+	if (!g_strcmp0(signal, "PeerJoined")) {
 
 		wfd_oem_event_s event;
 		wfd_oem_dev_data_s *edata = NULL;
@@ -2864,7 +2857,7 @@ static void _group_signal_cb(GDBusConnection *connection,
 
 		g_free(edata);
 
-	} else if (!g_strcmp0(signal,"PeerDisconnected")) {
+	} else if (!g_strcmp0(signal, "PeerDisconnected")) {
 
 		wfd_oem_event_s event;
 
@@ -2953,7 +2946,7 @@ static int _ws_create_interface(const char *iface_name, handle_reply function, v
 
 	dbus_set_method_param(&params, "CreateInterface", SUPPLICANT_PATH, g_dbus);
 
-	builder = g_variant_builder_new(G_VARIANT_TYPE ("a{sv}"));
+	builder = g_variant_builder_new(G_VARIANT_TYPE("a{sv}"));
 	g_variant_builder_add(builder, "{sv}", "Ifname", g_variant_new_string(iface_name));
 	g_variant_builder_add(builder, "{sv}", "ConfigFile", g_variant_new_string(CONF_FILE_PATH));
 	params.params = g_variant_new("(a{sv})", builder);
@@ -2990,7 +2983,7 @@ static int _ws_get_interface(const char *iface_name, handle_reply function, void
 			SUPPLICANT_PATH, g_pd->g_dbus);
 
 	params.params = g_variant_new("(s)", iface_name);
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	DEBUG_PARAMS(params.params);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
@@ -3006,7 +2999,7 @@ static int _ws_get_interface(const char *iface_name, handle_reply function, void
 	return res;
 }
 
-#if defined (TIZEN_MOBILE) && (TIZEN_WLAN_BOARD_SPRD)
+#if defined(TIZEN_MOBILE) && (TIZEN_WLAN_BOARD_SPRD)
 static void __ws_remove_interface(GVariant *value, void *user_data)
 {
 	__WDP_LOG_FUNC_ENTER__;
@@ -3062,7 +3055,7 @@ static int _ws_init_dbus_connection(void)
 	conn = g_bus_get_sync(G_BUS_TYPE_SYSTEM, NULL, &error);
 
 	if (conn == NULL) {
-		if(error != NULL){
+		if (error != NULL) {
 			WDP_LOGE("Error! Failed to connect to the D-BUS daemon: [%s]",
 					error->message);
 			g_error_free(error);
@@ -3085,13 +3078,13 @@ static int _ws_init_dbus_connection(void)
 		G_DBUS_SIGNAL_FLAGS_NONE,
 		_supplicant_signal_cb,
 		NULL, NULL);
-#if defined (TIZEN_MOBILE) && (TIZEN_WLAN_BOARD_SPRD)
-	if(_ws_get_interface(COMMON_IFACE_NAME, NULL, NULL) < 0)
+#if defined(TIZEN_MOBILE) && (TIZEN_WLAN_BOARD_SPRD)
+	if (_ws_get_interface(COMMON_IFACE_NAME, NULL, NULL) < 0)
 		_ws_create_interface(COMMON_IFACE_NAME, NULL, NULL);
-	if(_ws_get_interface(P2P_IFACE_NAME, __register_p2pdevice_signal, NULL) < 0)
+	if (_ws_get_interface(P2P_IFACE_NAME, __register_p2pdevice_signal, NULL) < 0)
 		res = _ws_create_interface(P2P_IFACE_NAME, __register_p2pdevice_signal, NULL);
 #else /* (TIZEN_MOBILE) && (TIZEN_WLAN_BOARD_SPRD) */
-	if(_ws_get_interface(COMMON_IFACE_NAME, __register_p2pdevice_signal, NULL) < 0)
+	if (_ws_get_interface(COMMON_IFACE_NAME, __register_p2pdevice_signal, NULL) < 0)
 		res = _ws_create_interface(COMMON_IFACE_NAME, __register_p2pdevice_signal, NULL);
 #endif /* (TIZEN_MOBILE) && (TIZEN_WLAN_BOARD_SPRD) */
 
@@ -3215,7 +3208,7 @@ int ws_init(wfd_oem_event_cb callback, void *user_data)
 		_ws_reset_plugin(g_pd);
 
 	errno = 0;
-	g_pd = (ws_dbus_plugin_data_s*) g_try_malloc0 (sizeof(ws_dbus_plugin_data_s));
+	g_pd = (ws_dbus_plugin_data_s*) g_try_malloc0(sizeof(ws_dbus_plugin_data_s));
 	if (!g_pd) {
 		WDP_LOGE("Failed to allocate memory for plugin data. [%s]", strerror(errno));
 		return -1;
@@ -3267,15 +3260,14 @@ gboolean _ws_util_execute_file(const char *file_path,
 	} else if (pid > 0) {
 		if (waitpid(pid, &rv, 0) == -1)
 			WDP_LOGD("wait pid (%u) rv (%d)", pid, rv);
-		if (WIFEXITED(rv)) {
+		if (WIFEXITED(rv))
 			WDP_LOGD("exited, rv=%d", WEXITSTATUS(rv));
-		} else if (WIFSIGNALED(rv)) {
+		else if (WIFSIGNALED(rv))
 			WDP_LOGD("killed by signal %d", WTERMSIG(rv));
-		} else if (WIFSTOPPED(rv)) {
+		else if (WIFSTOPPED(rv))
 			WDP_LOGD("stopped by signal %d", WSTOPSIG(rv));
-		} else if (WIFCONTINUED(rv)) {
+		else if (WIFCONTINUED(rv))
 			WDP_LOGD("continued");
-		}
 
 		return TRUE;
 	}
@@ -3287,32 +3279,32 @@ gboolean _ws_util_execute_file(const char *file_path,
 #ifndef TIZEN_WIFI_MODULE_BUNDLE
 static int __ws_p2p_firmware_start(void)
 {
-	gboolean rv = FALSE;
-	const char *path = "/usr/bin/wlan.sh";
-	char *const args[] = { "/usr/bin/wlan.sh", "p2p", NULL };
-	char *const envs[] = { NULL };
+        gboolean rv = FALSE;
+        const char *path = "/usr/bin/wlan.sh";
+        char *const args[] = { "/usr/bin/wlan.sh", "p2p", NULL };
+        char *const envs[] = { NULL };
 
-	rv = _ws_util_execute_file(path, args, envs);
-	if (rv != TRUE)
-		return -1;
+        rv = _ws_util_execute_file(path, args, envs);
+        if (rv != TRUE)
+                return -1;
 
-	WDP_LOGI("Successfully loaded p2p device driver");
-	return 0;
+        WDP_LOGI("Successfully loaded p2p device driver");
+        return 0;
 }
 
 static int __ws_p2p_firmware_stop(void)
 {
-	gboolean rv = FALSE;
-	const char *path = "/usr/bin/wlan.sh";
-	char *const args[] = { "/usr/bin/wlan.sh", "stop", NULL };
-	char *const envs[] = { NULL };
+        gboolean rv = FALSE;
+        const char *path = "/usr/bin/wlan.sh";
+        char *const args[] = { "/usr/bin/wlan.sh", "stop", NULL };
+        char *const envs[] = { NULL };
 
-	rv = _ws_util_execute_file(path, args, envs);
-	if (rv < 0)
-		return -1;
+        rv = _ws_util_execute_file(path, args, envs);
+        if (rv < 0)
+                return -1;
 
-	WDP_LOGI("Successfully removed p2p device driver");
-	return 0;
+        WDP_LOGI("Successfully removed p2p device driver");
+        return 0;
 }
 #endif
 
@@ -3380,7 +3372,7 @@ static int __ws_p2p_on(void)
 			NETCONFIG_DBUS_REPLY_TIMEOUT, &error);
 	if (dbus_error_is_set(&error) == TRUE) {
 		if (NULL != strstr(error.message, ".AlreadyExists")) {
-			// p2p already enabled
+			/* p2p already enabled */
 		} else {
 			WDP_LOGE("dbus_connection_send_with_reply_and_block() failed. "
 					"DBus error [%s: %s]", error.name, error.message);
@@ -3427,7 +3419,7 @@ static int __ws_p2p_off(void)
 			NETCONFIG_DBUS_REPLY_TIMEOUT, &error);
 	if (dbus_error_is_set(&error) == TRUE) {
 		if (NULL != strstr(error.message, ".AlreadyExists")) {
-			// p2p already disabled
+			/*  p2p already disabled */
 		} else {
 			WDP_LOGE("dbus_connection_send_with_reply_and_block() failed. "
 					"DBus error [%s: %s]", error.name, error.message);
@@ -3473,9 +3465,9 @@ int __ws_init_p2pdevice()
 	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
 		return -1;
-        }
+	}
 
-	for(i = 0; i < WS_DEVTYPE_LEN; i++)
+	for (i = 0; i < WS_DEVTYPE_LEN; i++)
 		WDP_LOGD("device type[%02x]", primary_device_type[i]);
 
 	g_dbus = g_pd->g_dbus;
@@ -3488,76 +3480,76 @@ int __ws_init_p2pdevice()
 	dbus_set_method_param(&params, DBUS_PROPERTIES_METHOD_SET, g_pd->iface_path,
 			 g_dbus);
 
-	builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
-	g_variant_builder_add (builder, "{sv}", "DeviceName",
+	builder = g_variant_builder_new(G_VARIANT_TYPE("a{sv}"));
+	g_variant_builder_add(builder, "{sv}", "DeviceName",
 					g_variant_new_string(DEFAULT_DEVICE_NAME));
 
-	g_variant_builder_add (builder, "{sv}", "GOIntent",
+	g_variant_builder_add(builder, "{sv}", "GOIntent",
 					g_variant_new_uint32(DEFAULT_GO_INTENT));
 
-	g_variant_builder_add (builder, "{sv}", "PersistentReconnect",
+	g_variant_builder_add(builder, "{sv}", "PersistentReconnect",
 					g_variant_new_boolean(DEFAULT_PERSISTENT_RECONNECT));
 
-	g_variant_builder_add (builder, "{sv}", "ListenRegClass",
+	g_variant_builder_add(builder, "{sv}", "ListenRegClass",
 					g_variant_new_uint32(DEFAULT_LISTEN_REG_CLASS));
 
-	g_variant_builder_add (builder, "{sv}", "ListenChannel",
+	g_variant_builder_add(builder, "{sv}", "ListenChannel",
 					g_variant_new_uint32(DEFAULT_LISTEN_CHANNEL));
 
-	g_variant_builder_add (builder, "{sv}", "OperRegClass",
+	g_variant_builder_add(builder, "{sv}", "OperRegClass",
 					g_variant_new_uint32(DEFAULT_OPER_REG_CLASS));
 
-	g_variant_builder_add (builder, "{sv}", "OperChannel",
+	g_variant_builder_add(builder, "{sv}", "OperChannel",
 					g_variant_new_uint32(DEFAULT_OPER_CHANNEL));
 
-	g_variant_builder_add (builder, "{sv}", "SsidPostfix",
+	g_variant_builder_add(builder, "{sv}", "SsidPostfix",
 					g_variant_new_string(DEFAULT_DEVICE_NAME));
 
-	g_variant_builder_add (builder, "{sv}", "NoGroupIface",
+	g_variant_builder_add(builder, "{sv}", "NoGroupIface",
 					g_variant_new_boolean(DEFAULT_NO_GROUP_IFACE));
 
-	type_builder = g_variant_builder_new (G_VARIANT_TYPE ("ay"));
-	for(i = 0; i < WS_DEVTYPE_LEN; i++)
+	type_builder = g_variant_builder_new(G_VARIANT_TYPE("ay"));
+	for (i = 0; i < WS_DEVTYPE_LEN; i++)
 		g_variant_builder_add(type_builder, "y", primary_device_type[i]);
-	g_variant_builder_add (builder, "{sv}", "PrimaryDeviceType",
-			g_variant_new ("ay", type_builder));
-	g_variant_builder_unref (type_builder);
+	g_variant_builder_add(builder, "{sv}", "PrimaryDeviceType",
+			g_variant_new("ay", type_builder));
+	g_variant_builder_unref(type_builder);
 #ifdef TIZEN_FEATURE_IP_OVER_EAPOL
-	type_builder = g_variant_builder_new (G_VARIANT_TYPE ("ay"));
-	for(i = 0; i < OEM_IPADDR_LEN; i++)
+	type_builder = g_variant_builder_new(G_VARIANT_TYPE("ay"));
+	for (i = 0; i < OEM_IPADDR_LEN; i++)
 		g_variant_builder_add(type_builder, "y", ip_addr_go[i]);
-	g_variant_builder_add (builder, "{sv}", "IpAddrGO",
-			g_variant_new ("ay", type_builder));
-	g_variant_builder_unref (type_builder);
+	g_variant_builder_add(builder, "{sv}", "IpAddrGO",
+			g_variant_new("ay", type_builder));
+	g_variant_builder_unref(type_builder);
 
-	type_builder = g_variant_builder_new (G_VARIANT_TYPE ("ay"));
-	for(i = 0; i < OEM_IPADDR_LEN; i++)
+	type_builder = g_variant_builder_new(G_VARIANT_TYPE("ay"));
+	for (i = 0; i < OEM_IPADDR_LEN; i++)
 		g_variant_builder_add(type_builder, "y", ip_addr_mask[i]);
-	g_variant_builder_add (builder, "{sv}", "IpAddrMask",
-			g_variant_new ("ay", type_builder));
-	g_variant_builder_unref (type_builder);
+	g_variant_builder_add(builder, "{sv}", "IpAddrMask",
+			g_variant_new("ay", type_builder));
+	g_variant_builder_unref(type_builder);
 
-	type_builder = g_variant_builder_new (G_VARIANT_TYPE ("ay"));
-	for(i = 0; i < OEM_IPADDR_LEN; i++)
+	type_builder = g_variant_builder_new(G_VARIANT_TYPE("ay"));
+	for (i = 0; i < OEM_IPADDR_LEN; i++)
 		g_variant_builder_add(type_builder, "y", ip_addr_start[i]);
-	g_variant_builder_add (builder, "{sv}", "IpAddrStart",
-			g_variant_new ("ay", type_builder));
-	g_variant_builder_unref (type_builder);
+	g_variant_builder_add(builder, "{sv}", "IpAddrStart",
+			g_variant_new("ay", type_builder));
+	g_variant_builder_unref(type_builder);
 
-	type_builder = g_variant_builder_new (G_VARIANT_TYPE ("ay"));
-	for(i = 0; i < OEM_IPADDR_LEN; i++)
+	type_builder = g_variant_builder_new(G_VARIANT_TYPE("ay"));
+	for (i = 0; i < OEM_IPADDR_LEN; i++)
 		g_variant_builder_add(type_builder, "y", ip_addr_end[i]);
-	g_variant_builder_add (builder, "{sv}", "IpAddrEnd",
-			g_variant_new ("ay", type_builder));
-	g_variant_builder_unref (type_builder);
+	g_variant_builder_add(builder, "{sv}", "IpAddrEnd",
+			g_variant_new("ay", type_builder));
+	g_variant_builder_unref(type_builder);
 #endif /* TIZEN_FEATURE_IP_OVER_EAPOL */
-	value = g_variant_new ("a{sv}", builder);
-	g_variant_builder_unref (builder);
+	value = g_variant_new("a{sv}", builder);
+	g_variant_builder_unref(builder);
 
 	param = g_variant_new("(ssv)", SUPPLICANT_P2PDEVICE, "P2PDeviceConfig", value);
 
 	params.params = param;
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	DEBUG_PARAMS(params.params);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
@@ -3632,7 +3624,7 @@ int ws_activate(int concurrent)
 #ifndef TIZEN_WIFI_MODULE_BUNDLE
 	while (retry_count < WS_CONN_RETRY_COUNT) {
 		/* load wlan driver */
-		if(concurrent == 0)
+		if (concurrent == 0)
 			res = __ws_p2p_firmware_start();
 		if (res < 0) {
 			WDP_LOGE("Failed to load driver [ret=%d]", res);
@@ -3641,7 +3633,7 @@ int ws_activate(int concurrent)
 		WDP_LOGI("P2P firmware started with error %d", res);
 
 		if (__ws_check_net_interface(COMMON_IFACE_NAME) < 0) {
-			usleep(150000); // wait for 150ms
+			usleep(150000); /* wait for 150ms */
 			concurrent = 0;
 			retry_count++;
 			WDP_LOGE("interface is not up: retry, %d", retry_count);
@@ -3656,9 +3648,9 @@ int ws_activate(int concurrent)
 		return -1;
 	}
 	if (retry_count > 0) {
-		// Give driver marginal time to config net
+		/* Give driver marginal time to config net */
 		WDP_LOGE("Driver loading is done. Wait marginal time for driver");
-		sleep(1); // 1s
+		sleep(1); /* 1s */
 	}
 
 	g_pd->concurrent = concurrent;
@@ -3705,15 +3697,15 @@ int ws_deactivate(int concurrent)
 	ws_stop_scan();
 
 	g_pd->concurrent = concurrent;
-#if defined (TIZEN_MOBILE) && (TIZEN_WLAN_BOARD_SPRD)
+#if defined(TIZEN_MOBILE) && (TIZEN_WLAN_BOARD_SPRD)
 	_ws_get_interface(P2P_IFACE_NAME, __ws_remove_interface, NULL);
-	if(concurrent == 0)
+	if (concurrent == 0)
 		_ws_get_interface(COMMON_IFACE_NAME, __ws_remove_interface, NULL);
 #endif /* (TIZEN_MOBILE) && (TIZEN_WLAN_BOARD_SPRD) */
 
 	_ws_deinit_dbus_connection();
 
-	if(concurrent == 0) {
+	if (concurrent == 0) {
 		res = __ws_p2p_supplicant_stop();
 		WDP_LOGI("[/usr/sbin/p2p_supp.sh stop] returns %d", res);
 #ifndef TIZEN_WIFI_MODULE_BUNDLE
@@ -3761,7 +3753,7 @@ static void __ws_add_seek_params(GVariantBuilder *builder)
 	int len = 0;
 	int i = 0;
 
-	if(seek_list == NULL || g_list_length(seek_list) == 0) {
+	if (seek_list == NULL || g_list_length(seek_list) == 0) {
 		WDP_LOGD("seek list is NULL");
 		return;
 	}
@@ -3774,13 +3766,13 @@ GLIST_ITER_START(seek_list, data)
 		len = strlen(data->service_type) + 1;
 		WDP_LOGD("data [%s] len [%d]", data->service_type, len);
 		inner = g_variant_builder_new(G_VARIANT_TYPE("ay"));
-		for(i = 0; i < len; i++)
+		for (i = 0; i < len; i++)
 			g_variant_builder_add(inner, "y", data->service_type[i]);
 		g_variant_builder_add(outter, "ay", inner);
 		g_variant_builder_unref(inner);
 	}
 GLIST_ITER_END()
-	g_variant_builder_add (builder, "{sv}", "Seek", g_variant_new ("aay", outter));
+	g_variant_builder_add(builder, "{sv}", "Seek", g_variant_new("aay", outter));
 	g_variant_builder_unref(outter);
 
 	return;
@@ -3818,29 +3810,29 @@ int ws_start_scan(wfd_oem_scan_param_s *param)
 
 		dbus_set_method_param(&params, "Find",  g_pd->iface_path, g_dbus);
 
-		builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}") );
+		builder = g_variant_builder_new(G_VARIANT_TYPE("a{sv}"));
 
 			if (param->scan_time)
-				g_variant_builder_add (builder, "{sv}", "Timeout",
+				g_variant_builder_add(builder, "{sv}", "Timeout",
 							g_variant_new_int32(param->scan_time));
 			if (param->scan_type == WFD_OEM_SCAN_TYPE_SOCIAL)
-				g_variant_builder_add (builder, "{sv}", "DiscoveryType",
+				g_variant_builder_add(builder, "{sv}", "DiscoveryType",
 							g_variant_new_string("social"));
 #if defined(TIZEN_FEATURE_ASP)
-			if(seek_list != NULL)
+			if (seek_list != NULL)
 				__ws_add_seek_params(builder);
 #endif /* TIZEN_FEATURE_ASP */
 
-			value = g_variant_new ("(a{sv})", builder);
-			g_variant_builder_unref (builder);
+			value = g_variant_new("(a{sv})", builder);
+			g_variant_builder_unref(builder);
 	} else {
 
 		dbus_set_method_param(&params, "Listen", g_pd->iface_path, g_dbus);
-		value = g_variant_new ("(i)", param->scan_time);
+		value = g_variant_new("(i)", param->scan_time);
 	}
 
 	params.params = value;
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	DEBUG_PARAMS(params.params);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
@@ -3877,15 +3869,15 @@ int ws_restart_scan(int freq)
 
 	dbus_set_method_param(&params, "Find", g_pd->iface_path, g_dbus);
 
-	builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}") );
-	g_variant_builder_add (builder, "{sv}", "Timeout", g_variant_new_int32(2));
-	g_variant_builder_add (builder, "{sv}", "DiscoveryType",
+	builder = g_variant_builder_new(G_VARIANT_TYPE("a{sv}"));
+	g_variant_builder_add(builder, "{sv}", "Timeout", g_variant_new_int32(2));
+	g_variant_builder_add(builder, "{sv}", "DiscoveryType",
 				g_variant_new_string("social"));
-	value = g_variant_new ("(a{sv})", builder);
-	g_variant_builder_unref (builder);
+	value = g_variant_new("(a{sv})", builder);
+	g_variant_builder_unref(builder);
 
 	params.params = value;
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	DEBUG_PARAMS(params.params);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
@@ -4043,10 +4035,10 @@ int ws_prov_disc_req(unsigned char *peer_addr, wfd_oem_wps_mode_e wps_mode, int 
 			COMPACT_MACSTR, g_pd->iface_path, MAC2STR(peer_addr));
 	WDP_LOGD("get peer path [%s]", peer_path);
 
-	value = g_variant_new ("(os)", peer_path, __ws_wps_to_txt(wps_mode));
+	value = g_variant_new("(os)", peer_path, __ws_wps_to_txt(wps_mode));
 
 	params.params = value;
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	DEBUG_PARAMS(params.params);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
@@ -4096,28 +4088,28 @@ int ws_connect(unsigned char *peer_addr, wfd_oem_conn_param_s *param)
 			COMPACT_MACSTR, g_pd->iface_path, MAC2STR(peer_addr));
 	WDP_LOGD("get peer path [%s]", peer_path);
 
-	builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}") );
-	g_variant_builder_add (builder, "{sv}", "peer", g_variant_new_object_path(peer_path));
+	builder = g_variant_builder_new(G_VARIANT_TYPE("a{sv}"));
+	g_variant_builder_add(builder, "{sv}", "peer", g_variant_new_object_path(peer_path));
 	if (param->conn_flags & WFD_OEM_CONN_TYPE_PERSISTENT)
-		g_variant_builder_add (builder, "{sv}", "persistent", g_variant_new_boolean(TRUE));
+		g_variant_builder_add(builder, "{sv}", "persistent", g_variant_new_boolean(TRUE));
 
 	if (param->conn_flags & WFD_OEM_CONN_TYPE_JOIN)
-		g_variant_builder_add (builder, "{sv}", "join", g_variant_new_boolean(TRUE));
+		g_variant_builder_add(builder, "{sv}", "join", g_variant_new_boolean(TRUE));
 
-	if (param->conn_flags& WFD_OEM_CONN_TYPE_AUTH)
-		g_variant_builder_add (builder, "{sv}", "autorize_only", g_variant_new_boolean(TRUE));
+	if (param->conn_flags & WFD_OEM_CONN_TYPE_AUTH)
+		g_variant_builder_add(builder, "{sv}", "autorize_only", g_variant_new_boolean(TRUE));
 
 	if (param->wps_pin[0] != '\0')
-		g_variant_builder_add (builder, "{sv}", "pin", g_variant_new_string(param->wps_pin));
+		g_variant_builder_add(builder, "{sv}", "pin", g_variant_new_string(param->wps_pin));
 
-	g_variant_builder_add (builder, "{sv}", "wps_method",
+	g_variant_builder_add(builder, "{sv}", "wps_method",
 				g_variant_new_string(__ws_wps_to_txt(param->wps_mode)));
 
-	value = g_variant_new ("(a{sv})", builder);
-	g_variant_builder_unref (builder);
+	value = g_variant_new("(a{sv})", builder);
+	g_variant_builder_unref(builder);
 
 	params.params = value;
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	DEBUG_PARAMS(params.params);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
@@ -4157,16 +4149,16 @@ int ws_disconnect(unsigned char *peer_addr)
 	}
 	memset(&params, 0x0, sizeof(dbus_method_param_s));
 
-	dbus_set_method_param(&params, "RemoveClient", g_pd->iface_path ,g_dbus);
+	dbus_set_method_param(&params, "RemoveClient", g_pd->iface_path, g_dbus);
 
 	g_snprintf(peer_path, DBUS_OBJECT_PATH_MAX, "%s/Peers/"
 			COMPACT_MACSTR, g_pd->iface_path, MAC2STR(peer_addr));
 	WDP_LOGE("get peer path [%s]", peer_path);
 
-	value = g_variant_new ("(oi)", peer_path, 0);
+	value = g_variant_new("(oi)", peer_path, 0);
 
 	params.params = value;
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	DEBUG_PARAMS(params.params);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
@@ -4209,16 +4201,16 @@ int ws_reject_connection(unsigned char *peer_addr)
 	}
 	memset(&params, 0x0, sizeof(dbus_method_param_s));
 
-	dbus_set_method_param(&params, "RejectPeer", g_pd->iface_path ,g_dbus);
+	dbus_set_method_param(&params, "RejectPeer", g_pd->iface_path, g_dbus);
 
 	g_snprintf(peer_path, DBUS_OBJECT_PATH_MAX, "%s/Peers/"
 			COMPACT_MACSTR, g_pd->iface_path, MAC2STR(peer_addr));
 	WDP_LOGE("get peer path [%s]", peer_path);
 
-	value = g_variant_new ("(o)", peer_path);
+	value = g_variant_new("(o)", peer_path);
 
 	params.params = value;
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	DEBUG_PARAMS(params.params);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
@@ -4299,7 +4291,7 @@ int ws_generate_pin(char **pin)
 	}
 	memset(&params, 0x0, sizeof(dbus_method_param_s));
 
-	dbus_set_method_param(&params, "GeneratePin", g_pd->iface_path ,g_dbus);
+	dbus_set_method_param(&params, "GeneratePin", g_pd->iface_path, g_dbus);
 	params.params = NULL;
 
 	res = dbus_method_call(&params, SUPPLICANT_WPS, __ws_get_pin, (void *)n_pin);
@@ -4345,7 +4337,7 @@ int _ws_get_persistent_net_id(int *persistent_network_id, const unsigned char *g
 	WDP_LOGD("Persistent Group Count=%d", persistent_group_count);
 
 	for (counter = 0; counter < persistent_group_count ; counter++) {
-		if(!memcmp(go_dev_mac, plist[counter].go_mac_address, WS_MACADDR_LEN)) {
+		if (!memcmp(go_dev_mac, plist[counter].go_mac_address, WS_MACADDR_LEN)) {
 			*persistent_network_id = plist[counter].network_id;
 			break;
 		} else {
@@ -4362,7 +4354,8 @@ int _ws_get_persistent_net_id(int *persistent_network_id, const unsigned char *g
 	return 0;
 }
 
-static void __store_group_iface_path(GVariant *value, void *user_data) {
+static void __store_group_iface_path(GVariant* value, void* user_data)
+{
 	__WDP_LOG_FUNC_ENTER__;
 	ws_dbus_plugin_data_s * pd_data;
 	const char *path = NULL;
@@ -4413,7 +4406,7 @@ int ws_create_group(wfd_oem_group_param_s *param)
 
 	dbus_set_method_param(&params, "GroupAdd", g_pd->iface_path, g_dbus);
 
-	builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}") );
+	builder = g_variant_builder_new(G_VARIANT_TYPE("a{sv}"));
 
 	if (param->persistent > 0) {
 		unsigned char mac_address[WS_MACADDR_LEN] = {0x00, };
@@ -4427,7 +4420,7 @@ int ws_create_group(wfd_oem_group_param_s *param)
 		}
 
 		res = _ws_get_persistent_net_id(&persistent_group_id, mac_address);
-		if(res < 0) {
+		if (res < 0) {
 			WDP_LOGE("failed to get persistent group ID");
 			__WDP_LOG_FUNC_EXIT__;
 			return -1;
@@ -4437,7 +4430,7 @@ int ws_create_group(wfd_oem_group_param_s *param)
 
 		g_variant_builder_add(builder, "{sv}", "persistent",
 				g_variant_new_boolean(TRUE));
-		if(persistent_group_id > -1) {
+		if (persistent_group_id > -1) {
 			g_snprintf(persistent_group_obj_path, OBJECT_PATH_MAX,
 					"%s/" SUPPLICANT_PERSISTENT_GROUPS_PART "/%d",
 					g_pd->iface_path, persistent_group_id);
@@ -4458,11 +4451,11 @@ int ws_create_group(wfd_oem_group_param_s *param)
 		g_variant_builder_add(builder, "{sv}", "frequency",
 				g_variant_new_int32(param->freq));
 
-	value = g_variant_new ("(a{sv})", builder);
-	g_variant_builder_unref (builder);
+	value = g_variant_new("(a{sv})", builder);
+	g_variant_builder_unref(builder);
 
 	params.params = value;
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	DEBUG_PARAMS(params.params);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
@@ -4557,13 +4550,13 @@ int ws_invite(unsigned char *peer_addr, wfd_oem_invite_param_s *param)
 			COMPACT_MACSTR, g_pd->iface_path, MAC2STR(peer_addr));
 	WDP_LOGE("get peer path [%s]", peer_path);
 
-	builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}") );
-	g_variant_builder_add (builder, "{sv}", "peer", g_variant_new_object_path(peer_path));
-	value = g_variant_new ("(a{sv})", builder);
-	g_variant_builder_unref (builder);
+	builder = g_variant_builder_new(G_VARIANT_TYPE("a{sv}"));
+	g_variant_builder_add(builder, "{sv}", "peer", g_variant_new_object_path(peer_path));
+	value = g_variant_new("(a{sv})", builder);
+	g_variant_builder_unref(builder);
 
 	params.params = value;
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	DEBUG_PARAMS(params.params);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
@@ -4577,7 +4570,7 @@ int ws_invite(unsigned char *peer_addr, wfd_oem_invite_param_s *param)
 	return 0;
 }
 
-// Only group owner can use this command
+/* Only group owner can use this command */
 int ws_wps_start(unsigned char *peer_addr, int wps_mode, const char *pin)
 {
 	__WDP_LOG_FUNC_ENTER__;
@@ -4605,31 +4598,31 @@ int ws_wps_start(unsigned char *peer_addr, int wps_mode, const char *pin)
 	dbus_set_method_param(&params, "Start", g_pd->group_iface_path, g_dbus);
 
 	if (peer_addr != NULL) {
-		builder = g_variant_builder_new (G_VARIANT_TYPE ("ay"));
-		for(i = 0; i < WS_MACADDR_LEN; i++)
+		builder = g_variant_builder_new(G_VARIANT_TYPE("ay"));
+		for (i = 0; i < WS_MACADDR_LEN; i++)
 			g_variant_builder_add(builder, "y", peer_addr[i]);
 
-		dev_addr = g_variant_new ("ay", builder);
-		g_variant_builder_unref (builder);
+		dev_addr = g_variant_new("ay", builder);
+		g_variant_builder_unref(builder);
 	}
 
-	builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}") );
-	g_variant_builder_add (builder, "{sv}", "Role", g_variant_new_string("enrollee"));
+	builder = g_variant_builder_new(G_VARIANT_TYPE("a{sv}"));
+	g_variant_builder_add(builder, "{sv}", "Role", g_variant_new_string("enrollee"));
 	if (peer_addr != NULL)
-		g_variant_builder_add (builder, "{sv}", "P2PDeviceAddress", dev_addr);
+		g_variant_builder_add(builder, "{sv}", "P2PDeviceAddress", dev_addr);
 
 	if (pin != NULL && pin[0] != '\0') {
-		g_variant_builder_add (builder, "{sv}", "Type", g_variant_new_string("pin"));
-		g_variant_builder_add (builder, "{sv}", "Pin", g_variant_new_string(pin));
+		g_variant_builder_add(builder, "{sv}", "Type", g_variant_new_string("pin"));
+		g_variant_builder_add(builder, "{sv}", "Pin", g_variant_new_string(pin));
 	} else {
-		g_variant_builder_add (builder, "{sv}", "Type", g_variant_new_string("pbc"));
+		g_variant_builder_add(builder, "{sv}", "Type", g_variant_new_string("pbc"));
 	}
 
-	value = g_variant_new ("(a{sv})", builder);
-	g_variant_builder_unref (builder);
+	value = g_variant_new("(a{sv})", builder);
+	g_variant_builder_unref(builder);
 
 	params.params = value;
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	DEBUG_PARAMS(params.params);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
@@ -4719,19 +4712,19 @@ int ws_set_dev_name(char *dev_name)
 	dbus_set_method_param(&params, DBUS_PROPERTIES_METHOD_SET, g_pd->iface_path,
 			 g_dbus);
 
-	builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
-	g_variant_builder_add (builder, "{sv}", "DeviceName",
+	builder = g_variant_builder_new(G_VARIANT_TYPE("a{sv}"));
+	g_variant_builder_add(builder, "{sv}", "DeviceName",
 				g_variant_new_string(dev_name));
-	g_variant_builder_add (builder, "{sv}", "SsidPostfix",
+	g_variant_builder_add(builder, "{sv}", "SsidPostfix",
 				 g_variant_new_string(dev_name));
-	value = g_variant_new ("a{sv}", builder);
-	g_variant_builder_unref (builder);
+	value = g_variant_new("a{sv}", builder);
+	g_variant_builder_unref(builder);
 
 	param = g_variant_new("(ssv)", SUPPLICANT_P2PDEVICE,
 				"P2PDeviceConfig", value);
 
 	params.params = param;
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	DEBUG_PARAMS(params.params);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
@@ -4796,11 +4789,11 @@ int ws_get_go_intent(int *go_intent)
 	}
 
 	param = g_variant_new("(ss)", SUPPLICANT_P2PDEVICE, "P2PDeviceConfig");
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	DEBUG_PARAMS(param);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
-	reply = g_dbus_connection_call_sync (
+	reply = g_dbus_connection_call_sync(
 			g_dbus,
 			SUPPLICANT_SERVICE, /* bus name */
 			g_pd->iface_path, /* object path */
@@ -4813,11 +4806,11 @@ int ws_get_go_intent(int *go_intent)
 			NULL, /* cancellable */
 			&error); /* error */
 
-	if(error != NULL) {
+	if (error != NULL) {
 		WDP_LOGE("Error! Failed to get interface State: [%s]",
 				error->message);
 		g_error_free(error);
-		if(reply)
+		if (reply)
 			g_variant_unref(reply);
 		__WDP_LOG_FUNC_EXIT__;
 		return -1;
@@ -4831,10 +4824,10 @@ int ws_get_go_intent(int *go_intent)
 			GVariant *value = NULL;
 
 			while (g_variant_iter_loop(iter, "{sv}", &key, &value)) {
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 				CHECK_KEY_VALUE(key, value);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
-				if(g_strcmp0(key, "GOIntent") == 0)
+				if (g_strcmp0(key, "GOIntent") == 0)
 					g_variant_get(value, "u", go_intent);
 			}
 			g_variant_iter_free(iter);
@@ -4871,16 +4864,16 @@ int ws_set_go_intent(int go_intent)
 	dbus_set_method_param(&params, DBUS_PROPERTIES_METHOD_SET, g_pd->iface_path,
 			 g_dbus);
 
-	builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
-	g_variant_builder_add (builder, "{sv}", "GOIntent",
+	builder = g_variant_builder_new(G_VARIANT_TYPE("a{sv}"));
+	g_variant_builder_add(builder, "{sv}", "GOIntent",
 				g_variant_new_uint32(go_intent));
-	value = g_variant_new ("a{sv}", builder);
-	g_variant_builder_unref (builder);
+	value = g_variant_new("a{sv}", builder);
+	g_variant_builder_unref(builder);
 
 	param = g_variant_new("(ssv)", SUPPLICANT_P2PDEVICE, "P2PDeviceConfig", value);
 
 	params.params = param;
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	DEBUG_PARAMS(params.params);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
@@ -4925,7 +4918,7 @@ int ws_set_country(char *ccode)
 	param = g_variant_new("(ssv)", SUPPLICANT_IFACE, "Country", value);
 
 	params.params = param;
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	DEBUG_PARAMS(params.params);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
@@ -4939,16 +4932,16 @@ int ws_set_country(char *ccode)
 	return res;
 }
 
-void __parsing_networks (const char *key, GVariant *value, void *user_data)
+void __parsing_networks(const char* key, GVariant* value, void* user_data)
 {
 	__WDP_LOG_FUNC_ENTER__;
-	if(!user_data) {
+	if (!user_data) {
 		__WDP_LOG_FUNC_EXIT__;
 		return;
 	}
 
 	ws_network_info_s *network = (ws_network_info_s *)user_data;
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	CHECK_KEY_VALUE(key, value);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 	if (g_strcmp0(key, "ssid") == 0) {
@@ -5064,7 +5057,7 @@ void __parsing_networks (const char *key, GVariant *value, void *user_data)
 void __ws_extract_p2pdevice_details(const char *key, GVariant *value, void *user_data)
 {
 	__WDP_LOG_FUNC_ENTER__;
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	CHECK_KEY_VALUE(key, value);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 	if (g_strcmp0(key, "PersistentGroups") == 0) {
@@ -5074,17 +5067,17 @@ void __ws_extract_p2pdevice_details(const char *key, GVariant *value, void *user
 
 		ws_network_info_s *networks = NULL;
 		networks = (ws_network_info_s *)user_data;
-		if(!networks) {
+		if (!networks) {
 			WDP_LOGE("network is NULL");
 			__WDP_LOG_FUNC_EXIT__;
 			return;
 		}
 
 		g_variant_get(value, "ao", &iter);
-		while(g_variant_iter_loop(iter, "&o", &path)) {
+		while (g_variant_iter_loop(iter, "&o", &path)) {
 			char *loc = NULL;
 
-			if(num >= WS_MAX_PERSISTENT_COUNT)
+			if (num >= WS_MAX_PERSISTENT_COUNT)
 				break;
 
 			WDP_LOGD("Retrive persistent path [%s]", path);
@@ -5142,7 +5135,7 @@ int ws_get_persistent_groups(wfd_oem_persistent_group_s **groups, int *group_cou
 		return -1;
 	}
 
-	if(cnt == 0) {
+	if (cnt == 0) {
 		WDP_LOGE("Persistent group count zero");
 		*group_count = 0;
 		*groups = NULL;
@@ -5165,7 +5158,7 @@ int ws_get_persistent_groups(wfd_oem_persistent_group_s **groups, int *group_cou
 		WDP_LOGD("ssid [%s]", networks[i].ssid);
 		WDP_LOGD("bssid ["MACSTR"]", MAC2STR(networks[i].bssid));
 		WDP_LOGD("p2p_client_num [%d]", networks[i].p2p_client_num);
-		for(j = 0; j < networks[i].p2p_client_num; j++)
+		for (j = 0; j < networks[i].p2p_client_num; j++)
 			WDP_LOGD("p2p_client_list ["MACSTR"]", MAC2STR(networks[i].p2p_client_list[j]));
 
 		wfd_persistent_groups[i].network_id = networks[i].network_id;
@@ -5226,7 +5219,7 @@ int ws_remove_persistent_group(char *ssid, unsigned char *bssid)
 		WDP_LOGD("network ssid [%s]", networks[i].ssid);
 		WDP_LOGD("network bssid ["MACSTR"]", MAC2STR(networks[i].bssid));
 		WDP_LOGD("network p2p_client_num [%d]", networks[i].p2p_client_num);
-		for(j = 0; j < networks[i].p2p_client_num; j++)
+		for (j = 0; j < networks[i].p2p_client_num; j++)
 			WDP_LOGD("network p2p_client_list ["MACSTR"]",
 					MAC2STR(networks[i].p2p_client_list[j]));
 
@@ -5241,8 +5234,8 @@ int ws_remove_persistent_group(char *ssid, unsigned char *bssid)
 			memset(&params, 0x0, sizeof(dbus_method_param_s));
 			dbus_set_method_param(&params, "RemovePersistentGroup",
 					g_pd->iface_path, g_dbus);
-			params.params = g_variant_new ("(o)", networks[i].persistent_path);
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+			params.params = g_variant_new("(o)", networks[i].persistent_path);
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 			DEBUG_PARAMS(params.params);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
@@ -5293,16 +5286,16 @@ int ws_set_persistent_reconnect(unsigned char *bssid, int reconnect)
 	dbus_set_method_param(&params, DBUS_PROPERTIES_METHOD_SET, g_pd->iface_path,
 			g_dbus);
 
-	builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
-	g_variant_builder_add (builder, "{sv}", "PersistentReconnect",
+	builder = g_variant_builder_new(G_VARIANT_TYPE("a{sv}"));
+	g_variant_builder_add(builder, "{sv}", "PersistentReconnect",
 				g_variant_new_boolean(reconnect));
-	value = g_variant_new ("a{sv}", builder);
-	g_variant_builder_unref (builder);
+	value = g_variant_new("a{sv}", builder);
+	g_variant_builder_unref(builder);
 
 	param = g_variant_new("(ssv)", SUPPLICANT_P2PDEVICE, "P2PDeviceConfig", value);
 
 	params.params = param;
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	DEBUG_PARAMS(params.params);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
@@ -5333,11 +5326,11 @@ static int __ws_compress_query(char *compressed, char *query, int qtype)
 
 		} else if (!strncmp(token, "_tcp", 4)) {
 			memcpy(&compressed[length], WS_TCP_PTR_HEX, 2);
-			length+=2;
+			length += 2;
 
 		} else if (!strncmp(token, "_udp", 4)) {
 			memcpy(&compressed[length], WS_UDP_PTR_HEX, 2);
-			length+=2;
+			length += 2;
 
 		} else {
 			WDP_LOGD("Token: [%s]", token);
@@ -5346,17 +5339,17 @@ static int __ws_compress_query(char *compressed, char *query, int qtype)
 			length++;
 
 			memcpy(&compressed[length], token, token_len);
-			length+=token_len;
+			length += token_len;
 		}
 		token_num++;
 		token = strtok_r(NULL, ".", &temp);
 	}
-	if(qtype == WS_QTYPE_PTR || token_num == 2) {
+	if (qtype == WS_QTYPE_PTR || token_num == 2)
 		memcpy(&compressed[length], WS_PTR_TYPE_HEX, 3);
-	} else if (qtype == WS_QTYPE_TXT || token_num == 3) {
+	else if (qtype == WS_QTYPE_TXT || token_num == 3)
 		memcpy(&compressed[length], WS_TXT_TYPE_HEX, 3);
-	}
-	length+=3;
+
+	length += 3;
 	WDP_LOGD("converted query length [%d] token num [%d]", length, token_num);
 
 	return length;
@@ -5379,16 +5372,16 @@ static int __ws_compress_rdata(char *compressed, char *rdata, int qtype)
 			length++;
 
 			memcpy(&compressed[length], token, token_len);
-			length+=token_len;
+			length += token_len;
 		}
 
 		compressed[length] = 0xc0;
 		compressed[length+1] = 0x27;
-		length+=2;
+		length += 2;
 
 	} else if (qtype == WS_QTYPE_TXT) {
 
-		token = strtok_r(rdata, ",", &temp);
+		token = strtok_r(rdata, ", ", &temp);
 
 		while (token) {
 			WDP_LOGD("Token: [%s]", token);
@@ -5398,9 +5391,9 @@ static int __ws_compress_rdata(char *compressed, char *rdata, int qtype)
 			length++;
 
 			memcpy(&compressed[length], token, token_len);
-			length+=token_len;
+			length += token_len;
 
-			token = strtok_r(NULL, ",", &temp);
+			token = strtok_r(NULL, ", ", &temp);
 		}
 	} else {
 		WDP_LOGD("RDATA is NULL");
@@ -5426,36 +5419,36 @@ int _convert_bonjour_to_args(char *query, char *rdata, GVariantBuilder *builder)
 	} else {
 		temp = strstr(rdata, query);
 
-		if(temp != NULL && temp - rdata > 0)
+		if (temp != NULL && temp - rdata > 0)
 			qtype = WS_QTYPE_PTR;
 		else
 			qtype = WS_QTYPE_TXT;
 		temp = NULL;
 	}
 
-	g_variant_builder_add (builder, "{sv}", "service_type", g_variant_new_string("bonjour"));
+	g_variant_builder_add(builder, "{sv}", "service_type", g_variant_new_string("bonjour"));
 
 	/* compress query */
 	length = __ws_compress_query(compressed, query, qtype);
 
-	args = g_variant_builder_new (G_VARIANT_TYPE ("ay"));
+	args = g_variant_builder_new(G_VARIANT_TYPE("ay"));
 	for (i = 0; i < length; i++)
 		g_variant_builder_add(args, "y", compressed[i]);
-	g_variant_builder_add(builder, "{sv}", "query", g_variant_new ("ay", args));
-	g_variant_builder_unref (args);
+	g_variant_builder_add(builder, "{sv}", "query", g_variant_new("ay", args));
+	g_variant_builder_unref(args);
 
 	memset(compressed, 0x0, 256);
 	length = 0;
 	args = NULL;
 
-	if(qtype != 0) {
+	if (qtype != 0) {
 		length = __ws_compress_rdata(compressed, rdata, qtype);
 
-		args = g_variant_builder_new (G_VARIANT_TYPE ("ay"));
+		args = g_variant_builder_new(G_VARIANT_TYPE("ay"));
 		for (i = 0; i < length; i++)
 			g_variant_builder_add(args, "y", compressed[i]);
-		g_variant_builder_add(builder, "{sv}", "response", g_variant_new ("ay", args));
-		g_variant_builder_unref (args);
+		g_variant_builder_add(builder, "{sv}", "response", g_variant_new("ay", args));
+		g_variant_builder_unref(args);
 	}
 
 	return 0;
@@ -5466,7 +5459,7 @@ int _check_service_query_exists(wfd_oem_service_s *service)
 	int count = 0;
 	wfd_oem_service_s *data = NULL;
 
-	for (count = 0; count < g_list_length(service_list); count ++) {
+	for (count = 0; count < g_list_length(service_list); count++) {
 		data = (wfd_oem_service_s*) g_list_nth_data(service_list, count);
 		if (strncmp(service->query_id, data->query_id, OEM_QUERY_ID_LEN) == 0) {
 			WDP_LOGD("Query already exists");
@@ -5484,7 +5477,7 @@ static wfd_oem_service_s* _remove_service_query(char * s_type, char *mac_str, ch
 	int count = 0;
 	wfd_oem_service_s *data = NULL;
 
-	for (count = 0; count < g_list_length(service_list); count ++) {
+	for (count = 0; count < g_list_length(service_list); count++) {
 		data = (wfd_oem_service_s*) g_list_nth_data(service_list, count);
 		if (data && !strncmp(data->service_type, s_type, SERVICE_TYPE_LEN) &&
 				memcmp(data->dev_addr, mac_str, OEM_MACSTR_LEN - 1) == 0) {
@@ -5497,7 +5490,7 @@ static wfd_oem_service_s* _remove_service_query(char * s_type, char *mac_str, ch
 		return NULL;
 	}
 
-	WDP_LOGD("query id :[0x%s]",query_id);
+	WDP_LOGD("query id :[0x%s]", query_id);
 
 	return data;
 }
@@ -5532,11 +5525,10 @@ void __add_service_query(GVariant *value, void *mac_addr)
 	g_snprintf(service->query_id, OEM_QUERY_ID_LEN + 1, "0x%llx", ref);
 
 	res = _check_service_query_exists(service);
-	if(res) {
+	if (res)
 		free(service);
-	} else {
+	else
 		service_list = g_list_append(service_list, service);
-	}
 
 	__WDP_LOG_FUNC_EXIT__;
 	return;
@@ -5555,7 +5547,7 @@ int ws_start_service_discovery(unsigned char *mac_addr, int service_type)
 	int i = 0;
 	int res = 0;
 
-	if (!mac_addr ) {
+	if (!mac_addr) {
 		WDP_LOGE("Invalid parameter");
 		__WDP_LOG_FUNC_EXIT__;
 		return -1;
@@ -5577,13 +5569,13 @@ int ws_start_service_discovery(unsigned char *mac_addr, int service_type)
 
 	dbus_set_method_param(&params, "ServiceDiscoveryRequest", g_pd->iface_path, g_dbus);
 
-	builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}") );
+	builder = g_variant_builder_new(G_VARIANT_TYPE("a{sv}"));
 
-	if(mac_addr) {
+	if (mac_addr) {
 		g_snprintf(peer_path, DBUS_OBJECT_PATH_MAX, "%s/Peers/"
 				COMPACT_MACSTR, g_pd->iface_path, MAC2STR(mac_addr));
 		WDP_LOGD("get peer path [%s]", peer_path);
-		g_variant_builder_add (builder, "{sv}", "peer", g_variant_new_object_path(peer_path));
+		g_variant_builder_add(builder, "{sv}", "peer", g_variant_new_object_path(peer_path));
 	}
 
 	if (service_type == WFD_OEM_SERVICE_TYPE_ALL) {
@@ -5591,34 +5583,34 @@ int ws_start_service_discovery(unsigned char *mac_addr, int service_type)
 		char *service_all = "\x02\x00\x00\x01";
 		GVariantBuilder *query = NULL;
 
-		query = g_variant_builder_new (G_VARIANT_TYPE ("ay"));
+		query = g_variant_builder_new(G_VARIANT_TYPE("ay"));
 		for (i = 0; i < SERVICE_QUERY_LEN; i++)
 			g_variant_builder_add(query, "y", service_all[i]);
-		g_variant_builder_add (builder, "{sv}", "query", g_variant_new ("ay", query));
-		g_variant_builder_unref (query);
+		g_variant_builder_add(builder, "{sv}", "query", g_variant_new("ay", query));
+		g_variant_builder_unref(query);
 
 		} else if (service_type == WFD_OEM_SERVICE_TYPE_UPNP) {
 
-		g_variant_builder_add (builder, "{sv}", "service_type", g_variant_new_string("upnp"));
-		g_variant_builder_add (builder, "{sv}", "version", g_variant_new_uint16(TRUE));
+		g_variant_builder_add(builder, "{sv}", "service_type", g_variant_new_string("upnp"));
+		g_variant_builder_add(builder, "{sv}", "version", g_variant_new_uint16(TRUE));
 
 	} else if (service_type == WFD_OEM_SERVICE_TYPE_BONJOUR) {
 
 		char *service_bonjour = "\x02\x00\x01\x01";
 		GVariantBuilder *query = NULL;
 
-		query = g_variant_builder_new (G_VARIANT_TYPE ("ay"));
+		query = g_variant_builder_new(G_VARIANT_TYPE("ay"));
 		for (i = 0; i < SERVICE_QUERY_LEN; i++)
 			g_variant_builder_add(query, "y", service_bonjour[i]);
-		g_variant_builder_add (builder, "{sv}", "query", g_variant_new ("ay", query));
-		g_variant_builder_unref (query);
+		g_variant_builder_add(builder, "{sv}", "query", g_variant_new("ay", query));
+		g_variant_builder_unref(query);
 	}
 
-	value = g_variant_new ("(a{sv})", builder);
-	g_variant_builder_unref (builder);
+	value = g_variant_new("(a{sv})", builder);
+	g_variant_builder_unref(builder);
 
 	params.params = value;
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	DEBUG_PARAMS(params.params);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
@@ -5639,12 +5631,12 @@ int ws_cancel_service_discovery(unsigned char *mac_addr, int service_type)
 	dbus_method_param_s params;
 	wfd_oem_service_s *data = NULL;
 	char query_id[OEM_QUERY_ID_LEN + 1] = {0, };
-	char s_type[OEM_SERVICE_TYPE_LEN + 1] ={0, };
+	char s_type[OEM_SERVICE_TYPE_LEN + 1] = {0, };
 	char mac_str[18] = {0, };
 
 	int res = 0;
 
-	if (!mac_addr ) {
+	if (!mac_addr) {
 		WDP_LOGE("Invalid parameter");
 		__WDP_LOG_FUNC_EXIT__;
 		return -1;
@@ -5670,20 +5662,20 @@ int ws_cancel_service_discovery(unsigned char *mac_addr, int service_type)
 		snprintf(mac_str, WS_MACSTR_LEN, MACSTR, MAC2STR(mac_addr));
 	}
 
-	switch(service_type) {
-		case WFD_OEM_SERVICE_TYPE_ALL:
-			strncpy(s_type, SERV_DISC_REQ_ALL, OEM_SERVICE_TYPE_LEN);
-		break;
-		case WFD_OEM_SERVICE_TYPE_BONJOUR:
-			strncpy(s_type, SERV_DISC_REQ_BONJOUR, OEM_SERVICE_TYPE_LEN);
-		break;
-		case WFD_OEM_SERVICE_TYPE_UPNP:
-			strncpy(s_type, SERV_DISC_REQ_UPNP, OEM_SERVICE_TYPE_LEN);
-		break;
-		default:
-			WDP_LOGE("Invalid Service type");
-			__WDP_LOG_FUNC_EXIT__;
-			return -1;
+	switch (service_type) {
+	case WFD_OEM_SERVICE_TYPE_ALL:
+		strncpy(s_type, SERV_DISC_REQ_ALL, OEM_SERVICE_TYPE_LEN);
+	break;
+	case WFD_OEM_SERVICE_TYPE_BONJOUR:
+		strncpy(s_type, SERV_DISC_REQ_BONJOUR, OEM_SERVICE_TYPE_LEN);
+	break;
+	case WFD_OEM_SERVICE_TYPE_UPNP:
+		strncpy(s_type, SERV_DISC_REQ_UPNP, OEM_SERVICE_TYPE_LEN);
+	break;
+	default:
+		WDP_LOGE("Invalid Service type");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
 	}
 
 	WDP_LOGD("Cancel service discovery service_type [%d]", service_type);
@@ -5698,7 +5690,7 @@ int ws_cancel_service_discovery(unsigned char *mac_addr, int service_type)
 
 	dbus_set_method_param(&params, "ServiceDiscoveryCancelRequest", g_pd->iface_path, g_dbus);
 
-	params.params = g_variant_new ("(t)", strtoul(query_id, NULL, 16));
+	params.params = g_variant_new("(t)", strtoul(query_id, NULL, 16));
 
 	res = dbus_method_call(&params, SUPPLICANT_P2PDEVICE, NULL, NULL);
 	if (res < 0)
@@ -5736,7 +5728,7 @@ int ws_serv_add(wfd_oem_new_service_s *service)
 
 	dbus_set_method_param(&params, "AddService", g_pd->iface_path, g_dbus);
 
-	builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}") );
+	builder = g_variant_builder_new(G_VARIANT_TYPE("a{sv}"));
 
 	if (service->protocol == WFD_OEM_SERVICE_TYPE_BONJOUR) {
 
@@ -5748,21 +5740,21 @@ int ws_serv_add(wfd_oem_new_service_s *service)
 							    service->data.bonjour.rdata, builder);
 		if (res < 0) {
 			WDP_LOGE("Failed to convert Key string");
-			g_variant_builder_unref (builder);
+			g_variant_builder_unref(builder);
 			return -1;
 		}
 
 	} else if (service->protocol == WFD_OEM_SERVICE_TYPE_UPNP) {
-		g_variant_builder_add (builder, "{sv}", "service_type", g_variant_new_string("upnp"));
-		g_variant_builder_add (builder, "{sv}", "version", g_variant_new_uint16(TRUE));
-		g_variant_builder_add (builder, "{sv}", "service", g_variant_new_string(service->data.upnp.service));
+		g_variant_builder_add(builder, "{sv}", "service_type", g_variant_new_string("upnp"));
+		g_variant_builder_add(builder, "{sv}", "version", g_variant_new_uint16(TRUE));
+		g_variant_builder_add(builder, "{sv}", "service", g_variant_new_string(service->data.upnp.service));
 	}
 
-	value = g_variant_new ("(a{sv})", builder);
-	g_variant_builder_unref (builder);
+	value = g_variant_new("(a{sv})", builder);
+	g_variant_builder_unref(builder);
 
 	params.params = value;
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	DEBUG_PARAMS(params.params);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
@@ -5799,7 +5791,7 @@ int ws_serv_del(wfd_oem_new_service_s *service)
 
 	dbus_set_method_param(&params, "DeleteService", g_pd->iface_path, g_dbus);
 
-	builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
+	builder = g_variant_builder_new(G_VARIANT_TYPE("a{sv}"));
 
 	if (service->protocol == WFD_OEM_SERVICE_TYPE_BONJOUR) {
 
@@ -5810,21 +5802,21 @@ int ws_serv_del(wfd_oem_new_service_s *service)
 							    NULL, builder);
 		if (res < 0) {
 			WDP_LOGE("Failed to convert Key string");
-			g_variant_builder_unref (builder);
+			g_variant_builder_unref(builder);
 			return -1;
 		}
 
 	} else if (service->protocol == WFD_OEM_SERVICE_TYPE_UPNP) {
-		g_variant_builder_add (builder, "{sv}", "service_type", g_variant_new_string("upnp"));
-		g_variant_builder_add (builder, "{sv}", "version", g_variant_new_uint16(TRUE));
-		g_variant_builder_add (builder, "{sv}", "service", g_variant_new_string(service->data.upnp.service));
+		g_variant_builder_add(builder, "{sv}", "service_type", g_variant_new_string("upnp"));
+		g_variant_builder_add(builder, "{sv}", "version", g_variant_new_uint16(TRUE));
+		g_variant_builder_add(builder, "{sv}", "service", g_variant_new_string(service->data.upnp.service));
 	}
 
-	value = g_variant_new ("(a{sv})", builder);
-	g_variant_builder_unref (builder);
+	value = g_variant_new("(a{sv})", builder);
+	g_variant_builder_unref(builder);
 
 	params.params = value;
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	DEBUG_PARAMS(params.params);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
@@ -5866,14 +5858,14 @@ int _ws_disable_display()
 	dbus_set_method_param(&params, DBUS_PROPERTIES_METHOD_SET, SUPPLICANT_PATH,
 			 g_dbus);
 
-	builder = g_variant_builder_new (G_VARIANT_TYPE ("ay"));
-	value = g_variant_new ("ay", builder);
-	g_variant_builder_unref (builder);
+	builder = g_variant_builder_new(G_VARIANT_TYPE("ay"));
+	value = g_variant_new("ay", builder);
+	g_variant_builder_unref(builder);
 
 	param = g_variant_new("(ssv)", SUPPLICANT_INTERFACE, "WFDIEs", value);
 
 	params.params = param;
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	DEBUG_PARAMS(params.params);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
@@ -5907,7 +5899,7 @@ int ws_miracast_init(int enable)
 		return -1;
 	}
 
-	if(!enable) {
+	if (!enable) {
 		res = _ws_disable_display();
 		if (res < 0)
 			WDP_LOGE("Failed to disable wifi display");
@@ -5954,16 +5946,16 @@ int ws_set_display(wfd_oem_display_s *wifi_display)
 	ies[7] = wifi_display->max_tput>>8;
 	ies[8] = wifi_display->max_tput&0xff;
 
-	builder = g_variant_builder_new (G_VARIANT_TYPE ("ay"));
-	for(i = 0; i < WFD_SUBELEM_LEN_DEV_INFO + 3; i++)
+	builder = g_variant_builder_new(G_VARIANT_TYPE("ay"));
+	for (i = 0; i < WFD_SUBELEM_LEN_DEV_INFO + 3; i++)
 		g_variant_builder_add(builder, "y", ies[i]);
-	value = g_variant_new ("ay", builder);
-	g_variant_builder_unref (builder);
+	value = g_variant_new("ay", builder);
+	g_variant_builder_unref(builder);
 
 	param = g_variant_new("(ssv)", SUPPLICANT_INTERFACE, "WFDIEs", value);
 
 	params.params = param;
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	DEBUG_PARAMS(params.params);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
@@ -6038,10 +6030,10 @@ int ws_set_operating_channel(int channel)
 
 	dbus_set_method_param(&params, DBUS_PROPERTIES_METHOD_SET, g_pd->iface_path, g_dbus);
 
-	builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
-	g_variant_builder_add (builder, "{sv}", "OperChannel", g_variant_new_uint32(channel));
-	value = g_variant_new ("a{sv}", builder);
-	g_variant_builder_unref (builder);
+	builder = g_variant_builder_new(G_VARIANT_TYPE("a{sv}"));
+	g_variant_builder_add(builder, "{sv}", "OperChannel", g_variant_new_uint32(channel));
+	value = g_variant_new("a{sv}", builder);
+	g_variant_builder_unref(builder);
 
 	param = g_variant_new("(ssv)", SUPPLICANT_P2PDEVICE, "P2PDeviceConfig", value);
 	params.params = param;
@@ -6110,7 +6102,7 @@ int ws_get_wpa_status(int *wpa_status)
 
 	param = g_variant_new("(s)", SUPPLICANT_IFACE);
 
-	reply = g_dbus_connection_call_sync (
+	reply = g_dbus_connection_call_sync(
 			g_pd->g_dbus,
 			SUPPLICANT_SERVICE, /* bus name */
 			g_pd->iface_path, /* object path */
@@ -6123,7 +6115,7 @@ int ws_get_wpa_status(int *wpa_status)
 			NULL, /* cancellable */
 			&error); /* error */
 
-	if(error != NULL) {
+	if (error != NULL) {
 		WDP_LOGE("Error! Failed to get properties: [%s]",
 							error->message);
 		g_error_free(error);
@@ -6139,7 +6131,7 @@ int ws_get_wpa_status(int *wpa_status)
 	WDP_LOGE("reply [%s]", reply_str ? reply_str : "NULL");
 	g_free(reply_str);
 
-	if(reply != NULL) {
+	if (reply != NULL) {
 		GVariantIter *iter = NULL;
 		g_variant_get(reply, "(a{sv})", &iter);
 
@@ -6148,7 +6140,7 @@ int ws_get_wpa_status(int *wpa_status)
 			GVariant *value = NULL;
 
 			while (g_variant_iter_loop(iter, "{sv}", &key, &value)) {
-				if(g_strcmp0(key, "State") == 0) {
+				if (g_strcmp0(key, "State") == 0) {
 					const gchar *state = NULL;
 					g_variant_get(value, "&s", &state);
 					WDP_LOGI("state : [%s]", state);
@@ -6216,8 +6208,8 @@ int ws_advertise_service(wfd_oem_asp_service_s *service, int replace)
 		config_method = WS_CONFIG_METHOD_KEYPAD;
 	}
 
-	if(service->auto_accept) {
-		if(service->role == 0)
+	if (service->auto_accept) {
+		if (service->role == 0)
 			auto_accept = 1;
 		else
 			auto_accept = 2;
@@ -6231,22 +6223,22 @@ int ws_advertise_service(wfd_oem_asp_service_s *service, int replace)
 
 	dbus_set_method_param(&params, "AddService", g_pd->iface_path, g_dbus);
 
-	builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}") );
+	builder = g_variant_builder_new(G_VARIANT_TYPE("a{sv}"));
 
-	g_variant_builder_add (builder, "{sv}", "service_type", g_variant_new_string("asp"));
-	g_variant_builder_add (builder, "{sv}", "auto_accept", g_variant_new_int32(auto_accept));
-	g_variant_builder_add (builder, "{sv}", "adv_id", g_variant_new_uint32(service->adv_id));
-	g_variant_builder_add (builder, "{sv}", "svc_state", g_variant_new_uint32(service->status));
-	g_variant_builder_add (builder, "{sv}", "config_method", g_variant_new_uint32(config_method));
-	g_variant_builder_add (builder, "{sv}", "replace", g_variant_new_boolean(rep));
-	if(service->service_type != NULL)
-		g_variant_builder_add (builder, "{sv}", "adv_str", g_variant_new_string(service->service_type));
-	if(service->service_info != NULL)
-		g_variant_builder_add (builder, "{sv}", "svc_info", g_variant_new_string(service->service_info));
+	g_variant_builder_add(builder, "{sv}", "service_type", g_variant_new_string("asp"));
+	g_variant_builder_add(builder, "{sv}", "auto_accept", g_variant_new_int32(auto_accept));
+	g_variant_builder_add(builder, "{sv}", "adv_id", g_variant_new_uint32(service->adv_id));
+	g_variant_builder_add(builder, "{sv}", "svc_state", g_variant_new_uint32(service->status));
+	g_variant_builder_add(builder, "{sv}", "config_method", g_variant_new_uint32(config_method));
+	g_variant_builder_add(builder, "{sv}", "replace", g_variant_new_boolean(rep));
+	if (service->service_type != NULL)
+		g_variant_builder_add(builder, "{sv}", "adv_str", g_variant_new_string(service->service_type));
+	if (service->service_info != NULL)
+		g_variant_builder_add(builder, "{sv}", "svc_info", g_variant_new_string(service->service_info));
 
-	value = g_variant_new ("(a{sv})", builder);
-	g_variant_builder_unref (builder);
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+	value = g_variant_new("(a{sv})", builder);
+	g_variant_builder_unref(builder);
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	WDP_LOGE("params [%s]", g_variant_print(value, TRUE));
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
@@ -6280,14 +6272,14 @@ int ws_cancel_advertise_service(wfd_oem_asp_service_s *service)
 
 	dbus_set_method_param(&params, "DeleteService", g_pd->iface_path, g_dbus);
 
-	builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
+	builder = g_variant_builder_new(G_VARIANT_TYPE("a{sv}"));
 
-	g_variant_builder_add (builder, "{sv}", "service_type", g_variant_new_string("asp"));
-	g_variant_builder_add (builder, "{sv}", "adv_id", g_variant_new_uint32(service->adv_id));
+	g_variant_builder_add(builder, "{sv}", "service_type", g_variant_new_string("asp"));
+	g_variant_builder_add(builder, "{sv}", "adv_id", g_variant_new_uint32(service->adv_id));
 
-	value = g_variant_new ("(a{sv})", builder);
-	g_variant_builder_unref (builder);
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+	value = g_variant_new("(a{sv})", builder);
+	g_variant_builder_unref(builder);
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	WDP_LOGD("params [%s]", g_variant_print(value, TRUE));
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 	params.params = value;
@@ -6319,7 +6311,7 @@ static void __ws_add_seek(wfd_oem_asp_service_s *service)
 
 	service->search_id = (intptr_t)seek;
 	memcpy(seek, service, sizeof(wfd_oem_asp_service_s));
-	if(service->service_type)
+	if (service->service_type)
 		seek->service_type = strdup(service->service_type);
 	seek_list = g_list_prepend(seek_list, seek);
 
@@ -6333,9 +6325,9 @@ static wfd_oem_asp_service_s * __ws_get_seek(long long unsigned search_id)
 	wfd_oem_asp_service_s *seek = NULL;
 	GList *list = NULL;
 
-	for(list = seek_list; list != NULL; list = list->next) {
+	for (list = seek_list; list != NULL; list = list->next) {
 		seek = list->data;
-		if(seek && (seek->search_id == search_id)) {
+		if (seek && (seek->search_id == search_id)) {
 			WDP_LOGD("List found");
 			break;
 		} else {
@@ -6352,7 +6344,7 @@ static void __ws_remove_seek(wfd_oem_asp_service_s *service)
 	wfd_oem_asp_service_s *seek = NULL;
 	GList *list = NULL;
 
-	for(list = seek_list; list != NULL; list = list->next) {
+	for (list = seek_list; list != NULL; list = list->next) {
 
 		seek = list->data;
 		if (seek && (seek->search_id == service->search_id)) {
@@ -6392,9 +6384,9 @@ static void __get_asp_search_id(GVariant *value, void *args)
 
 	service->search_id = search_id;
 	memcpy(seek, service, sizeof(wfd_oem_asp_service_s));
-	if(service->service_type)
+	if (service->service_type)
 		seek->service_type = strdup(service->service_type);
-	if(service->service_info)
+	if (service->service_info)
 		seek->service_info = strdup(service->service_info);
 	seek_list = g_list_append(seek_list, seek);
 
@@ -6417,18 +6409,18 @@ int ws_seek_service(wfd_oem_asp_service_s *service)
 		return -1;
 	}
 	list = g_list_last(seek_list);
-	if(list == NULL) {
+	if (list == NULL) {
 		service->tran_id = 1;
 
 	} else {
 		seek = list->data;
-		if(seek)
+		if (seek)
 			service->tran_id = seek->tran_id + 1;
 		else
 			service->tran_id = 1;
 	}
 
-	if(service->service_info) {
+	if (service->service_info) {
 		GVariantBuilder *builder = NULL;
 		GVariant *value = NULL;
 		dbus_method_param_s params;
@@ -6437,24 +6429,24 @@ int ws_seek_service(wfd_oem_asp_service_s *service)
 		dbus_set_method_param(&params, "ServiceDiscoveryRequest",
 				g_pd->iface_path, g_dbus);
 
-		builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}") );
+		builder = g_variant_builder_new(G_VARIANT_TYPE("a{sv}"));
 
-		g_variant_builder_add (builder, "{sv}", "service_type",
+		g_variant_builder_add(builder, "{sv}", "service_type",
 				g_variant_new_string("asp"));
-		g_variant_builder_add (builder, "{sv}", "transaction_id",
+		g_variant_builder_add(builder, "{sv}", "transaction_id",
 				g_variant_new_byte(service->tran_id));
-		if(service->service_type != NULL)
-			g_variant_builder_add (builder, "{sv}", "svc_str",
+		if (service->service_type != NULL)
+			g_variant_builder_add(builder, "{sv}", "svc_str",
 					g_variant_new_string(service->service_type));
 
-		if(service->service_info != NULL)
-			g_variant_builder_add (builder, "{sv}", "svc_info",
+		if (service->service_info != NULL)
+			g_variant_builder_add(builder, "{sv}", "svc_info",
 					g_variant_new_string(service->service_info));
 
-		value = g_variant_new ("(a{sv})", builder);
-		g_variant_builder_unref (builder);
+		value = g_variant_new("(a{sv})", builder);
+		g_variant_builder_unref(builder);
 
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 		WDP_LOGD("params [%s]", g_variant_print(value, TRUE));
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
@@ -6497,26 +6489,25 @@ int ws_cancel_seek_service(wfd_oem_asp_service_s *service)
 		return -1;
 	}
 
-	if(seek->service_info) {
+	if (seek->service_info) {
 
 		memset(&params, 0x0, sizeof(dbus_method_param_s));
 		dbus_set_method_param(&params, "ServiceDiscoveryCancelRequest",
 				g_pd->iface_path, g_dbus);
 
-		params.params = g_variant_new ("(t)", service->search_id);
+		params.params = g_variant_new("(t)", service->search_id);
 
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 		WDP_LOGD("params [%s]", g_variant_print(params.params, TRUE));
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
 		res = dbus_method_call(&params, SUPPLICANT_P2PDEVICE, NULL, NULL);
-		if (res < 0) {
+		if (res < 0)
 			WDP_LOGE("Failed to send command to wpa_supplicant");
-		} else {
+		else
 			WDP_LOGD("Succeeded to cancel seek service");
-		}
 	}
-	if(res == 0)
+	if (res == 0)
 		__ws_remove_seek(seek);
 
 	__WDP_LOG_FUNC_EXIT__;
@@ -6548,9 +6539,9 @@ int ws_asp_prov_disc_req(wfd_oem_asp_prov_s *asp_params)
 		return -1;
 	}
 
-	if(asp_params->network_config == WFD_OEM_ASP_WPS_TYPE_PIN_DISPLAY)
+	if (asp_params->network_config == WFD_OEM_ASP_WPS_TYPE_PIN_DISPLAY)
 		config_method = 0x8;
-	else if(asp_params->network_config == WFD_OEM_ASP_WPS_TYPE_PIN_KEYPAD)
+	else if (asp_params->network_config == WFD_OEM_ASP_WPS_TYPE_PIN_KEYPAD)
 		config_method = 0x100;
 
 	memset(&params, 0x0, sizeof(dbus_method_param_s));
@@ -6561,35 +6552,35 @@ int ws_asp_prov_disc_req(wfd_oem_asp_prov_s *asp_params)
 			COMPACT_MACSTR, g_pd->iface_path, MAC2STR(asp_params->service_mac));
 	WDP_LOGD("get peer path [%s]", peer_path);
 
-	builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}") );
-	g_variant_builder_add (builder, "{sv}", "peer", g_variant_new_object_path(peer_path));
+	builder = g_variant_builder_new(G_VARIANT_TYPE("a{sv}"));
+	g_variant_builder_add(builder, "{sv}", "peer", g_variant_new_object_path(peer_path));
 
-	g_variant_builder_add (builder, "{sv}", "adv_id", g_variant_new_uint32(asp_params->adv_id));
-	g_variant_builder_add (builder, "{sv}", "session_id", g_variant_new_uint32(asp_params->session_id));
-	g_variant_builder_add (builder, "{sv}", "role", g_variant_new_byte(asp_params->network_role));
-	g_variant_builder_add (builder, "{sv}", "method", g_variant_new_int32(config_method));
+	g_variant_builder_add(builder, "{sv}", "adv_id", g_variant_new_uint32(asp_params->adv_id));
+	g_variant_builder_add(builder, "{sv}", "session_id", g_variant_new_uint32(asp_params->session_id));
+	g_variant_builder_add(builder, "{sv}", "role", g_variant_new_byte(asp_params->network_role));
+	g_variant_builder_add(builder, "{sv}", "method", g_variant_new_int32(config_method));
 	if (asp_params->status > 0)
-		g_variant_builder_add (builder, "{sv}", "status", g_variant_new_int32(asp_params->status));
+		g_variant_builder_add(builder, "{sv}", "status", g_variant_new_int32(asp_params->status));
 	if (asp_params->session_information)
-		g_variant_builder_add (builder, "{sv}", "info", g_variant_new_string(asp_params->session_information));
+		g_variant_builder_add(builder, "{sv}", "info", g_variant_new_string(asp_params->session_information));
 
-	mac_builder = g_variant_builder_new (G_VARIANT_TYPE ("ay"));
+	mac_builder = g_variant_builder_new(G_VARIANT_TYPE("ay"));
 	for (i = 0; i < OEM_MACADDR_LEN; i++)
 		g_variant_builder_add(mac_builder, "y", asp_params->service_mac[i]);
-	g_variant_builder_add (builder, "{sv}", "adv_mac",
-			g_variant_new ("ay", mac_builder));
-	g_variant_builder_unref (mac_builder);
+	g_variant_builder_add(builder, "{sv}", "adv_mac",
+			g_variant_new("ay", mac_builder));
+	g_variant_builder_unref(mac_builder);
 
-	mac_builder = g_variant_builder_new (G_VARIANT_TYPE ("ay"));
+	mac_builder = g_variant_builder_new(G_VARIANT_TYPE("ay"));
 	for (i = 0; i < OEM_MACADDR_LEN; i++)
 		g_variant_builder_add(mac_builder, "y", asp_params->session_mac[i]);
-	g_variant_builder_add (builder, "{sv}", "session_mac",
-			g_variant_new ("ay", mac_builder));
-	g_variant_builder_unref (mac_builder);
+	g_variant_builder_add(builder, "{sv}", "session_mac",
+			g_variant_new("ay", mac_builder));
+	g_variant_builder_unref(mac_builder);
 
-	value = g_variant_new ("(a{sv})", builder);
-	g_variant_builder_unref (builder);
-#if defined (TIZEN_DEBUG_DBUS_VALUE)
+	value = g_variant_new("(a{sv})", builder);
+	g_variant_builder_unref(builder);
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	WDP_LOGD("params [%s]", g_variant_print(value, TRUE));
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
