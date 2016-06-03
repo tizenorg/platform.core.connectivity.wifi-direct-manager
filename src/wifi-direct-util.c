@@ -156,7 +156,7 @@ int wfd_util_get_current_time(unsigned long *cur_time)
 
 #if defined(TIZEN_FEATURE_DEFAULT_CONNECTION_AGENT)
 static int __wfd_util_find_login_user(uid_t *uid)
- {
+{
 	uid_t *uids;
 	int ret, i;
 	char *state;
@@ -181,8 +181,7 @@ static int __wfd_util_find_login_user(uid_t *uid)
 	free(uids);
 	free(state);
 	return -1;
- }
-
+}
 #endif
 
 gboolean wfd_util_execute_file(const char *file_path,
@@ -210,15 +209,14 @@ gboolean wfd_util_execute_file(const char *file_path,
 	} else if (pid > 0) {
 		if (waitpid(pid, &rv, 0) == -1)
 			WDS_LOGD("wait pid (%u) rv (%d)", pid, rv);
-		if (WIFEXITED(rv)) {
+		if (WIFEXITED(rv))
 			WDS_LOGD("exited, rv=%d", WEXITSTATUS(rv));
-		} else if (WIFSIGNALED(rv)) {
+		else if (WIFSIGNALED(rv))
 			WDS_LOGD("killed by signal %d", WTERMSIG(rv));
-		} else if (WIFSTOPPED(rv)) {
+		else if (WIFSTOPPED(rv))
 			WDS_LOGD("stopped by signal %d", WSTOPSIG(rv));
-		} else if (WIFCONTINUED(rv)) {
+		else if (WIFCONTINUED(rv))
 			WDS_LOGD("continued");
-		}
 		return TRUE;
 	}
 
@@ -268,11 +266,11 @@ int wfd_util_get_phone_name(char *phone_name)
 
 	name = vconf_get_str(VCONFKEY_SETAPPL_DEVICE_NAME_STR);
 	if (!name) {
-		WDS_LOGE( "Failed to get vconf value for %s", VCONFKEY_SETAPPL_DEVICE_NAME_STR);
+		WDS_LOGE("Failed to get vconf value for %s", VCONFKEY_SETAPPL_DEVICE_NAME_STR);
 		return -1;
 	}
 	g_strlcpy(phone_name, name, DEV_NAME_LEN + 1);
-	WDS_LOGD( "[%s: %s]", VCONFKEY_SETAPPL_DEVICE_NAME_STR, phone_name);
+	WDS_LOGD("[%s: %s]", VCONFKEY_SETAPPL_DEVICE_NAME_STR, phone_name);
 	g_free(name);
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
@@ -421,11 +419,11 @@ int wfd_util_check_wifi_state()
 /* vconf key and value (vconf-keys.h)
 #define VCONFKEY_WIFI_STATE	"memory/wifi/state"
 enum {
-        VCONFKEY_WIFI_OFF = 0x00,
-        VCONFKEY_WIFI_UNCONNECTED,
-        VCONFKEY_WIFI_CONNECTED,
-        VCONFKEY_WIFI_TRANSFER,
-        VCONFKEY_WIFI_STATE_MAX
+	VCONFKEY_WIFI_OFF = 0x00,
+  VCONFKEY_WIFI_UNCONNECTED,
+  VCONFKEY_WIFI_CONNECTED,
+  VCONFKEY_WIFI_TRANSFER,
+	VCONFKEY_WIFI_STATE_MAX
 };
 */
 	res = vconf_get_int(VCONFKEY_WIFI_STATE, &wifi_state);
@@ -441,7 +439,7 @@ enum {
 		__WDS_LOG_FUNC_EXIT__;
 		return 1;
 	}
-	WDS_LOGD( "OK. Wi-Fi is off\n");
+	WDS_LOGD("OK. Wi-Fi is off\n");
 
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
@@ -462,12 +460,12 @@ int wfd_util_check_mobile_ap_state()
 	WDS_LOGD("[%s: %d]", VCONFKEY_MOBILE_HOTSPOT_MODE, mobile_ap_state);
 
 	if ((mobile_ap_state & VCONFKEY_MOBILE_HOTSPOT_MODE_WIFI)
-		|| (mobile_ap_state & VCONFKEY_MOBILE_HOTSPOT_MODE_WIFI_AP) ) {
+		|| (mobile_ap_state & VCONFKEY_MOBILE_HOTSPOT_MODE_WIFI_AP)) {
 		WDS_LOGD("Mobile AP is on");
 		__WDS_LOG_FUNC_EXIT__;
 		return 1;
 	}
-	WDS_LOGD( "OK. Mobile AP is off\n");
+	WDS_LOGD("OK. Mobile AP is off\n");
 
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
@@ -544,12 +542,12 @@ int wfd_util_set_wifi_direct_state(int state)
 	int vconf_state = 0;
 	int res = 0;
 
-	// TODO: check validity of state
+	/* TODO: check validity of state */
 
 	if (state == WIFI_DIRECT_STATE_ACTIVATED)
 		vconf_state = VCONFKEY_WIFI_DIRECT_ACTIVATED;
 	else if (state == WIFI_DIRECT_STATE_DEACTIVATED)
-		vconf_state= VCONFKEY_WIFI_DIRECT_DEACTIVATED;
+		vconf_state = VCONFKEY_WIFI_DIRECT_DEACTIVATED;
 	else if (state == WIFI_DIRECT_STATE_CONNECTED)
 		vconf_state = VCONFKEY_WIFI_DIRECT_CONNECTED;
 	else if (state == WIFI_DIRECT_STATE_GROUP_OWNER)
@@ -585,7 +583,7 @@ int wfd_util_get_local_dev_mac(unsigned char *dev_mac)
 	errno = 0;
 	fd = fopen(file_path, "r");
 	if (!fd) {
-		WDS_LOGE("Failed to open MAC info file [%s] (%s)",file_path , strerror(errno));
+		WDS_LOGE("Failed to open MAC info file [%s] (%s)", file_path , strerror(errno));
 		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}
@@ -738,13 +736,13 @@ static void _dhcps_ip_leased_cb(keynode_t *key, void* data)
 		return;
 	}
 
-	while(fgets(buf, MAX_DHCP_DUMP_SIZE, fp) != NULL) {
+	while (fgets(buf, MAX_DHCP_DUMP_SIZE, fp) != NULL) {
 		WDS_LOGD("Read line [%s]", buf);
-		n = sscanf(buf,"%17s %15s", intf_str, ip_str);
-		WDS_LOGD("ip=[%s], mac=[%s]",ip_str, intf_str);
-		if (n != 2) {
+		n = sscanf(buf, "%17s %15s", intf_str, ip_str);
+		WDS_LOGD("ip=[%s], mac=[%s]", ip_str, intf_str);
+		if (n != 2)
 			continue;
-		}
+
 		_txt_to_mac(intf_str, intf_addr);
 		if (!memcmp(peer->intf_addr, intf_addr, MACADDR_LEN)) {
 			WDS_LOGD("Peer intf mac found");
@@ -1020,7 +1018,7 @@ int wfd_util_dhcpc_get_server_ip(unsigned char* ip_addr)
 		return -1;
 	}
 
-	while(count < 10) {
+	while (count < 10) {
 		get_str = vconf_get_str(VCONFKEY_DHCPC_SERVER_IP);
 		if (!get_str) {
 			WDS_LOGE("Failed to get vconf value[%s]", VCONFKEY_DHCPC_SERVER_IP);
@@ -1028,7 +1026,7 @@ int wfd_util_dhcpc_get_server_ip(unsigned char* ip_addr)
 			return -1;
 		}
 
-		if(strcmp(get_str, ZEROIP) == 0) {
+		if (strcmp(get_str, ZEROIP) == 0) {
 			WDS_LOGE("Failed to get vconf value[%s]", VCONFKEY_DHCPC_SERVER_IP);
 			g_free(get_str);
 			__WDS_LOG_FUNC_EXIT__;
@@ -1094,7 +1092,7 @@ static int _wfd_util_static_ip_set(const char *ifname, unsigned char *static_ip)
 
 	/* Get index of interface */
 	if_index = if_nametoindex(ifname);
-	if(if_index < 0) {
+	if (if_index < 0) {
 		WDS_LOGE("Failed to get interface index. [%s]", strerror(errno));
 		__WDS_LOG_FUNC_EXIT__;
 		return -1;
@@ -1133,7 +1131,7 @@ static int _wfd_util_static_ip_set(const char *ifname, unsigned char *static_ip)
 	rta->rta_type = IFA_BROADCAST;
 	rta->rta_len = RTA_LENGTH(IPADDR_LEN);
 	memcpy(ip_addr, static_ip, IPADDR_LEN);
-	ip_addr[3] =0xff;
+	ip_addr[3] = 0xff;
 	memcpy(RTA_DATA(rta), ip_addr, IPADDR_LEN);
 	req.nh.nlmsg_len += rta->rta_len;
 
@@ -1148,11 +1146,10 @@ static int _wfd_util_static_ip_set(const char *ifname, unsigned char *static_ip)
 	nl_msg.msg_iovlen = 1;
 
 	res = sendmsg(nl_sock, &nl_msg, 0);
-	if (res < 0) {
+	if (res < 0)
 		WDS_LOGE("Failed to sendmsg. [%s]", strerror(errno));
-	} else {
+	else
 		WDS_LOGD("Succed to sendmsg. [%d]", res);
-	}
 
 	close(nl_sock);
 	WDS_LOGE("Succeeded to set local(client) IP [" IPSTR "] for iface[%s]",
@@ -1226,7 +1223,7 @@ int wfd_util_ip_unset(const char *ifname)
 			IP2STR(ip_addr), ifname);
 
 	if_index = if_nametoindex(ifname);
-	if(if_index < 0) {
+	if (if_index < 0) {
 		strerror_r(errno, error_buf, MAX_SIZE_ERROR_BUFFER);
 		WDS_LOGE("Failed to get interface index. [%s]", error_buf);
 		__WDS_LOG_FUNC_EXIT__;
