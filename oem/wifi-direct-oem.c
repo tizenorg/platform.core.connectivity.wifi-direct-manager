@@ -145,12 +145,12 @@ int wfd_oem_cancel_connection(wfd_oem_ops_s *ops, unsigned char *peer_addr)
 	return ops->cancel_connection(peer_addr);
 }
 
-int wfd_oem_disconnect(wfd_oem_ops_s *ops, unsigned char *peer_addr)
+int wfd_oem_disconnect(wfd_oem_ops_s *ops, unsigned char *peer_addr, int is_iface_addr)
 {
 	if (!ops || !ops->disconnect)
 		return -1;
 
-	return ops->disconnect(peer_addr);
+	return ops->disconnect(peer_addr, is_iface_addr);
 }
 
 int wfd_oem_get_connected_peers(wfd_oem_ops_s *ops, GList **peers, int *peer_count)

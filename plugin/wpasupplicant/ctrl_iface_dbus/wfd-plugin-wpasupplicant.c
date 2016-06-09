@@ -4122,13 +4122,13 @@ int ws_connect(unsigned char *peer_addr, wfd_oem_conn_param_s *param)
 	return res;
 }
 
-int ws_disconnect(unsigned char *peer_addr)
+int ws_disconnect(unsigned char *peer_addr, int is_iface_addr)
 {
 	__WDP_LOG_FUNC_ENTER__;
 	GDBusConnection *g_dbus = NULL;
 	GVariant *value = NULL;
 	dbus_method_param_s params;
-	static char peer_path[DBUS_OBJECT_PATH_MAX] = {'\0',};
+	GVariantBuilder *builder = NULL;
 	int res = 0;
 
 	if (!peer_addr) {
@@ -4149,12 +4149,26 @@ int ws_disconnect(unsigned char *peer_addr)
 	memset(&params, 0x0, sizeof(dbus_method_param_s));
 
 	dbus_set_method_param(&params, "RemoveClient", g_pd->iface_path, g_dbus);
+	builder = g_variant_builder_new(G_VARIANT_TYPE ("a{sv}"));
 
-	g_snprintf(peer_path, DBUS_OBJECT_PATH_MAX, "%s/Peers/"
-			COMPACT_MACSTR, g_pd->iface_path, MAC2STR(peer_addr));
-	WDP_LOGE("get peer path [%s]", peer_path);
+	if (is_iface_addr) {
+		char peer_mac_str[WS_MACSTR_LEN] = {'\0', };
 
-	value = g_variant_new("(oi)", peer_path, 0);
+		g_snprintf(peer_mac_str, WS_MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
+		WDP_LOGI("peer addr [%s]", peer_mac_str);
+		g_variant_builder_add(builder, "{sv}", "iface",
+				g_variant_new_string(peer_mac_str));
+	} else {
+		char peer_path[DBUS_OBJECT_PATH_MAX] = {'\0', };
+
+		g_snprintf(peer_path, DBUS_OBJECT_PATH_MAX, "%s/Peers/"
+				COMPACT_MACSTR, g_pd->iface_path, MAC2STR(peer_addr));
+		g_variant_builder_add (builder, "{sv}", "peer",
+				g_variant_new_object_path(peer_path));
+	}
+
+	value = g_variant_new ("(a{sv})", builder);
+	g_variant_builder_unref (builder);
 
 	params.params = value;
 #if defined(TIZEN_DEBUG_DBUS_VALUE)
@@ -4165,7 +4179,8 @@ int ws_disconnect(unsigned char *peer_addr)
 	if (res < 0)
 		WDP_LOGE("Failed to send command to wpa_supplicant");
 	else
-		WDP_LOGD("Succeeded to stop scan");
+		WDP_LOGD("Succeeded to send disconnection command to peer[" MACSECSTR "]",
+				MAC2SECSTR(peer_addr));
 
 	__WDP_LOG_FUNC_EXIT__;
 	return res;

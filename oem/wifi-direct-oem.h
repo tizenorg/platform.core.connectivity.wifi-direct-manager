@@ -555,7 +555,7 @@ typedef struct _wfd_oem_ops_s {
 	int (*get_peer_info) (unsigned char *peer_addr, wfd_oem_device_s **peer);
 	int (*prov_disc_req) (unsigned char *peer_addr, wfd_oem_wps_mode_e wps_mode, int join);
 	int (*connect) (unsigned char *peer_addr, wfd_oem_conn_param_s *param);
-	int (*disconnect) (unsigned char *peer_addr);
+	int (*disconnect) (unsigned char *peer_addr, int is_iface_addr);
 	int (*reject_connection) (unsigned char *peer_addr);
 	int (*cancel_connection) (unsigned char *peer_addr);
 	int (*get_connected_peers) (GList **peers, int *peer_count);
@@ -625,7 +625,7 @@ int wfd_oem_get_scan_result(wfd_oem_ops_s *ops, GList **peers, int *peer_count);
 int wfd_oem_get_peer_info(wfd_oem_ops_s *ops, unsigned char *peer_addr, wfd_oem_device_s **peer);
 int wfd_oem_prov_disc_req(wfd_oem_ops_s *ops, unsigned char *peer_addr, wfd_oem_wps_mode_e wps_mode, int join);
 int wfd_oem_connect(wfd_oem_ops_s *ops, unsigned char *peer_addr, wfd_oem_conn_param_s *param);
-int wfd_oem_disconnect(wfd_oem_ops_s *ops, unsigned char *peer_addr);
+int wfd_oem_disconnect(wfd_oem_ops_s *ops, unsigned char *peer_addr, int is_iface_addr);
 int wfd_oem_reject_connection(wfd_oem_ops_s *ops, unsigned char *peer_addr);
 int wfd_oem_cancel_connection(wfd_oem_ops_s *ops, unsigned char *peer_addr);
 int wfd_oem_get_connected_peers(wfd_oem_ops_s *ops, GList **peers, int *peer_count);

@@ -78,7 +78,12 @@ stop_dhcp()
 		echo "interface(${INTERFACE_PREFIX}) is not up"
 		return 0
 	fi
-	@SBIN_DIR@/ip addr del ${local_ip_net} dev ${interface}
+
+	if [ ! -f @SBIN_DIR@/ip ]; then
+		@SBIN_DIR@/ifconfig ${interface} "0.0.0.0"
+	else
+		@SBIN_DIR@/ip addr del ${local_ip_net} dev ${interface}
+	fi
 }
 
 is_running()

@@ -123,6 +123,7 @@
 #define WS_CMD_P2P_GROUP_REMOVE "P2P_GROUP_REMOVE "
 #define WS_CMD_P2P_CONNECT "P2P_CONNECT "
 #define WS_CMD_P2P_REJECT "P2P_REJECT_CONNECTION "
+#define WS_CMD_P2P_REMOVE_CLIENT "P2P_REMOVE_CLIENT "
 #define WS_CMD_WPS_PBC "WPS_PBC "
 #define WS_CMD_WPS_PIN "WPS_PIN "
 #define WS_CMD_WPS_ENROLLEE "WPS_ENROLLEE "
@@ -137,8 +138,6 @@
 #define WS_CMD_TERMINATE "TERMINATE"
 #define WS_CMD_LIST_NETWORKS "LIST_NETWORKS"
 #define WS_CMD_REMOVE_NETWORK "REMOVE_NETWORK"
-
-#define WS_CMD_DISCONNECT "P2P_DISCONNECT "
 
 #ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
 #define WS_CMD_SERVICE_ADD "P2P_SERVICE_ADD"
@@ -538,7 +537,7 @@ int ws_get_scan_result(GList **peers, int *peer_count);
 int ws_get_peer_info(unsigned char *peer_addr, wfd_oem_device_s **peer);
 int ws_prov_disc_req(unsigned char *peer_addr, wfd_oem_wps_mode_e wps_mode, int join);
 int ws_connect(unsigned char *peer_addr, wfd_oem_conn_param_s *param);
-int ws_disconnect(unsigned char *peer_addr);
+int ws_disconnect(unsigned char *peer_addr, int is_iface_addr);
 int ws_reject_connection(unsigned char *peer_addr);
 int ws_cancel_connection(unsigned char *peer_addr);
 int ws_get_connected_peers(GList **peers, int *peer_count);

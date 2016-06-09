@@ -193,7 +193,7 @@ int ws_connect(unsigned char *peer_addr, wfd_oem_conn_param_s *param)
 	return -1;
 }
 
-int ws_disconnect(unsigned char *peer_addr)
+int ws_disconnect(unsigned char *peer_addr, int is_iface_addr)
 {
 	__WDP_LOG_FUNC_ENTER__;
 

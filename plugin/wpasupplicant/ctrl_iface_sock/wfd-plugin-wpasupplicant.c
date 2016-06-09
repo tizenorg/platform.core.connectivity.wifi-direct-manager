@@ -3352,7 +3352,7 @@ int ws_connect(unsigned char *peer_addr, wfd_oem_conn_param_s *param)
 	return 0;
 }
 
-int ws_disconnect(unsigned char *peer_addr)
+int ws_disconnect(unsigned char *peer_addr, int is_iface_addr)
 {
 	__WDP_LOG_FUNC_ENTER__;
 	ws_sock_data_s *sock = g_pd->common;
@@ -3370,9 +3370,18 @@ int ws_disconnect(unsigned char *peer_addr)
 		return -1;
 	}
 
-	WDP_LOGD("Peer address is [" MACSECSTR "]. Disconnect selected peer", MAC2SECSTR(peer_addr));
+	WDP_LOGD("Peer address is [" MACSECSTR "]. Disconnect selected peer",
+			MAC2SECSTR(peer_addr));
 
-	g_snprintf(cmd, sizeof(cmd), WS_CMD_DISCONNECT MACSTR " %s", MAC2STR(peer_addr), GROUP_IFACE_NAME);
+	if (is_iface_addr)
+		g_snprintf(cmd, sizeof(cmd),
+				WS_CMD_P2P_REMOVE_CLIENT "iface=" MACSTR,
+				MAC2STR(peer_addr));
+	else
+		g_snprintf(cmd, sizeof(cmd),
+				WS_CMD_P2P_REMOVE_CLIENT MACSTR,
+				MAC2STR(peer_addr));
+
 	res = _ws_send_cmd(sock->ctrl_sock, cmd, reply, sizeof(reply));
 	if (res < 0) {
 		WDP_LOGE("Failed to send command to wpa_supplicant");
@@ -3381,11 +3390,13 @@ int ws_disconnect(unsigned char *peer_addr)
 	}
 
 	if (strstr(reply, "FAIL")) {
-		WDP_LOGD("Failed to disconnect with peer[" MACSECSTR "]", MAC2SECSTR(peer_addr));
+		WDP_LOGD("Failed to disconnect with peer[" MACSECSTR "]",
+				MAC2SECSTR(peer_addr));
 		__WDP_LOG_FUNC_EXIT__;
 		return -1;
 	}
-	WDP_LOGD("Succeeded to send disconnection command to peer[" MACSECSTR "]", MAC2SECSTR(peer_addr));
+	WDP_LOGD("Succeeded to send disconnection command to peer[" MACSECSTR "]",
+			MAC2SECSTR(peer_addr));
 
 	__WDP_LOG_FUNC_EXIT__;
 	return 0;

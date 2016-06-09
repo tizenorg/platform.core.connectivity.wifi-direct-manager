@@ -974,6 +974,7 @@ static void __wfd_process_sta_connected(wfd_manager_s *manager, wfd_oem_event_s 
 
 		memcpy(peer->intf_addr, event->intf_addr, MACADDR_LEN);
 		peer->state = WFD_PEER_STATE_CONNECTED;
+		peer->is_legacy = TRUE;
 		wfd_group_add_member(group, peer->dev_addr);
 
 		g_snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(peer->dev_addr));

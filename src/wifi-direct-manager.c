@@ -775,25 +775,13 @@ int wfd_manager_cancel_connection(wfd_manager_s *manager, unsigned char *peer_ad
 		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
 	}
 
-	if (manager->local->dev_role != WFD_DEV_ROLE_GO)
-		wfd_oem_destroy_group(manager->oem_ops, GROUP_IFNAME);
-
 	group = (wfd_group_s*) manager->group;
-	if (group) {
+	if (group)
 		wfd_group_remove_member(group, peer_addr);
-		if (!group->member_count) {
-			if (wfd_util_is_remove_group_allowed()) {
-				wfd_oem_destroy_group(manager->oem_ops, group->ifname);
-				wfd_destroy_group(manager, group->ifname);
-			}
-		} else {
-			wfd_oem_disconnect(manager->oem_ops, peer_addr);
-		}
-	}
 
 	if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
 		wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
-		if (group && group->member_count > 0)
+		if (group && group->member_count)
 			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_GROUP_OWNER);
 	} else {
 		wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
@@ -884,15 +872,14 @@ int wfd_manager_disconnect(wfd_manager_s *manager, unsigned char *peer_addr)
 	wfd_state_set(manager, WIFI_DIRECT_STATE_DISCONNECTING);
 
 	if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
-#ifdef CTRL_IFACE_DBUS
-		/* dbus using device address to identify the peer */
-		res = wfd_oem_disconnect(manager->oem_ops, peer->dev_addr);
-#else /* CTRL_IFACE_DBUS */
-		res = wfd_oem_disconnect(manager->oem_ops, peer->intf_addr);
-#endif /* CTRL_IFACE_DBUS */
+		if (peer->is_legacy)
+			res = wfd_oem_disconnect(manager->oem_ops, peer->intf_addr, 1);
+		else
+			res = wfd_oem_disconnect(manager->oem_ops, peer->dev_addr, 0);
 	} else {
 		res = wfd_oem_destroy_group(manager->oem_ops, group->ifname);
 	}
+
 	if (res < 0) {
 		WDS_LOGE("Failed to disconnect peer");
 		res = WIFI_DIRECT_ERROR_OPERATION_FAILED;

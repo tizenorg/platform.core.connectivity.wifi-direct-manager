@@ -147,6 +147,7 @@ typedef struct {
 	int dev_flags;
 	int group_flags;
 	int wps_mode;
+	int is_legacy;
 
 	char passphrase[PASSPHRASE_LEN_MAX + 1];
 
