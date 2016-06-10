@@ -897,9 +897,7 @@ void __ws_extract_group_details(const char *key, GVariant *value, void *user_dat
 		return;
 	}
 
-#ifdef TIZEN_FEATURE_IP_OVER_EAPOL
 	wfd_oem_group_data_s *group = (wfd_oem_group_data_s *)event->edata;
-#endif /* TIZEN_FEATURE_IP_OVER_EAPOL */
 #if defined(TIZEN_DEBUG_DBUS_VALUE)
 	CHECK_KEY_VALUE(key, value);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
@@ -4149,7 +4147,7 @@ int ws_disconnect(unsigned char *peer_addr, int is_iface_addr)
 	memset(&params, 0x0, sizeof(dbus_method_param_s));
 
 	dbus_set_method_param(&params, "RemoveClient", g_pd->iface_path, g_dbus);
-	builder = g_variant_builder_new(G_VARIANT_TYPE ("a{sv}"));
+	builder = g_variant_builder_new(G_VARIANT_TYPE("a{sv}"));
 
 	if (is_iface_addr) {
 		char peer_mac_str[WS_MACSTR_LEN] = {'\0', };
@@ -4163,12 +4161,12 @@ int ws_disconnect(unsigned char *peer_addr, int is_iface_addr)
 
 		g_snprintf(peer_path, DBUS_OBJECT_PATH_MAX, "%s/Peers/"
 				COMPACT_MACSTR, g_pd->iface_path, MAC2STR(peer_addr));
-		g_variant_builder_add (builder, "{sv}", "peer",
+		g_variant_builder_add(builder, "{sv}", "peer",
 				g_variant_new_object_path(peer_path));
 	}
 
-	value = g_variant_new ("(a{sv})", builder);
-	g_variant_builder_unref (builder);
+	value = g_variant_new("(a{sv})", builder);
+	g_variant_builder_unref(builder);
 
 	params.params = value;
 #if defined(TIZEN_DEBUG_DBUS_VALUE)

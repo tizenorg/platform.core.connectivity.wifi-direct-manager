@@ -159,9 +159,8 @@ int wfd_update_peer(void *data, wfd_device_s *peer)
 		return -1;
 	}
 	g_strlcpy(peer->dev_name, oem_dev->dev_name, DEV_NAME_LEN + 1);
-#ifndef CTRL_IFACE_DBUS
-	memcpy(peer->intf_addr, oem_dev->intf_addr, MACADDR_LEN);
-#endif /* CTRL_IFACE_DBUS */
+	if (!ISZEROMACADDR(oem_dev->intf_addr))
+		memcpy(peer->intf_addr, oem_dev->intf_addr, MACADDR_LEN);
 	memcpy(peer->go_dev_addr, oem_dev->go_dev_addr, MACADDR_LEN);
 	peer->channel = oem_dev->channel;
 	peer->dev_role = oem_dev->dev_role;

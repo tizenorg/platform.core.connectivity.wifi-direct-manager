@@ -961,7 +961,7 @@ static void __wfd_process_sta_connected(wfd_manager_s *manager, wfd_oem_event_s 
 	if (ISZEROMACADDR(event->dev_addr)) {
 		WDS_LOGD("Legacy Peer Connected [Peer: " MACSTR "]", MAC2STR(event->intf_addr));
 
-		peer = wfd_peer_find_by_dev_addr(manager, event->intf_addr);
+		peer = wfd_peer_find_by_addr(manager, event->intf_addr);
 		if (!peer) {
 			WDS_LOGI("Add legacy peer");
 			peer = wfd_add_peer(manager, event->intf_addr, "LEGACY-PEER");
@@ -972,10 +972,15 @@ static void __wfd_process_sta_connected(wfd_manager_s *manager, wfd_oem_event_s 
 			}
 		}
 
+		if (wfd_group_add_member(group, peer->dev_addr) == -1) {
+			WDS_LOGE("Failed to add Legacy peer.");
+			__WDS_LOG_FUNC_EXIT__;
+			return;
+		}
+
 		memcpy(peer->intf_addr, event->intf_addr, MACADDR_LEN);
 		peer->state = WFD_PEER_STATE_CONNECTED;
 		peer->is_legacy = TRUE;
-		wfd_group_add_member(group, peer->dev_addr);
 
 		g_snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(peer->dev_addr));
 		wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
