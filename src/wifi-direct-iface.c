@@ -1549,13 +1549,13 @@ static void __wfd_manager_config_iface_handler(const gchar *method_name,
 			char *get_str = NULL;
 			char subnet_mask[IPSTR_LEN+1] = {0, };
 
-			get_str = vconf_get_str(VCONFKEY_SUBNET_MASK);
+			get_str = vconf_get_str(VCONFKEY_WIFI_DIRECT_P2P_SUBNET_MASK);
 			if (!get_str) {
 				WDS_LOGE("Get Subnet Mask failed");
 				ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
 				goto failed;
 			}
-			WDS_LOGD("VCONFKEY_SUBNET_MASK(%s) : %s", VCONFKEY_SUBNET_MASK,
+			WDS_LOGD("VCONFKEY_SUBNET_MASK(%s) : %s", VCONFKEY_WIFI_DIRECT_P2P_SUBNET_MASK,
 				get_str);
 			ret = WIFI_DIRECT_ERROR_NONE;
 			g_strlcpy(subnet_mask, get_str, IPSTR_LEN + 1);
@@ -1566,13 +1566,13 @@ static void __wfd_manager_config_iface_handler(const gchar *method_name,
 	} else if (!g_strcmp0(method_name, "GetGateway")) {
 			char *get_str = NULL;
 			char gateway_addr[IPSTR_LEN+1] = {0, };
-			get_str = vconf_get_str(VCONFKEY_GATEWAY);
+			get_str = vconf_get_str(VCONFKEY_WIFI_DIRECT_P2P_GATEWAY);
 			if (!get_str) {
 				WDS_LOGE("Get Gateway failed");
 				ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
 				goto failed;
 			}
-			WDS_LOGD("VCONFKEY_GATEWAY_ADDR(%s) : %s", VCONFKEY_GATEWAY,
+			WDS_LOGD("VCONFKEY_GATEWAY_ADDR(%s) : %s", VCONFKEY_WIFI_DIRECT_P2P_GATEWAY,
 				get_str);
 			ret = WIFI_DIRECT_ERROR_NONE;
 			g_strlcpy(gateway_addr, get_str, IPSTR_LEN + 1);

@@ -762,8 +762,8 @@ static void _dhcps_ip_leased_cb(keynode_t *key, void* data)
 	}
 	fclose(fp);
 
-	vconf_ignore_key_changed(VCONFKEY_DHCPS_IP_LEASE, _dhcps_ip_leased_cb);
-	vconf_set_int(VCONFKEY_DHCPS_IP_LEASE, 0);
+	vconf_ignore_key_changed(VCONFKEY_WIFI_DIRECT_DHCP_IP_LEASE, _dhcps_ip_leased_cb);
+	vconf_set_int(VCONFKEY_WIFI_DIRECT_DHCP_IP_LEASE, 0);
 
 	__WDS_LOG_FUNC_EXIT__;
 	return;
@@ -846,7 +846,7 @@ int wfd_util_dhcps_start(char *ifname)
 	char *const envs[] = { NULL };
 	wfd_manager_s *manager = wfd_get_manager();
 
-	vconf_set_int(VCONFKEY_DHCPS_IP_LEASE, 0);
+	vconf_set_int(VCONFKEY_WIFI_DIRECT_DHCP_IP_LEASE, 0);
 
 	rv = wfd_util_execute_file(path, args, envs);
 
@@ -859,10 +859,10 @@ int wfd_util_dhcps_start(char *ifname)
 	 * As we are GO so IP should be updated
 	 * before sending Group Created Event
 	 */
-	vconf_set_str(VCONFKEY_IFNAME, GROUP_IFNAME);
-	vconf_set_str(VCONFKEY_LOCAL_IP, "192.168.49.1");
-	vconf_set_str(VCONFKEY_SUBNET_MASK, "255.255.255.0");
-	vconf_set_str(VCONFKEY_GATEWAY, "192.168.49.1");
+	vconf_set_str(VCONFKEY_WIFI_DIRECT_P2P_IFNAME, GROUP_IFNAME);
+	vconf_set_str(VCONFKEY_WIFI_DIRECT_P2P_LOCAL_IP, "192.168.49.1");
+	vconf_set_str(VCONFKEY_WIFI_DIRECT_P2P_SUBNET_MASK, "255.255.255.0");
+	vconf_set_str(VCONFKEY_WIFI_DIRECT_P2P_GATEWAY, "192.168.49.1");
 
 	WDS_LOGD("Successfully started wifi-direct-dhcp.sh server");
 
@@ -881,8 +881,8 @@ int wfd_util_dhcps_wait_ip_leased(wfd_device_s *peer)
 		return -1;
 	}
 
-	vconf_set_int(VCONFKEY_DHCPS_IP_LEASE, 0);
-	vconf_notify_key_changed(VCONFKEY_DHCPS_IP_LEASE, _dhcps_ip_leased_cb, peer);
+	vconf_set_int(VCONFKEY_WIFI_DIRECT_DHCP_IP_LEASE, 0);
+	vconf_notify_key_changed(VCONFKEY_WIFI_DIRECT_DHCP_IP_LEASE, _dhcps_ip_leased_cb, peer);
 
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
@@ -897,8 +897,8 @@ int wfd_util_dhcps_stop(char *ifname)
 	char *const args[] = { "/usr/bin/wifi-direct-dhcp.sh", "stop", iface, NULL };
 	char *const envs[] = { NULL };
 
-	vconf_ignore_key_changed(VCONFKEY_DHCPS_IP_LEASE, _dhcps_ip_leased_cb);
-	vconf_set_int(VCONFKEY_DHCPS_IP_LEASE, 0);
+	vconf_ignore_key_changed(VCONFKEY_WIFI_DIRECT_DHCP_IP_LEASE, _dhcps_ip_leased_cb);
+	vconf_set_int(VCONFKEY_WIFI_DIRECT_DHCP_IP_LEASE, 0);
 
 	rv = wfd_util_execute_file(path, args, envs);
 
@@ -1019,21 +1019,21 @@ int wfd_util_dhcpc_get_server_ip(unsigned char* ip_addr)
 	}
 
 	while (count < 10) {
-		get_str = vconf_get_str(VCONFKEY_DHCPC_SERVER_IP);
+		get_str = vconf_get_str(VCONFKEY_WIFI_DIRECT_DHCPC_SERVER_IP);
 		if (!get_str) {
-			WDS_LOGE("Failed to get vconf value[%s]", VCONFKEY_DHCPC_SERVER_IP);
+			WDS_LOGE("Failed to get vconf value[%s]", VCONFKEY_WIFI_DIRECT_DHCPC_SERVER_IP);
 			__WDS_LOG_FUNC_EXIT__;
 			return -1;
 		}
 
 		if (strcmp(get_str, ZEROIP) == 0) {
-			WDS_LOGE("Failed to get vconf value[%s]", VCONFKEY_DHCPC_SERVER_IP);
+			WDS_LOGE("Failed to get vconf value[%s]", VCONFKEY_WIFI_DIRECT_DHCPC_SERVER_IP);
 			g_free(get_str);
 			__WDS_LOG_FUNC_EXIT__;
 			return -1;
 		}
 
-		WDS_LOGD("VCONFKEY_DHCPC_SERVER_IP(%s) : %s\n", VCONFKEY_DHCPC_SERVER_IP, get_str);
+		WDS_LOGD("VCONFKEY_WIFI_DIRECT_DHCPC_SERVER_IP(%s) : %s\n", VCONFKEY_WIFI_DIRECT_DHCPC_SERVER_IP, get_str);
 		_txt_to_ip(get_str, ip_addr);
 		g_free(get_str);
 		if (*ip_addr)
@@ -1053,10 +1053,10 @@ static int _wfd_util_set_vconf_for_static_ip(const char *ifname, char *static_ip
 	if (!ifname || !static_ip)
 		return -1;
 
-	vconf_set_str(VCONFKEY_IFNAME, ifname);
-	vconf_set_str(VCONFKEY_LOCAL_IP, static_ip);
-	vconf_set_str(VCONFKEY_SUBNET_MASK, "255.255.255.0");
-	vconf_set_str(VCONFKEY_GATEWAY, "192.168.49.1");
+	vconf_set_str(VCONFKEY_WIFI_DIRECT_P2P_IFNAME, ifname);
+	vconf_set_str(VCONFKEY_WIFI_DIRECT_P2P_LOCAL_IP, static_ip);
+	vconf_set_str(VCONFKEY_WIFI_DIRECT_P2P_SUBNET_MASK, "255.255.255.0");
+	vconf_set_str(VCONFKEY_WIFI_DIRECT_P2P_GATEWAY, "192.168.49.1");
 
 	__WDS_LOG_FUNC_EXIT__;
 
