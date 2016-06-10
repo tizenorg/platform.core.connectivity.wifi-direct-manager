@@ -1441,6 +1441,22 @@ static void __wfd_process_asp_serv_resp(wfd_manager_s *manager, wfd_oem_event_s 
 	__WDS_LOG_FUNC_EXIT__;
 	return;
 }
+
+static void __wfd_process_asp_prov_start(wfd_manager_s *manager, wfd_oem_event_s *event)
+{
+	__WDS_LOG_FUNC_ENTER__;
+
+	__WDS_LOG_FUNC_EXIT__;
+	return;
+}
+
+static void __wfd_process_asp_prov_done(wfd_manager_s *manager, wfd_oem_event_s *event)
+{
+	__WDS_LOG_FUNC_ENTER__;
+
+	__WDS_LOG_FUNC_EXIT__;
+	return;
+}
 #endif /* TIZEN_FEATURE_ASP */
 
 static struct {
@@ -1566,6 +1582,14 @@ static struct {
 	{
 		WFD_OEM_EVENT_ASP_SERV_RESP,
 		__wfd_process_asp_serv_resp,
+	},
+	{
+		WFD_OEM_EVENT_ASP_PROV_START,
+		__wfd_process_asp_prov_start
+	},
+	{
+		WFD_OEM_EVENT_ASP_PROV_DONE,
+		__wfd_process_asp_prov_done
 	},
 #endif /* TIZEN_FEATURE_ASP */
 	{

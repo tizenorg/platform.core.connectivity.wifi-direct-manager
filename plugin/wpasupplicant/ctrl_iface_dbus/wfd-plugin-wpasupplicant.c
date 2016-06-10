@@ -757,8 +757,7 @@ static void __ws_peer_property(const char *key, GVariant *value, void *user_data
 			peer->dev_role = WFD_OEM_DEV_ROLE_GC;
 #if defined(TIZEN_FEATURE_ASP)
 	} else if (g_strcmp0(key, "AdvertiseService") == 0) {
-		WDP_LOGD("size [%d]", g_variant_get_size(value));
-		if (g_variant_get_size(value) != 0)
+		if (value != NULL && g_variant_get_size(value) != 0)
 			peer->has_asp_services = 1;
 		else
 			peer->has_asp_services = 0;
@@ -1596,11 +1595,13 @@ GLIST_ITER_START(seek_list, seek)
 				seek = NULL;
 			}
 GLIST_ITER_END()
+
 			if (seek != NULL && seek->service_info != NULL) {
 				WDP_LOGD("service info exists, service discovery will be performed");
 			} else {
 				WDP_LOGD("service info doesn't exists. Add service to list");
-				service->search_id = seek->search_id;
+				if (seek)
+					service->search_id = seek->search_id;
 				*asp_services = g_list_append(*asp_services, service);
 			}
 		}
@@ -1649,9 +1650,9 @@ static void _ws_process_device_found(GDBusConnection *connection,
 		wfd_oem_advertise_service_s *service;
 		for (l = (GList *)event.asp_services; l != NULL; l = l->next) {
 			service = (wfd_oem_advertise_service_s *)l->data;
+			event.asp_services = g_list_remove(l, service);
 			g_free(service->service_type);
 			g_free(service);
-			event.asp_services = g_list_remove(l, service);
 		}
 		g_list_free(l);
 	}
@@ -2318,7 +2319,7 @@ GLIST_ITER_START(seek_list, tmp)
 	}
 GLIST_ITER_END()
 
-	if (tmp->service_info != NULL)
+	if (tmp != NULL && tmp->service_info != NULL)
 		g_pd->callback(g_pd->user_data, &event);
 	else
 		WDP_LOGD("service info is not required, don't notify to user");
