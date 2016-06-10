@@ -1,0 +1,11 @@
+[Unit]
+Description=WiFi Direct Manager service
+Requires=dbus.socket
+After=dbus.socket
+
+[Service]
+Type=dbus
+BusName=net.wifidirect
+ExecStart=/usr/bin/wfd-manager
+CapabilityBoundingSet=~CAP_MAC_ADMIN
+CapabilityBoundingSet=~CAP_MAC_OVERRIDE
