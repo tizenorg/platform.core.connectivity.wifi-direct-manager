@@ -1,4 +1,6 @@
 [D-BUS Service]
 Name=net.wifidirect
-Exec=/usr/bin/wfd-manager
+
+Exec=/bin/false
 User=root
+SystemdService=wifi-direct-manager.service

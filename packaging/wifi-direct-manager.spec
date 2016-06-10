@@ -1,12 +1,13 @@
 Name:		wifi-direct-manager
 Summary:	Wi-Fi Direct manger
-Version:	1.2.171
+Version:	1.2.172
 Release:	1
 Group:      Network & Connectivity/Wireless
 License:    Apache-2.0
 Source0:	%{name}-%{version}.tar.gz
 Source1:	dbus-wfd-manager.conf
 Source2:	net.wifidirect.service
+Source3:	wifi-direct-manager.service
 BuildRequires:	pkgconfig(capi-network-wifi-direct)
 BuildRequires:	pkgconfig(gio-2.0)
 BuildRequires:	pkgconfig(dlog)
@@ -45,8 +46,10 @@ Wi-Fi direct manager plugin to abstract wpa_supplicant
 chmod 644 %{SOURCE0}
 chmod 644 %{SOURCE1}
 chmod 644 %{SOURCE2}
+chmod 644 %{SOURCE3}
 cp -a %{SOURCE1} ./wfd-manager.conf
 cp -a %{SOURCE2} .
+cp -a %{SOURCE3} .
 
 %build
 
@@ -136,6 +139,8 @@ mkdir -p %{buildroot}%{_sysconfdir}/dbus-1/system.d
 cp wfd-manager.conf %{buildroot}%{_sysconfdir}/dbus-1/system.d/wfd-manager.conf
 mkdir -p %{buildroot}%{_datadir}/dbus-1/system-services/
 cp net.wifidirect.service %{buildroot}%{_datadir}/dbus-1/system-services/net.wifidirect.service
+mkdir -p %{buildroot}%{_libdir}/systemd/system/
+cp wifi-direct-manager.service %{buildroot}%{_libdir}/systemd/system/wifi-direct-manager.service
 
 %post
 chmod 644 %{TZ_SYS_RO_ETC}/wifi-direct/dhcpd.conf
@@ -177,6 +182,7 @@ chmod 666 %{TZ_SYS_VAR}/lib/misc/dhcpd.leases
 %attr(755,-,-) %{TZ_SYS_RO_ETC}/wifi-direct/udhcp_script.non-autoip
 %attr(644,root,root) %{_sysconfdir}/dbus-1/system.d/*
 %attr(644,root,root) %{_datadir}/dbus-1/system-services/*
+%attr(644,root,root) %{_libdir}/systemd/system/*
 %attr(755,-,-) %{_sbindir}/p2p_supp.sh
 
 %files -n wifi-direct-plugin-wpasupplicant
