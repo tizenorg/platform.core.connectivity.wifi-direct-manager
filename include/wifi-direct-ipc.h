@@ -55,11 +55,6 @@ typedef unsigned int ipv4_addr_t;
 #define WIFI_DIRECT_MAX_SERVICES_LEN 1024
 #define WIFI_DIRECT_MAX_SERVICE_NAME_LEN 256
 
-#define VCONFKEY_IFNAME "memory/private/wifi_direct_manager/p2p_ifname"
-#define VCONFKEY_LOCAL_IP "memory/private/wifi_direct_manager/p2p_local_ip"
-#define VCONFKEY_SUBNET_MASK "memory/private/wifi_direct_manager/p2p_subnet_mask"
-#define VCONFKEY_GATEWAY "memory/private/wifi_direct_manager/p2p_gateway"
-
 /**
  * Wi-Fi Direct connection state
  */
