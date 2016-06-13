@@ -320,7 +320,7 @@ static int __ws_segment_to_service(char *segment, wfd_oem_new_service_s **servic
 		while (*ptr != 0 && strncmp(ptr, "c0", 2)) {
 			len = __ws_hex_to_num(ptr, 2);
 			ptr += 2;
-			if (len && len <= 0xff) {
+			if (len && len + 2 >= 0 && len <= 0xff) {
 				temp = (char*) calloc(1, len+2);
 				if (temp) {
 					temp[0] = '.';
@@ -360,7 +360,7 @@ static int __ws_segment_to_service(char *segment, wfd_oem_new_service_s **servic
 		while (*ptr != 0 && strncmp(ptr, "c0", 2)) {
 			len = __ws_hex_to_num(ptr, 2);
 			ptr += 2;
-			if (len && len <= 0xff) {
+			if (len && len + 2 >= 0 && len <= 0xff) {
 				temp = (char*) g_try_malloc0(len+2);
 				if (temp) {
 					temp[0] = '.';
@@ -5097,7 +5097,8 @@ void __ws_extract_p2pdevice_details(const char *key, GVariant *value, void *user
 			g_strlcpy(networks[num].persistent_path, path, DBUS_OBJECT_PATH_MAX);
 
 			loc = strrchr(networks[num].persistent_path, '/');
-			networks[num].network_id = strtoul(loc+1, NULL, 10);
+			if (loc)
+				networks[num].network_id = strtoul(loc+1, NULL, 10);
 
 			WDP_LOGD("Retrive persistent path [%s]", networks[num].persistent_path);
 			dbus_property_get_all(networks[num].persistent_path, g_pd->g_dbus,
