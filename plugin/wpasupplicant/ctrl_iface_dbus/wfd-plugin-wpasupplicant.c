@@ -962,6 +962,7 @@ void __ws_extract_group_details(const char *key, GVariant *value, void *user_dat
 				G_DBUS_SIGNAL_FLAGS_NONE,
 				_group_signal_cb,
 				NULL, NULL);
+		WDP_LOGD("Subscribed group iface signal: [%d]", g_pd->group_sub_id);
 	}
 	__WDP_LOG_FUNC_EXIT__;
 	return;
@@ -2895,8 +2896,7 @@ static void __register_p2pdevice_signal(GVariant *value, void *user_data)
 	WDP_LOGD("interface object path [%s]", interface_path);
 
 	/* subscribe Interface iface signal */
-	WDP_LOGD("Register Interface iface signal");
-	pd_data->p2pdevice_sub_id = g_dbus_connection_signal_subscribe(
+	pd_data->iface_sub_id = g_dbus_connection_signal_subscribe(
 		pd_data->g_dbus,
 		SUPPLICANT_SERVICE, /* bus name */
 		SUPPLICANT_IFACE, /* interface */
@@ -2906,9 +2906,9 @@ static void __register_p2pdevice_signal(GVariant *value, void *user_data)
 		G_DBUS_SIGNAL_FLAGS_NONE,
 		_interface_signal_cb,
 		NULL, NULL);
+	WDP_LOGD("Subscribed Interface iface signal: [%d]", pd_data->iface_sub_id);
 
 	/* subscribe P2PDevice iface signal */
-	WDP_LOGD("register P2PDevice iface signal");
 	pd_data->p2pdevice_sub_id = g_dbus_connection_signal_subscribe(
 		pd_data->g_dbus,
 		SUPPLICANT_SERVICE, /* bus name */
@@ -2919,6 +2919,7 @@ static void __register_p2pdevice_signal(GVariant *value, void *user_data)
 		G_DBUS_SIGNAL_FLAGS_NONE,
 		_p2pdevice_signal_cb,
 		NULL, NULL);
+	WDP_LOGD("Subscribed P2PDevice iface signal: [%d]", pd_data->p2pdevice_sub_id);
 	__WDP_LOG_FUNC_EXIT__;
 }
 
@@ -3065,7 +3066,6 @@ static int _ws_init_dbus_connection(void)
 
 	g_pd->g_dbus = conn;
 
-	WDP_LOGD("register supplicant signal");
 	/* subscribe supplicant signal */
 	g_pd->supp_sub_id = g_dbus_connection_signal_subscribe(
 		g_pd->g_dbus,
@@ -3077,6 +3077,8 @@ static int _ws_init_dbus_connection(void)
 		G_DBUS_SIGNAL_FLAGS_NONE,
 		_supplicant_signal_cb,
 		NULL, NULL);
+	WDP_LOGD("Subscribed supplicant iface signal: [%d]", g_pd->supp_sub_id);
+
 #if defined(TIZEN_MOBILE) && (TIZEN_WLAN_BOARD_SPRD)
 	if (_ws_get_interface(COMMON_IFACE_NAME, NULL, NULL) < 0)
 		_ws_create_interface(COMMON_IFACE_NAME, NULL, NULL);
@@ -3113,10 +3115,12 @@ static int _ws_deinit_dbus_connection(void)
 	}
 
 	g_dbus_connection_signal_unsubscribe(g_dbus, g_pd->supp_sub_id);
+	g_dbus_connection_signal_unsubscribe(g_dbus, g_pd->iface_sub_id);
 	g_dbus_connection_signal_unsubscribe(g_dbus, g_pd->p2pdevice_sub_id);
 	g_dbus_connection_signal_unsubscribe(g_dbus, g_pd->group_sub_id);
 
 	g_pd->group_iface_sub_id = 0;
+	g_pd->iface_sub_id = 0;
 	g_pd->p2pdevice_sub_id = 0;
 	g_pd->group_sub_id = 0;
 	memset(g_pd->group_iface_path, 0x0, DBUS_OBJECT_PATH_MAX);

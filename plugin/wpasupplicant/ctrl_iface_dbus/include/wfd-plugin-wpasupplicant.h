@@ -392,6 +392,7 @@ typedef struct {
 	guint supp_sub_id;
 	char iface_path[150];
 	char group_iface_path[150];
+	guint iface_sub_id;
 	guint p2pdevice_sub_id;
 	guint group_sub_id;
 	guint group_iface_sub_id;
