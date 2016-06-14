@@ -980,7 +980,7 @@ static void __wfd_process_sta_connected(wfd_manager_s *manager, wfd_oem_event_s 
 
 		memcpy(peer->intf_addr, event->intf_addr, MACADDR_LEN);
 		peer->state = WFD_PEER_STATE_CONNECTED;
-		peer->is_legacy = TRUE;
+		peer->is_p2p = FALSE;
 
 		g_snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(peer->dev_addr));
 		wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,

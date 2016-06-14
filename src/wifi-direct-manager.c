@@ -872,10 +872,10 @@ int wfd_manager_disconnect(wfd_manager_s *manager, unsigned char *peer_addr)
 	wfd_state_set(manager, WIFI_DIRECT_STATE_DISCONNECTING);
 
 	if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
-		if (peer->is_legacy)
-			res = wfd_oem_disconnect(manager->oem_ops, peer->intf_addr, 1);
-		else
+		if (peer->is_p2p)
 			res = wfd_oem_disconnect(manager->oem_ops, peer->dev_addr, 0);
+		else
+			res = wfd_oem_disconnect(manager->oem_ops, peer->intf_addr, 1);
 	} else {
 		res = wfd_oem_destroy_group(manager->oem_ops, group->ifname);
 	}
@@ -1205,7 +1205,7 @@ int wfd_manager_get_connected_peers(wfd_manager_s *manager, wfd_connected_peer_i
 			peers[count].category = peer->pri_dev_type;
 			peers[count].subcategory = peer->sec_dev_type;
 			peers[count].channel = peer->channel;
-			peers[count].is_p2p = 1;
+			peers[count].is_p2p = peer->is_p2p;
 #ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
 			peers[count].services = 0;
 #endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
