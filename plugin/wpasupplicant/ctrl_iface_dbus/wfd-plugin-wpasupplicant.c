@@ -1655,7 +1655,6 @@ static void _ws_process_device_found(GDBusConnection *connection,
 			g_free(service->service_type);
 			g_free(service);
 		}
-		g_list_free(l);
 	}
 #endif /* TIZEN_FEATURE_ASP */
 	g_free(event.edata);
