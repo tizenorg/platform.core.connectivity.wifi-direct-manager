@@ -558,6 +558,7 @@ int wfd_manager_deactivate(wfd_manager_s *manager)
 	__WDS_LOG_FUNC_ENTER__;
 	int prev_state = 0;
 	int res = 0;
+	wfd_group_s *group = NULL;
 
 	if (!manager) {
 		WDS_LOGE("Invalid parameter");
@@ -573,9 +574,12 @@ int wfd_manager_deactivate(wfd_manager_s *manager)
 		WDS_LOGE("Failed to initialize miracast");
 #endif /* TIZEN_FEATURE_WIFI_DISPLAY */
 
-	res = wfd_oem_destroy_group(manager->oem_ops, GROUP_IFNAME);
-	if (res < 0)
-		WDS_LOGE("Failed to destroy group before deactivation");
+	group = (wfd_group_s*) manager->group;
+	if (group && group->pending == FALSE) {
+		res = wfd_oem_destroy_group(manager->oem_ops, group->ifname);
+		if (res < 0)
+			WDS_LOGE("Failed to destroy group before deactivation");
+	}
 
 #if defined(TIZEN_WLAN_CONCURRENT_ENABLE) && defined(TIZEN_MOBILE)
 	res = wfd_util_check_wifi_state();
@@ -609,7 +613,7 @@ int wfd_manager_deactivate(wfd_manager_s *manager)
 
 	manager->req_wps_mode = WFD_WPS_MODE_PBC;
 
-	wfd_destroy_group(manager, GROUP_IFNAME);
+	wfd_destroy_group(manager);
 	wfd_destroy_session(manager);
 	wfd_peer_clear_all(manager);
 	wfd_local_reset_data(manager);
@@ -890,7 +894,7 @@ int wfd_manager_disconnect(wfd_manager_s *manager, unsigned char *peer_addr)
 	wfd_group_remove_member(group, peer_addr);
 	if (!group->member_count) {
 		wfd_oem_destroy_group(manager->oem_ops, group->ifname);
-		wfd_destroy_group(manager, group->ifname);
+		wfd_destroy_group(manager);
 	}
 
 	if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
@@ -944,7 +948,7 @@ int wfd_manager_disconnect_all(wfd_manager_s *manager)
 	}
 	WDS_LOGE("Succeeded to disconnect all peer");
 
-	wfd_destroy_group(manager, group->ifname);
+	wfd_destroy_group(manager);
 
 	wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
 	wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
