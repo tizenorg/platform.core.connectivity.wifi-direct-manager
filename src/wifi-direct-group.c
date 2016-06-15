@@ -94,6 +94,7 @@ wfd_group_s *wfd_create_group(void *data, wfd_oem_event_s *group_info)
 	manager->local->dev_role = group_info->dev_role;
 
 	wfd_util_dhcps_start(group->ifname);
+	group->pending = FALSE;
 	WDS_LOGD("Role is Group Owner. DHCP Server started");
 
 	__WDS_LOG_FUNC_EXIT__;
@@ -130,6 +131,7 @@ wfd_group_s *wfd_create_pending_group(void *data, unsigned char * bssid)
 
 	memcpy(group->bssid, bssid, MACADDR_LEN);
 	group->flags &= WFD_GROUP_FLAG_NONE;
+	group->pending = TRUE;
 
 	__WDS_LOG_FUNC_EXIT__;
 	return group;
@@ -175,6 +177,7 @@ int wfd_group_complete(void *data, wfd_oem_event_s *group_info)
 		group->flags |= WFD_GROUP_FLAG_PERSISTENT;
 
 	manager->local->dev_role = group_info->dev_role;
+	group->pending = FALSE;
 
 	session = manager->session;
 	peer = wfd_session_get_peer(session);
@@ -227,7 +230,7 @@ int wfd_group_complete(void *data, wfd_oem_event_s *group_info)
 	return 0;
 }
 
-int wfd_destroy_group(void *data, char *ifname)
+int wfd_destroy_group(void *data)
 {
 	__WDS_LOG_FUNC_ENTER__;
 	wfd_group_s *group = NULL;
@@ -236,7 +239,7 @@ int wfd_destroy_group(void *data, char *ifname)
 	wfd_device_s *member = NULL;
 	int count = 0;
 
-	if (!data || !ifname) {
+	if (!data) {
 		WDS_LOGE("Invalid parameter");
 		__WDS_LOG_FUNC_EXIT__;
 		return -1;
@@ -250,11 +253,13 @@ int wfd_destroy_group(void *data, char *ifname)
 	}
 	manager->group = NULL;
 
-	wfd_util_ip_unset(group->ifname);
-	if (group->role == WFD_DEV_ROLE_GO)
-		wfd_util_dhcps_stop(group->ifname);
-	else
-		wfd_util_dhcpc_stop(group->ifname);
+	if (group->pending == FALSE) {
+		wfd_util_ip_unset(group->ifname);
+		if (group->role == WFD_DEV_ROLE_GO)
+			wfd_util_dhcps_stop(group->ifname);
+		else
+			wfd_util_dhcpc_stop(group->ifname);
+	}
 	memset(manager->local->ip_addr, 0x0, IPADDR_LEN);
 
 	temp = g_list_first(group->members);
@@ -440,12 +445,12 @@ int wfd_group_remove_member(wfd_group_s *group, unsigned char *addr)
 	if (group->role == WFD_DEV_ROLE_GO) {
 		if (!group->member_count && wfd_util_is_remove_group_allowed()) {
 			wfd_oem_destroy_group(manager->oem_ops, group->ifname);
-			wfd_destroy_group(manager, group->ifname);
+			wfd_destroy_group(manager);
 			wfd_peer_clear_all(manager);
 		}
 	} else {
 		wfd_oem_destroy_group(manager->oem_ops, group->ifname);
-		wfd_destroy_group(manager, group->ifname);
+		wfd_destroy_group(manager);
 		wfd_peer_clear_all(manager);
 	}
 

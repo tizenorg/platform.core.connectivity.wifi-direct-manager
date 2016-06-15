@@ -141,7 +141,7 @@ static void __wfd_process_deactivated(wfd_manager_s *manager, wfd_oem_event_s *e
 				     "Deactivation",
 				     g_variant_new("(i)", WIFI_DIRECT_ERROR_NONE));
 
-	wfd_destroy_group(manager, GROUP_IFNAME);
+	wfd_destroy_group(manager);
 	wfd_destroy_session(manager);
 	wfd_peer_clear_all(manager);
 	wfd_local_reset_data(manager);
@@ -429,7 +429,7 @@ static void __wfd_process_prov_disc_fail(wfd_manager_s *manager, wfd_oem_event_s
 	if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
 		wfd_group_s *group = (wfd_group_s*) manager->group;
 		if (group && !group->member_count && (wfd_group_is_autonomous(group) == FALSE)) {
-			wfd_destroy_group(manager, GROUP_IFNAME);
+			wfd_destroy_group(manager);
 
 			wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
 			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
@@ -571,7 +571,7 @@ static void __wfd_process_go_neg_fail(wfd_manager_s *manager, wfd_oem_event_s *e
 	wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
 	wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
 
-	wfd_destroy_group(manager, GROUP_IFNAME);
+	wfd_destroy_group(manager);
 	wfd_destroy_session(manager);
 	manager->local->dev_role = WFD_DEV_ROLE_NONE;
 	__WDS_LOG_FUNC_EXIT__;
@@ -638,7 +638,7 @@ static void __wfd_process_wps_fail(wfd_manager_s *manager, wfd_oem_event_s *even
 	if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
 		wfd_group_s *group = (wfd_group_s*) manager->group;
 		if (group && !group->member_count && (wfd_group_is_autonomous(group) == FALSE)) {
-			wfd_destroy_group(manager, GROUP_IFNAME);
+			wfd_destroy_group(manager);
 
 			wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
 			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
@@ -710,7 +710,7 @@ static void __wfd_process_key_neg_fail(wfd_manager_s *manager, wfd_oem_event_s *
 	if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
 		wfd_group_s *group = (wfd_group_s*) manager->group;
 		if (group && !group->member_count && (wfd_group_is_autonomous(group) == FALSE)) {
-			wfd_destroy_group(manager, GROUP_IFNAME);
+			wfd_destroy_group(manager);
 
 			wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
 			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
@@ -870,7 +870,7 @@ static void __wfd_process_group_destroyed(wfd_manager_s *manager, wfd_oem_event_
 
 	wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
 	wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
-	wfd_destroy_group(manager, event->ifname);
+	wfd_destroy_group(manager);
 	wfd_destroy_session(manager);
 	manager->local->dev_role = WFD_DEV_ROLE_NONE;
 
@@ -998,8 +998,10 @@ static void __wfd_process_sta_connected(wfd_manager_s *manager, wfd_oem_event_s 
 	if (!session) {
 		WDS_LOGD("Unexpected event. Session is NULL [peer: " MACSECSTR "]",
 									MAC2SECSTR(event->dev_addr));
-		wfd_oem_destroy_group(manager->oem_ops, GROUP_IFNAME);
-		wfd_destroy_group(manager, GROUP_IFNAME);
+		if (group) {
+			wfd_oem_destroy_group(manager->oem_ops, group->ifname);
+			wfd_destroy_group(manager);
+		}
 		wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
 		wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
 		__WDS_LOG_FUNC_EXIT__;
@@ -1217,7 +1219,7 @@ static void __wfd_process_sta_disconnected(wfd_manager_s *manager, wfd_oem_event
 	/* If there is no member, GO should be destroyed */
 	if (!group->member_count) {
 		wfd_oem_destroy_group(manager->oem_ops, group->ifname);
-		wfd_destroy_group(manager, group->ifname);
+		wfd_destroy_group(manager);
 		wfd_peer_clear_all(manager);
 	}
 

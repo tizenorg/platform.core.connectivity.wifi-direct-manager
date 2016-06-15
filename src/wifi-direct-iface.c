@@ -1027,7 +1027,7 @@ static void __wfd_manager_group_iface_handler(const gchar *method_name,
 		ret = wfd_oem_create_group(manager->oem_ops, &param);
 		if (ret < 0) {
 			WDS_LOGE("Failed to create group");
-			wfd_destroy_group(manager, GROUP_IFNAME);
+			wfd_destroy_group(manager);
 			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
 			goto failed;
 		}
@@ -1040,20 +1040,22 @@ static void __wfd_manager_group_iface_handler(const gchar *method_name,
 
 	} else if (!g_strcmp0(method_name, "DestroyGroup")) {
 		wfd_group_s *group = manager->group;
-		if (!group && manager->state < WIFI_DIRECT_STATE_CONNECTED) {
+		if (!group) {
 			WDS_LOGE("Group not exist");
 			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
 			goto failed;
 		}
 
-		ret = wfd_oem_destroy_group(manager->oem_ops, group->ifname);
-		if (ret < 0) {
-			WDS_LOGE("Failed to destroy group");
-			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
-			goto failed;
+		if (group->pending == FALSE) {
+			ret = wfd_oem_destroy_group(manager->oem_ops, group->ifname);
+			if (ret < 0) {
+				WDS_LOGE("Failed to destroy group");
+				ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
+				goto failed;
+			}
 		}
 
-		ret = wfd_destroy_group(manager, group->ifname);
+		ret = wfd_destroy_group(manager);
 		if (ret < 0)
 			WDS_LOGE("Failed to destroy group");
 
