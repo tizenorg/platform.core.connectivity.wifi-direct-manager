@@ -69,7 +69,7 @@ wfd_device_s *wfd_add_peer(void *data, unsigned char *dev_addr, char *dev_name)
 	}
 	memcpy(peer->dev_addr, dev_addr, MACADDR_LEN);
 	g_strlcpy(peer->dev_name, dev_name, DEV_NAME_LEN + 1);
-	peer->is_legacy = FALSE;
+	peer->is_p2p = TRUE;
 
 	manager->peers = g_list_prepend(manager->peers, peer);
 	manager->peer_count++;
