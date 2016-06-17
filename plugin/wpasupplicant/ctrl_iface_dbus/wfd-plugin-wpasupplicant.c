@@ -2284,7 +2284,8 @@ static void _ws_process_service_asp_response(GDBusConnection *connection,
 	__WDP_LOG_FUNC_ENTER__;
 	GVariantIter *iter = NULL;
 	wfd_oem_event_s event;
-	wfd_oem_asp_service_s *service, *tmp;
+	wfd_oem_asp_service_s *service = NULL;
+	wfd_oem_asp_service_s *tmp = NULL;
 
 	service = (wfd_oem_asp_service_s *) g_try_malloc0(sizeof(wfd_oem_asp_service_s));
 	if (!service) {
