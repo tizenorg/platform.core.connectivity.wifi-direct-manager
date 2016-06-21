@@ -281,7 +281,6 @@ static int __ws_segment_to_service(char *segment, wfd_oem_new_service_s **servic
 	wfd_oem_new_service_s *serv_tmp = NULL;
 	char *ptr = NULL;
 	char *temp = NULL;
-	int len = 0;
 	int i = 0;
 
 	if (!segment || !service) {
@@ -318,17 +317,20 @@ static int __ws_segment_to_service(char *segment, wfd_oem_new_service_s **servic
 		int dns_type = 0;
 
 		while (*ptr != 0 && strncmp(ptr, "c0", 2)) {
-			len = __ws_hex_to_num(ptr, 2);
+			unsigned long int size = 0;
+			char temp_str[3] = {0,};
+			memcpy(temp_str, ptr, 2);
+			size = strtoul(temp_str, NULL, 16);
 			ptr += 2;
-			if (len && len + 2 >= 0 && len <= 0xff) {
-				temp = (char*) calloc(1, len+2);
+			if (size <= 0xff) {
+				temp = (char*) calloc(1, size + 2);
 				if (temp) {
 					temp[0] = '.';
-					for (i = 0; i < len; i++) {
+					for (i = 0; i < size; i++) {
 						temp[i+1] = (char) __ws_hex_to_num(ptr, 2);
 						ptr += 2;
 					}
-					strncat(query, temp, len+1);
+					strncat(query, temp, size + 1);
 					g_free(temp);
 					temp = NULL;
 				}
@@ -358,17 +360,20 @@ static int __ws_segment_to_service(char *segment, wfd_oem_new_service_s **servic
 		}
 		serv_tmp->data.bonjour.query = strdup(query + 1);
 		while (*ptr != 0 && strncmp(ptr, "c0", 2)) {
-			len = __ws_hex_to_num(ptr, 2);
+			unsigned long int size = 0;
+			char temp_str[3] = {0,};
+			memcpy(temp_str, ptr, 2);
+			size = strtoul(temp_str, NULL, 16);
 			ptr += 2;
-			if (len && len + 2 >= 0 && len <= 0xff) {
-				temp = (char*) g_try_malloc0(len+2);
+			if (size <= 0xff) {
+				temp = (char*) g_try_malloc0(size + 2);
 				if (temp) {
 					temp[0] = '.';
-					for (i = 0; i < len; i++) {
+					for (i = 0; i < size; i++) {
 						temp[i+1] = (char) __ws_hex_to_num(ptr, 2);
 						ptr += 2;
 					}
-					strncat(rdata, temp, len+1);
+					strncat(rdata, temp, size + 1);
 					g_free(temp);
 					temp = NULL;
 				}
