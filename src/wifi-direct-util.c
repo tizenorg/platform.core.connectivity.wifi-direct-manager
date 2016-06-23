@@ -363,15 +363,18 @@ void _wfd_util_check_country_cb(keynode_t *key, void *data)
 	ccode = g_key_file_get_string(keyfile, "ccode_map", mcc, &err);
 	if (!ccode) {
 		WDS_LOGE("Failed to get country code string(%s)", err->message);
+		g_key_file_free(keyfile);
 		return;
 	}
 
 	res = wfd_oem_set_country(manager->oem_ops, ccode);
-	if (res < 0) {
+	if (res < 0)
 		WDS_LOGE("Failed to set contry code");
-		return;
-	}
-	WDS_LOGD("Succeeded to set country code(%s)", ccode);
+	else
+		WDS_LOGD("Succeeded to set country code(%s)", ccode);
+
+	g_key_file_free(keyfile);
+	g_free(ccode);
 
 	__WDS_LOG_FUNC_EXIT__;
 	return;
