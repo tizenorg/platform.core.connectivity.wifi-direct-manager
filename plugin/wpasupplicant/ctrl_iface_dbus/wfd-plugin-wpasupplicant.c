@@ -1618,13 +1618,17 @@ GLIST_ITER_END()
 }
 #endif /* TIZEN_FEATURE_ASP */
 
-static void _ws_process_device_found(GDBusConnection *connection,
+static void _ws_process_device_found_properties(GDBusConnection *connection,
 		const gchar *object_path, GVariant *parameters)
 {
 	__WDP_LOG_FUNC_ENTER__;
 	wfd_oem_event_s event;
 	wfd_oem_dev_data_s *edata = NULL;
 	static char peer_path[DBUS_OBJECT_PATH_MAX] = {'\0',};
+	static unsigned char peer_dev[OEM_MACSTR_LEN] = {'\0',};
+	char *loc = NULL;
+	GVariantIter *iter = NULL;
+	const char *path = NULL;
 
 	edata = (wfd_oem_dev_data_s *) g_try_malloc0(sizeof(wfd_oem_dev_data_s));
 	if (!edata) {
@@ -1639,10 +1643,27 @@ static void _ws_process_device_found(GDBusConnection *connection,
 	event.edata_type = WFD_OEM_EDATA_TYPE_DEVICE;
 	event.event_id = WFD_OEM_EVENT_PEER_FOUND;
 
-	__ws_path_to_addr(peer_path, event.dev_addr, parameters);
+	g_variant_get(parameters, "(&oa{sv})", &path, &iter);
+	g_strlcpy(peer_path, path, DBUS_OBJECT_PATH_MAX);
+	WDP_LOGD("Retrive Added path [%s]", peer_path);
 
-	dbus_property_get_all(peer_path, g_pd->g_dbus, SUPPLICANT_P2P_PEER,
-			__ws_peer_property, event.edata);
+	loc = strrchr(peer_path,'/');
+	__ws_mac_compact_to_normal(loc + 1, peer_dev);
+	__ws_txt_to_mac(peer_dev, event.dev_addr);
+	WDP_LOGD("peer mac [" MACSTR "]", MAC2STR(event.dev_addr));
+
+	if (iter != NULL) {
+		gchar *key = NULL;
+		GVariant *value = NULL;
+
+		while (g_variant_iter_loop(iter, "{sv}", &key, &value)) {
+#if defined(TIZEN_DEBUG_DBUS_VALUE)
+			CHECK_KEY_VALUE(key, value);
+#endif /* TIZEN_DEBUG_DBUS_VALUE */
+			__ws_peer_property(key, value, (void *) event.edata);
+		}
+		g_variant_iter_free(iter);
+	}
 
 #if defined(TIZEN_FEATURE_ASP)
 	if (edata->has_asp_services)
@@ -2529,8 +2550,8 @@ static struct {
 } ws_p2pdevice_signal_map[] = {
 	{
 		SUPPLICANT_P2PDEVICE,
-		"DeviceFound",
-		_ws_process_device_found
+		"DeviceFoundProperties",
+		_ws_process_device_found_properties
 	},
 	{
 		SUPPLICANT_P2PDEVICE,
