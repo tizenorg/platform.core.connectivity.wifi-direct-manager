@@ -1,5 +1,5 @@
 #!/bin/sh
-
+PATH=/bin:/usr/bin:/sbin:/usr/sbin
 # udhcpc script edited by Tim Riker <Tim@Rikers.org>
 
 [ -z "$1" ] && echo "Error: should be called from udhcpc" && exit 1
