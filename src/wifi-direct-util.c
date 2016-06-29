@@ -542,10 +542,23 @@ int wfd_util_get_wifi_direct_state()
 int wfd_util_set_wifi_direct_state(int state)
 {
 	__WDS_LOG_FUNC_ENTER__;
-	int vconf_state = 0;
+	static int last_state = WIFI_DIRECT_STATE_DEACTIVATED;
+	int vconf_state = VCONFKEY_WIFI_DIRECT_DEACTIVATED;
 	int res = 0;
 
-	/* TODO: check validity of state */
+	if (state < WIFI_DIRECT_STATE_DEACTIVATED ||
+	    state > WIFI_DIRECT_STATE_GROUP_OWNER) {
+		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	if (last_state == state) {
+		WDS_LOGD("No change in state, not updating vconf [%s]",
+			 VCONFKEY_WIFI_DIRECT_STATE);
+		__WDS_LOG_FUNC_EXIT__;
+		return 0;
+	}
 
 	if (state == WIFI_DIRECT_STATE_ACTIVATED)
 		vconf_state = VCONFKEY_WIFI_DIRECT_ACTIVATED;
@@ -561,6 +574,7 @@ int wfd_util_set_wifi_direct_state(int state)
 		WDS_LOGE("This state cannot be set as wifi_direct vconf state[%d]", state);
 		return 0;
 	}
+
 	WDS_LOGD("Vconf key set [%s: %d]", VCONFKEY_WIFI_DIRECT_STATE, vconf_state);
 
 	res = vconf_set_int(VCONFKEY_WIFI_DIRECT_STATE, vconf_state);
@@ -569,6 +583,8 @@ int wfd_util_set_wifi_direct_state(int state)
 		__WDS_LOG_FUNC_EXIT__;
 		return -1;
 	}
+
+	last_state = state;
 
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
