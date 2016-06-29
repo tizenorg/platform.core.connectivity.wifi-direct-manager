@@ -1,6 +1,4 @@
 #!/bin/sh
-PATH=/bin:/usr/bin:/sbin:/usr/sbin
-
 program="wfd-manager"
 target=`/bin/ps -eo comm|/bin/grep ${program}`
 
