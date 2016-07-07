@@ -1163,7 +1163,7 @@ static void __ws_extract_serviceaspresponse_details(const char *key, GVariant *v
 		const char *path = NULL;
 		char *loc = NULL;
 
-		g_variant_get(value, "o", &path);
+		g_variant_get(value, "&o", &path);
 		if (path == NULL)
 			return;
 
@@ -1199,14 +1199,14 @@ static void __ws_extract_serviceaspresponse_details(const char *key, GVariant *v
 
 	} else if (g_strcmp0(key, "svc_str") == 0) {
 		const char *svc_str = NULL;
-		g_variant_get(value, "s", &svc_str);
+		g_variant_get(value, "&s", &svc_str);
 		if (svc_str != NULL)
 			service->service_type = g_strdup(svc_str);
 		WDP_LOGD("Retrive srv_name [%s]", service->service_type);
 
 	} else if (g_strcmp0(key, "info") == 0) {
 		const char *info = NULL;
-		g_variant_get(value, "s", &info);
+		g_variant_get(value, "&s", &info);
 		if (info != NULL)
 			service->service_info = g_strdup(info);
 		WDP_LOGD("Retrive srv_info [%s]", service->service_info);
@@ -6283,7 +6283,7 @@ int ws_advertise_service(wfd_oem_asp_service_s *service, int replace)
 	value = g_variant_new("(a{sv})", builder);
 	g_variant_builder_unref(builder);
 #if defined(TIZEN_DEBUG_DBUS_VALUE)
-	WDP_LOGE("params [%s]", g_variant_print(value, TRUE));
+	DEBUG_PARAMS(value);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
 	params.params = value;
@@ -6324,7 +6324,7 @@ int ws_cancel_advertise_service(wfd_oem_asp_service_s *service)
 	value = g_variant_new("(a{sv})", builder);
 	g_variant_builder_unref(builder);
 #if defined(TIZEN_DEBUG_DBUS_VALUE)
-	WDP_LOGD("params [%s]", g_variant_print(value, TRUE));
+	DEBUG_PARAMS(value);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 	params.params = value;
 
@@ -6491,7 +6491,7 @@ int ws_seek_service(wfd_oem_asp_service_s *service)
 		g_variant_builder_unref(builder);
 
 #if defined(TIZEN_DEBUG_DBUS_VALUE)
-		WDP_LOGD("params [%s]", g_variant_print(value, TRUE));
+		DEBUG_PARAMS(value);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
 		params.params = value;
@@ -6542,7 +6542,7 @@ int ws_cancel_seek_service(wfd_oem_asp_service_s *service)
 		params.params = g_variant_new("(t)", service->search_id);
 
 #if defined(TIZEN_DEBUG_DBUS_VALUE)
-		WDP_LOGD("params [%s]", g_variant_print(params.params, TRUE));
+		DEBUG_PARAMS(params.params);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
 		res = dbus_method_call(&params, SUPPLICANT_P2PDEVICE, NULL, NULL);
@@ -6625,7 +6625,7 @@ int ws_asp_prov_disc_req(wfd_oem_asp_prov_s *asp_params)
 	value = g_variant_new("(a{sv})", builder);
 	g_variant_builder_unref(builder);
 #if defined(TIZEN_DEBUG_DBUS_VALUE)
-	WDP_LOGD("params [%s]", g_variant_print(value, TRUE));
+	DEBUG_PARAMS(value);
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
 	params.params = value;
