@@ -210,18 +210,15 @@ static int __ws_mac_compact_to_normal(char *compact, unsigned char *mac)
 	return 0;
 }
 
-static char *__ws_wps_to_txt(int wps_mode)
+static const char *__ws_wps_to_txt(int wps_mode)
 {
 	switch (wps_mode) {
 	case WFD_OEM_WPS_MODE_PBC:
 		return WS_DBUS_STR_PBC;
-		break;
 	case WFD_OEM_WPS_MODE_DISPLAY:
 		return WS_DBUS_STR_DISPLAY;
-		break;
 	case WFD_OEM_WPS_MODE_KEYPAD:
 		return WS_DBUS_STR_KEYPAD;
-		break;
 #if defined(TIZEN_FEATURE_ASP)
 	case WFD_OEM_WPS_MODE_NONE:
 	case WFD_OEM_WPS_MODE_P2PS:
@@ -229,7 +226,6 @@ static char *__ws_wps_to_txt(int wps_mode)
 #endif /* TIZEN_FEATURE_ASP */
 	default:
 		return "";
-		break;
 	}
 }
 #ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
