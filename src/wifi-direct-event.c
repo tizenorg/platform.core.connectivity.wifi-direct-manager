@@ -397,7 +397,8 @@ static void __wfd_process_prov_disc_resp(wfd_manager_s *manager, wfd_oem_event_s
 	return;
 }
 
-static void __wfd_process_prov_disc_fail(wfd_manager_s *manager, wfd_oem_event_s *event)
+static void __wfd_process_prov_disc_fail(wfd_manager_s *manager,
+					 wfd_oem_event_s *event)
 {
 	__WDS_LOG_FUNC_ENTER__;
 
@@ -422,13 +423,15 @@ static void __wfd_process_prov_disc_fail(wfd_manager_s *manager, wfd_oem_event_s
 	snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
 	wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
 				     "Connection",
-				     g_variant_new("(iis)", WIFI_DIRECT_ERROR_CONNECTION_FAILED,
-							    WFD_EVENT_CONNECTION_RSP,
-							    peer_mac_address));
+				     g_variant_new("(iis)",
+						   WIFI_DIRECT_ERROR_CONNECTION_FAILED,
+						   WFD_EVENT_CONNECTION_RSP,
+						   peer_mac_address));
 
 	if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
 		wfd_group_s *group = (wfd_group_s*) manager->group;
-		if (group && !group->member_count && (wfd_group_is_autonomous(group) == FALSE)) {
+		if (group && !group->member_count &&
+		    wfd_util_is_remove_group_allowed()) {
 			wfd_destroy_group(manager);
 
 			wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
@@ -459,7 +462,8 @@ static void __wfd_process_prov_disc_fail(wfd_manager_s *manager, wfd_oem_event_s
 	return;
 }
 
-static void __wfd_process_go_neg_req(wfd_manager_s *manager, wfd_oem_event_s *event)
+static void __wfd_process_go_neg_req(wfd_manager_s *manager,
+				     wfd_oem_event_s *event)
 {
 	__WDS_LOG_FUNC_ENTER__;
 
@@ -520,7 +524,8 @@ static void __wfd_process_go_neg_req(wfd_manager_s *manager, wfd_oem_event_s *ev
 	return;
 }
 
-static void __wfd_process_go_neg_fail(wfd_manager_s *manager, wfd_oem_event_s *event)
+static void __wfd_process_go_neg_fail(wfd_manager_s *manager,
+				      wfd_oem_event_s *event)
 {
 	__WDS_LOG_FUNC_ENTER__;
 
@@ -564,9 +569,10 @@ static void __wfd_process_go_neg_fail(wfd_manager_s *manager, wfd_oem_event_s *e
 	snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
 	wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
 				     "Connection",
-				     g_variant_new("(iis)", WIFI_DIRECT_ERROR_CONNECTION_FAILED,
-							    WFD_EVENT_CONNECTION_RSP,
-							    peer_mac_address));
+				     g_variant_new("(iis)",
+						   WIFI_DIRECT_ERROR_CONNECTION_FAILED,
+						   WFD_EVENT_CONNECTION_RSP,
+						   peer_mac_address));
 
 	wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
 	wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
@@ -578,7 +584,8 @@ static void __wfd_process_go_neg_fail(wfd_manager_s *manager, wfd_oem_event_s *e
 	return;
 }
 
-static void __wfd_process_go_neg_done(wfd_manager_s *manager, wfd_oem_event_s *event)
+static void __wfd_process_go_neg_done(wfd_manager_s *manager,
+				      wfd_oem_event_s *event)
 {
 	__WDS_LOG_FUNC_ENTER__;
 
@@ -606,7 +613,8 @@ static void __wfd_process_go_neg_done(wfd_manager_s *manager, wfd_oem_event_s *e
 	return;
 }
 
-static void __wfd_process_wps_fail(wfd_manager_s *manager, wfd_oem_event_s *event)
+static void __wfd_process_wps_fail(wfd_manager_s *manager,
+				   wfd_oem_event_s *event)
 {
 	__WDS_LOG_FUNC_ENTER__;
 
@@ -631,13 +639,15 @@ static void __wfd_process_wps_fail(wfd_manager_s *manager, wfd_oem_event_s *even
 	g_snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
 	wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
 				     "Connection",
-				     g_variant_new("(iis)", WIFI_DIRECT_ERROR_CONNECTION_FAILED,
-							    WFD_EVENT_CONNECTION_RSP,
-							    peer_mac_address));
+				     g_variant_new("(iis)",
+						   WIFI_DIRECT_ERROR_CONNECTION_FAILED,
+						   WFD_EVENT_CONNECTION_RSP,
+						   peer_mac_address));
 
 	if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
 		wfd_group_s *group = (wfd_group_s*) manager->group;
-		if (group && !group->member_count && (wfd_group_is_autonomous(group) == FALSE)) {
+		if (group && !group->member_count &&
+		    wfd_util_is_remove_group_allowed()) {
 			wfd_destroy_group(manager);
 
 			wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
@@ -668,7 +678,8 @@ static void __wfd_process_wps_fail(wfd_manager_s *manager, wfd_oem_event_s *even
 	return;
 }
 
-static void __wfd_process_wps_done(wfd_manager_s *manager, wfd_oem_event_s *event)
+static void __wfd_process_wps_done(wfd_manager_s *manager,
+				   wfd_oem_event_s *event)
 {
 	__WDS_LOG_FUNC_ENTER__;
 
@@ -678,7 +689,8 @@ static void __wfd_process_wps_done(wfd_manager_s *manager, wfd_oem_event_s *even
 	return;
 }
 
-static void __wfd_process_key_neg_fail(wfd_manager_s *manager, wfd_oem_event_s *event)
+static void __wfd_process_key_neg_fail(wfd_manager_s *manager,
+				       wfd_oem_event_s *event)
 {
 	__WDS_LOG_FUNC_ENTER__;
 
@@ -703,13 +715,15 @@ static void __wfd_process_key_neg_fail(wfd_manager_s *manager, wfd_oem_event_s *
 	g_snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
 	wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
 				     "Connection",
-				     g_variant_new("(iis)", WIFI_DIRECT_ERROR_CONNECTION_FAILED,
-							    WFD_EVENT_CONNECTION_RSP,
-							    peer_mac_address));
+				     g_variant_new("(iis)",
+						   WIFI_DIRECT_ERROR_CONNECTION_FAILED,
+						   WFD_EVENT_CONNECTION_RSP,
+						   peer_mac_address));
 
 	if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
 		wfd_group_s *group = (wfd_group_s*) manager->group;
-		if (group && !group->member_count && (wfd_group_is_autonomous(group) == FALSE)) {
+		if (group && !group->member_count &&
+		    wfd_util_is_remove_group_allowed()) {
 			wfd_destroy_group(manager);
 
 			wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
