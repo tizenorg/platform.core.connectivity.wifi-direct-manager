@@ -34,12 +34,12 @@
 #define SIGNAL_PROPERTIES_CHANGED "PropertiesChanged"
 
 #if defined(TIZEN_DEBUG_DBUS_VALUE)
-#define DEBUG_PARAMS(parameters) \
+#define DEBUG_G_VARIANT(str, parameters)\
 	do {\
 		gchar *parameters_debug_str = NULL;\
 		if (parameters)\
 			parameters_debug_str = g_variant_print(parameters, TRUE);\
-		WDP_LOGD("params [%s]", parameters_debug_str ? parameters_debug_str : "NULL");\
+		WDP_LOGD("%s[%s]", str, parameters_debug_str ? parameters_debug_str : "NULL");\
 		g_free(parameters_debug_str);\
 	} while (0)
 
@@ -48,7 +48,7 @@
 		if (key)\
 			WDP_LOGD("Key : [%s]", key);\
 		if (value) {\
-			DEBUG_PARAMS(value);\
+			DEBUG_G_VARIANT("Value : ", value);\
 		} \
 	} while (0)
 
@@ -58,9 +58,13 @@
 		WDP_LOGD("signal object path [%s]", object_path);\
 		WDP_LOGD("signal interface name [%s]", interface_name);\
 		WDP_LOGD("signal signal name [%s]", signal_name);\
-		DEBUG_PARAMS(parameters);\
+		DEBUG_G_VARIANT("signal params ", parameters);\
 		WDP_LOGD("signal params type [%s]", g_variant_get_type_string(parameters));\
 	} while (0)
+#else /* TIZEN_DEBUG_DBUS_VALUE */
+#define DEBUG_G_VARIANT(str, parameters)
+#define CHECK_KEY_VALUE(key, value)
+#define DEBUG_SIGNAL(sender_name, object_path, interface_name, signal_name, parameters)
 #endif /* TIZEN_DEBUG_DBUS_VALUE */
 
 typedef void (*handle_reply) (GVariant *value, void *user_data);

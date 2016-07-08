@@ -64,9 +64,7 @@ int dbus_method_call(dbus_method_param_s *params, char *interface_name,
 	}
 
 	if (reply != NULL) {
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
-		DEBUG_PARAMS(reply);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+		DEBUG_G_VARIANT("Reply : ", reply);
 
 		if (function)
 			function(reply, user_data);
@@ -130,9 +128,7 @@ int dbus_property_get_all(const char *path, GDBusConnection *connection,
 	}
 
 	param = g_variant_new("(s)", interface);
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
-	DEBUG_PARAMS(param);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+	DEBUG_G_VARIANT("Params : ", param);
 
 	reply = g_dbus_connection_call_sync(
 			connection,

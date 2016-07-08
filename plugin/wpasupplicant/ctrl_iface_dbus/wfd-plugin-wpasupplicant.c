@@ -535,9 +535,7 @@ static void _supplicant_signal_cb(GDBusConnection *connection,
 		const gchar *sender, const gchar *object_path, const gchar *interface,
 		const gchar *signal, GVariant *parameters, gpointer user_data)
 {
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	DEBUG_SIGNAL(sender, object_path, interface, signal, parameters);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
 
 	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
@@ -591,9 +589,8 @@ static void __ws_get_peer_property(const char *key, GVariant *value, void *user_
 		__WDP_LOG_FUNC_EXIT__;
 		return;
 	}
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
+
 	CHECK_KEY_VALUE(key, value);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
 
 	if (g_strcmp0(key, "DeviceName") == 0) {
 		const char *name = NULL;
@@ -684,9 +681,9 @@ static void __ws_peer_property(const char *key, GVariant *value, void *user_data
 	}
 
 	wfd_oem_dev_data_s *peer = (wfd_oem_dev_data_s *)user_data;
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
+
 	CHECK_KEY_VALUE(key, value);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+
 	if (g_strcmp0(key, "DeviceName") == 0) {
 		const char *name = NULL;
 
@@ -783,9 +780,9 @@ void __ws_interface_property(const char *key, GVariant *value, void *user_data)
 	wfd_oem_event_s *event = (wfd_oem_event_s *)user_data;
 	if (!event)
 		return;
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
+
 	CHECK_KEY_VALUE(key, value);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+
 	if (g_strcmp0(key, "Ifname") == 0) {
 		const char *ifname = NULL;
 
@@ -806,9 +803,9 @@ void __ws_group_property(const char *key, GVariant *value, void *user_data)
 		return;
 
 	wfd_oem_group_data_s *group = (wfd_oem_group_data_s *)event->edata;
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
+
 	CHECK_KEY_VALUE(key, value);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+
 	if (g_strcmp0(key, "Role") == 0) {
 		const char *role = NULL;
 
@@ -862,9 +859,9 @@ void __ws_extract_invitation_details(const char *key, GVariant *value, void *use
 		return;
 
 	wfd_oem_invite_data_s *invitation = (wfd_oem_invite_data_s *)event->edata;
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
+
 	CHECK_KEY_VALUE(key, value);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+
 	if (g_strcmp0(key, "sa") == 0) {
 		if (__ws_unpack_ay(invitation->sa, value, WS_MACADDR_LEN))
 			WDP_LOGD("SA [" MACSTR "]", MAC2STR(invitation->sa));
@@ -904,9 +901,9 @@ void __ws_extract_group_details(const char *key, GVariant *value, void *user_dat
 	}
 
 	wfd_oem_group_data_s *group = (wfd_oem_group_data_s *)event->edata;
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
+
 	CHECK_KEY_VALUE(key, value);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+
 	if (g_strcmp0(key, "interface_object") == 0) {
 		static char interface_path[DBUS_OBJECT_PATH_MAX] = {'\0',};
 		const char *i_path = NULL;
@@ -983,9 +980,9 @@ void __ws_extract_gonegfailaure_details(const char *key, GVariant *value, void *
 		return;
 
 	wfd_oem_conn_data_s *conn = (wfd_oem_conn_data_s *)event->edata;
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
+
 	CHECK_KEY_VALUE(key, value);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+
 	if (g_strcmp0(key, "peer_object") == 0) {
 		static char peer_path[DBUS_OBJECT_PATH_MAX] = {'\0',};
 		const char *path;
@@ -1013,9 +1010,9 @@ void __ws_extract_gonegsuccess_details(const char *key, GVariant *value, void *u
 		return;
 
 	wfd_oem_conn_data_s *edata = (wfd_oem_conn_data_s *)event->edata;
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
+
 	CHECK_KEY_VALUE(key, value);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+
 	if (g_strcmp0(key, "peer_object") == 0) {
 
 	} else if (g_strcmp0(key, "status") == 0) {
@@ -1107,9 +1104,9 @@ void __ws_extract_servicediscoveryresponse_details(const char *key, GVariant *va
 
 	if (!event)
 		return;
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
+
 	CHECK_KEY_VALUE(key, value);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+
 	if (g_strcmp0(key, "peer_object") == 0) {
 		static unsigned char peer_dev[WS_MACSTR_LEN] = {'\0',};
 		const char *path = NULL;
@@ -1498,9 +1495,7 @@ int ws_get_advertise_service(const char *peer_path, GList **asp_services)
 	}
 
 	param = g_variant_new("(ss)", SUPPLICANT_P2P_PEER, "AdvertiseService");
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
-	DEBUG_PARAMS(param);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+	DEBUG_G_VARIANT("Params : ", param);
 
 	reply = g_dbus_connection_call_sync(
 			g_dbus,
@@ -1526,10 +1521,7 @@ int ws_get_advertise_service(const char *peer_path, GList **asp_services)
 	}
 
 	if (reply != NULL) {
-
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
-		DEBUG_PARAMS(reply);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+		DEBUG_G_VARIANT("Reply : ", reply);
 
 		/* replay will have the format <(<ay>,)>
 		 * So, you need to remove tuple out side of variant and
@@ -1659,9 +1651,8 @@ static void _ws_process_device_found_properties(GDBusConnection *connection,
 		GVariant *value = NULL;
 
 		while (g_variant_iter_loop(iter, "{sv}", &key, &value)) {
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
 			CHECK_KEY_VALUE(key, value);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+
 			__ws_peer_property(key, value, (void *) event.edata);
 		}
 		g_variant_iter_free(iter);
@@ -2403,11 +2394,9 @@ static void _ws_process_wps_failed(GDBusConnection *connection,
 		gchar *key = NULL;
 		GVariant *value = NULL;
 
-		while (g_variant_iter_loop(iter, "{sv}", &key, &value)) {
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
+		while (g_variant_iter_loop(iter, "{sv}", &key, &value))
 			CHECK_KEY_VALUE(key, value);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
-		}
+
 		g_variant_iter_free(iter);
 	}
 
@@ -2453,6 +2442,7 @@ static void _ws_process_invitation_accepted(GDBusConnection *connection,
 
 			while (g_variant_iter_loop(iter, "{sv}", &key, &value)) {
 				CHECK_KEY_VALUE(key, value);
+
 				if (g_strcmp0(key, "sa") == 0)
 					if (__ws_unpack_ay(event.dev_addr, value, WS_MACADDR_LEN))
 						WDP_LOGI("[" MACSTR "]", MAC2STR(event.dev_addr));
@@ -2696,9 +2686,7 @@ static void _p2pdevice_signal_cb(GDBusConnection *connection,
 		const gchar *signal, GVariant *parameters, gpointer user_data)
 {
 	int i = 0;
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	DEBUG_SIGNAL(sender, object_path, interface, signal, parameters);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
 
 	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
@@ -2789,9 +2777,7 @@ static void _interface_signal_cb(GDBusConnection *connection,
 		const gchar *signal, GVariant *parameters, gpointer user_data)
 {
 	int i = 0;
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	DEBUG_SIGNAL(sender, object_path, interface, signal, parameters);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
 
 	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
@@ -2846,9 +2832,7 @@ static void _group_signal_cb(GDBusConnection *connection,
 		const gchar *sender, const gchar *object_path, const gchar *interface,
 		const gchar *signal, GVariant *parameters, gpointer user_data)
 {
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	DEBUG_SIGNAL(sender, object_path, interface, signal, parameters);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
 
 	if (!g_pd) {
 		WDP_LOGE("ws_dbus_plugin_data_s is not created yet");
@@ -3011,9 +2995,7 @@ static int _ws_get_interface(const char *iface_name, handle_reply function, void
 			SUPPLICANT_PATH, g_pd->g_dbus);
 
 	params.params = g_variant_new("(s)", iface_name);
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
-	DEBUG_PARAMS(params.params);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+	DEBUG_G_VARIANT("Params : ", params.params);
 
 	res = dbus_method_call(&params, SUPPLICANT_INTERFACE,
 			function, user_data);
@@ -3579,9 +3561,7 @@ int __ws_init_p2pdevice()
 	param = g_variant_new("(ssv)", SUPPLICANT_P2PDEVICE, "P2PDeviceConfig", value);
 
 	params.params = param;
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
-	DEBUG_PARAMS(params.params);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+	DEBUG_G_VARIANT("Params : ", params.params);
 
 	res = dbus_method_call(&params, DBUS_PROPERTIES_INTERFACE, NULL, NULL);
 	if (res < 0)
@@ -3862,9 +3842,7 @@ int ws_start_scan(wfd_oem_scan_param_s *param)
 	}
 
 	params.params = value;
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
-	DEBUG_PARAMS(params.params);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+	DEBUG_G_VARIANT("Params : ", params.params);
 
 	res = dbus_method_call(&params, SUPPLICANT_P2PDEVICE, NULL, NULL);
 	if (res < 0)
@@ -3907,9 +3885,7 @@ int ws_restart_scan(int freq)
 	g_variant_builder_unref(builder);
 
 	params.params = value;
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
-	DEBUG_PARAMS(params.params);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+	DEBUG_G_VARIANT("Params : ", params.params);
 
 	res = dbus_method_call(&params, SUPPLICANT_P2PDEVICE, NULL, NULL);
 	if (res < 0)
@@ -4068,9 +4044,7 @@ int ws_prov_disc_req(unsigned char *peer_addr, wfd_oem_wps_mode_e wps_mode, int 
 	value = g_variant_new("(os)", peer_path, __ws_wps_to_txt(wps_mode));
 
 	params.params = value;
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
-	DEBUG_PARAMS(params.params);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+	DEBUG_G_VARIANT("Params : ", params.params);
 
 	res = dbus_method_call(&params, SUPPLICANT_P2PDEVICE, NULL, NULL);
 	if (res < 0)
@@ -4139,9 +4113,7 @@ int ws_connect(unsigned char *peer_addr, wfd_oem_conn_param_s *param)
 	g_variant_builder_unref(builder);
 
 	params.params = value;
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
-	DEBUG_PARAMS(params.params);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+	DEBUG_G_VARIANT("Params : ", params.params);
 
 	res = dbus_method_call(&params, SUPPLICANT_P2PDEVICE, NULL, NULL);
 	if (res < 0)
@@ -4202,9 +4174,7 @@ int ws_disconnect(unsigned char *peer_addr, int is_iface_addr)
 	g_variant_builder_unref(builder);
 
 	params.params = value;
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
-	DEBUG_PARAMS(params.params);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+	DEBUG_G_VARIANT("Params : ", params.params);
 
 	res = dbus_method_call(&params, SUPPLICANT_P2PDEVICE, NULL, NULL);
 	if (res < 0)
@@ -4255,9 +4225,7 @@ int ws_reject_connection(unsigned char *peer_addr)
 	value = g_variant_new("(o)", peer_path);
 
 	params.params = value;
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
-	DEBUG_PARAMS(params.params);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+	DEBUG_G_VARIANT("Params : ", params.params);
 
 	res = dbus_method_call(&params, SUPPLICANT_P2PDEVICE, NULL, NULL);
 	if (res < 0)
@@ -4500,9 +4468,7 @@ int ws_create_group(wfd_oem_group_param_s *param)
 	g_variant_builder_unref(builder);
 
 	params.params = value;
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
-	DEBUG_PARAMS(params.params);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+	DEBUG_G_VARIANT("Params : ", params.params);
 
 	res = dbus_method_call(&params, SUPPLICANT_P2PDEVICE,
 			__store_group_iface_path, g_pd);
@@ -4601,9 +4567,7 @@ int ws_invite(unsigned char *peer_addr, wfd_oem_invite_param_s *param)
 	g_variant_builder_unref(builder);
 
 	params.params = value;
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
-	DEBUG_PARAMS(params.params);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+	DEBUG_G_VARIANT("Params : ", params.params);
 
 	res = dbus_method_call(&params, SUPPLICANT_P2PDEVICE, NULL, NULL);
 	if (res < 0)
@@ -4667,9 +4631,7 @@ int ws_wps_start(unsigned char *peer_addr, int wps_mode, const char *pin)
 	g_variant_builder_unref(builder);
 
 	params.params = value;
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
-	DEBUG_PARAMS(params.params);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+	DEBUG_G_VARIANT("Params : ", params.params);
 
 	res = dbus_method_call(&params, SUPPLICANT_WPS, NULL, NULL);
 	if (res < 0)
@@ -4769,9 +4731,7 @@ int ws_set_dev_name(char *dev_name)
 				"P2PDeviceConfig", value);
 
 	params.params = param;
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
-	DEBUG_PARAMS(params.params);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+	DEBUG_G_VARIANT("Params : ", params.params);
 
 	res = dbus_method_call(&params, DBUS_PROPERTIES_INTERFACE, NULL, NULL);
 	if (res < 0)
@@ -4834,9 +4794,7 @@ int ws_get_go_intent(int *go_intent)
 	}
 
 	param = g_variant_new("(ss)", SUPPLICANT_P2PDEVICE, "P2PDeviceConfig");
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
-	DEBUG_PARAMS(param);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+	DEBUG_G_VARIANT("Params : ", param);
 
 	reply = g_dbus_connection_call_sync(
 			g_dbus,
@@ -4869,9 +4827,8 @@ int ws_get_go_intent(int *go_intent)
 			GVariant *value = NULL;
 
 			while (g_variant_iter_loop(iter, "{sv}", &key, &value)) {
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
 				CHECK_KEY_VALUE(key, value);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+
 				if (g_strcmp0(key, "GOIntent") == 0)
 					g_variant_get(value, "u", go_intent);
 			}
@@ -4918,9 +4875,7 @@ int ws_set_go_intent(int go_intent)
 	param = g_variant_new("(ssv)", SUPPLICANT_P2PDEVICE, "P2PDeviceConfig", value);
 
 	params.params = param;
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
-	DEBUG_PARAMS(params.params);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+	DEBUG_G_VARIANT("Params : ", params.params);
 
 	res = dbus_method_call(&params, DBUS_PROPERTIES_INTERFACE, NULL, NULL);
 	if (res < 0)
@@ -4963,9 +4918,7 @@ int ws_set_country(char *ccode)
 	param = g_variant_new("(ssv)", SUPPLICANT_IFACE, "Country", value);
 
 	params.params = param;
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
-	DEBUG_PARAMS(params.params);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+	DEBUG_G_VARIANT("Params : ", params.params);
 
 	res = dbus_method_call(&params, DBUS_PROPERTIES_INTERFACE, NULL, NULL);
 	if (res < 0)
@@ -4986,9 +4939,9 @@ void __parsing_networks(const char* key, GVariant* value, void* user_data)
 	}
 
 	ws_network_info_s *network = (ws_network_info_s *)user_data;
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
+
 	CHECK_KEY_VALUE(key, value);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+
 	if (g_strcmp0(key, "ssid") == 0) {
 		const char *ssid = NULL;
 		g_variant_get(value, "&s", &ssid);
@@ -5102,9 +5055,8 @@ void __parsing_networks(const char* key, GVariant* value, void* user_data)
 void __ws_extract_p2pdevice_details(const char *key, GVariant *value, void *user_data)
 {
 	__WDP_LOG_FUNC_ENTER__;
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
 	CHECK_KEY_VALUE(key, value);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+
 	if (g_strcmp0(key, "PersistentGroups") == 0) {
 		GVariantIter *iter = NULL;
 		const char *path = NULL;
@@ -5281,9 +5233,7 @@ int ws_remove_persistent_group(char *ssid, unsigned char *bssid)
 			dbus_set_method_param(&params, "RemovePersistentGroup",
 					g_pd->iface_path, g_dbus);
 			params.params = g_variant_new("(o)", networks[i].persistent_path);
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
-			DEBUG_PARAMS(params.params);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+			DEBUG_G_VARIANT("Params : ", params.params);
 
 			res = dbus_method_call(&params, SUPPLICANT_P2PDEVICE, NULL, NULL);
 			if (res < 0) {
@@ -5341,9 +5291,7 @@ int ws_set_persistent_reconnect(unsigned char *bssid, int reconnect)
 	param = g_variant_new("(ssv)", SUPPLICANT_P2PDEVICE, "P2PDeviceConfig", value);
 
 	params.params = param;
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
-	DEBUG_PARAMS(params.params);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+	DEBUG_G_VARIANT("Params : ", params.params);
 
 	res = dbus_method_call(&params, DBUS_PROPERTIES_INTERFACE, NULL, NULL);
 	if (res < 0)
@@ -5656,9 +5604,7 @@ int ws_start_service_discovery(unsigned char *mac_addr, int service_type)
 	g_variant_builder_unref(builder);
 
 	params.params = value;
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
-	DEBUG_PARAMS(params.params);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+	DEBUG_G_VARIANT("Params : ", params.params);
 
 	res = dbus_method_call(&params, SUPPLICANT_P2PDEVICE, __add_service_query, mac_addr);
 	if (res < 0)
@@ -5800,9 +5746,7 @@ int ws_serv_add(wfd_oem_new_service_s *service)
 	g_variant_builder_unref(builder);
 
 	params.params = value;
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
-	DEBUG_PARAMS(params.params);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+	DEBUG_G_VARIANT("Params : ", params.params);
 
 	res = dbus_method_call(&params, SUPPLICANT_P2PDEVICE, NULL, NULL);
 	if (res < 0)
@@ -5862,9 +5806,7 @@ int ws_serv_del(wfd_oem_new_service_s *service)
 	g_variant_builder_unref(builder);
 
 	params.params = value;
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
-	DEBUG_PARAMS(params.params);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+	DEBUG_G_VARIANT("Params : ", params.params);
 
 	res = dbus_method_call(&params, SUPPLICANT_P2PDEVICE, NULL, NULL);
 	if (res < 0)
@@ -5911,9 +5853,7 @@ int _ws_disable_display()
 	param = g_variant_new("(ssv)", SUPPLICANT_INTERFACE, "WFDIEs", value);
 
 	params.params = param;
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
-	DEBUG_PARAMS(params.params);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+	DEBUG_G_VARIANT("Params : ", params.params);
 
 	res = dbus_method_call(&params, DBUS_PROPERTIES_INTERFACE, NULL, NULL);
 	if (res < 0)
@@ -6001,9 +5941,7 @@ int ws_set_display(wfd_oem_display_s *wifi_display)
 	param = g_variant_new("(ssv)", SUPPLICANT_INTERFACE, "WFDIEs", value);
 
 	params.params = param;
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
-	DEBUG_PARAMS(params.params);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+	DEBUG_G_VARIANT("Params : ", params.params);
 
 	res = dbus_method_call(&params, DBUS_PROPERTIES_INTERFACE, NULL, NULL);
 	if (res < 0)
@@ -6284,9 +6222,7 @@ int ws_advertise_service(wfd_oem_asp_service_s *service, int replace)
 
 	value = g_variant_new("(a{sv})", builder);
 	g_variant_builder_unref(builder);
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
-	DEBUG_PARAMS(value);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+	DEBUG_G_VARIANT("Params : ", value);
 
 	params.params = value;
 
@@ -6325,9 +6261,7 @@ int ws_cancel_advertise_service(wfd_oem_asp_service_s *service)
 
 	value = g_variant_new("(a{sv})", builder);
 	g_variant_builder_unref(builder);
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
-	DEBUG_PARAMS(value);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+	DEBUG_G_VARIANT("Params : ", value);
 	params.params = value;
 
 	res = dbus_method_call(&params, SUPPLICANT_P2PDEVICE, NULL, NULL);
@@ -6492,9 +6426,7 @@ int ws_seek_service(wfd_oem_asp_service_s *service)
 		value = g_variant_new("(a{sv})", builder);
 		g_variant_builder_unref(builder);
 
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
-		DEBUG_PARAMS(value);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+		DEBUG_G_VARIANT("Params : ", value);
 
 		params.params = value;
 		res = dbus_method_call(&params, SUPPLICANT_P2PDEVICE,
@@ -6543,9 +6475,7 @@ int ws_cancel_seek_service(wfd_oem_asp_service_s *service)
 
 		params.params = g_variant_new("(t)", service->search_id);
 
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
-		DEBUG_PARAMS(params.params);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+		DEBUG_G_VARIANT("Params : ", params.params);
 
 		res = dbus_method_call(&params, SUPPLICANT_P2PDEVICE, NULL, NULL);
 		if (res < 0)
@@ -6626,9 +6556,7 @@ int ws_asp_prov_disc_req(wfd_oem_asp_prov_s *asp_params)
 
 	value = g_variant_new("(a{sv})", builder);
 	g_variant_builder_unref(builder);
-#if defined(TIZEN_DEBUG_DBUS_VALUE)
-	DEBUG_PARAMS(value);
-#endif /* TIZEN_DEBUG_DBUS_VALUE */
+	DEBUG_G_VARIANT("Params : ", value);
 
 	params.params = value;
 
