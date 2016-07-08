@@ -2330,7 +2330,8 @@ static gboolean ws_event_handler(GIOChannel *source,
 		break;
 	}
 	event.event_id = event_id;
-	g_pd->callback(g_pd->user_data, &event);
+	if (g_pd->callback)
+		g_pd->callback(g_pd->user_data, &event);
 
 done:
 	if (event.edata) {
