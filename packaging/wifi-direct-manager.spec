@@ -1,6 +1,6 @@
 Name:		wifi-direct-manager
 Summary:	Wi-Fi Direct manger
-Version:	1.2.188
+Version:	1.2.189
 Release:	1
 Group:      Network & Connectivity/Wireless
 License:    Apache-2.0
@@ -122,10 +122,10 @@ cmake . -DCMAKE_INSTALL_PREFIX=%{_prefix} -DARCHITECTURE=$ARCH \
 -DLIB_DIR=%{_libdir} \
 -DBIN_DIR=%{_bindir} \
 -DSBIN_DIR=%{_sbindir} \
--DTZ_SYS_RO_ETC=%TZ_SYS_RO_ETC \
--DTZ_SYS_VAR=%TZ_SYS_VAR \
--DTZ_SYS_ETC=%TZ_SYS_ETC \
--DTZ_SYS_RUN=%TZ_SYS_RUN
+-DTZ_SYS_RO_ETC=%{TZ_SYS_RO_ETC} \
+-DTZ_SYS_VAR=%{TZ_SYS_VAR} \
+-DTZ_SYS_ETC=%{TZ_SYS_ETC} \
+-DTZ_SYS_RUN=%{TZ_SYS_RUN}
 
 make %{?_smp_mflags}
 
@@ -162,25 +162,15 @@ chmod 666 %{TZ_SYS_VAR}/lib/misc/dhcpd.leases
 %license LICENSE
 %defattr(-,root,root,-)
 %{_bindir}/wfd-manager
-%config %TZ_SYS_RO_ETC/wifi-direct/ccode.conf 
-%config %TZ_SYS_RO_ETC/wifi-direct/dhcpd.conf
-%config %TZ_SYS_RO_ETC/wifi-direct/p2p_supp.conf
-%config %TZ_SYS_RO_ETC/wifi-direct/udhcp_script.non-autoip
+%config %{TZ_SYS_RO_ETC}/wifi-direct/ccode.conf
+%config %{TZ_SYS_RO_ETC}/wifi-direct/dhcpd.conf
+%config %{TZ_SYS_RO_ETC}/wifi-direct/p2p_supp.conf
 %config %{_sysconfdir}/dbus-1/system.d/wfd-manager.conf
-%TZ_SYS_RO_ETC/wifi-direct/ccode.conf
-%TZ_SYS_RO_ETC/wifi-direct/dhcpd.conf
-%TZ_SYS_RO_ETC/wifi-direct/p2p_supp.conf
-%TZ_SYS_RO_ETC/wifi-direct/udhcp_script.non-autoip
-%TZ_SYS_ETC/p2p_supp.conf
-%{_bindir}/dhcpd-notify.sh
-%{_bindir}/wifi-direct-server.sh
-%{_bindir}/wifi-direct-dhcp.sh
-%{_sbindir}/p2p_supp.sh
+%attr(644,-,-) %{TZ_SYS_ETC}/p2p_supp.conf
 %attr(755,-,-) %{_bindir}/dhcpd-notify.sh
 %attr(755,-,-) %{_bindir}/wifi-direct-server.sh
 %attr(755,-,-) %{_bindir}/wifi-direct-dhcp.sh
 %attr(755,-,-) %{TZ_SYS_RO_ETC}/wifi-direct/udhcp_script.non-autoip
-%attr(644,root,root) %{_sysconfdir}/dbus-1/system.d/*
 %attr(644,root,root) %{_datadir}/dbus-1/system-services/*
 %attr(644,root,root) %{_libdir}/systemd/system/*
 %attr(755,-,-) %{_sbindir}/p2p_supp.sh
