@@ -154,6 +154,12 @@ static wfd_oem_ops_s supplicant_ops = {
 
 static ws_dbus_plugin_data_s *g_pd;
 
+#define G_PD_CALLBACK(user_data, event)\
+	do {\
+		if (g_pd->callback)\
+			g_pd->callback(user_data, event);\
+	} while(0)
+
 static int is_peer_joined_notified = 0;
 static int is_peer_disconnected_notified = 0;
 
@@ -566,7 +572,7 @@ static void _supplicant_signal_cb(GDBusConnection *connection,
 
 			memset(&event, 0x0, sizeof(wfd_oem_event_s));
 			event.event_id = WFD_OEM_EVENT_DEACTIVATED;
-			g_pd->callback(g_pd->user_data, &event);
+			G_PD_CALLBACK(g_pd->user_data, &event);
 
 			memset(g_pd->iface_path, 0x0, DBUS_OBJECT_PATH_MAX);
 		}
@@ -1666,7 +1672,7 @@ static void _ws_process_device_found_properties(GDBusConnection *connection,
 		ws_get_advertise_service(peer_path, (GList **)&(event.asp_services));
 #endif /* TIZEN_FEATURE_ASP */
 
-	g_pd->callback(g_pd->user_data, &event);
+	G_PD_CALLBACK(g_pd->user_data, &event);
 #if defined(TIZEN_FEATURE_ASP)
 	if (event.asp_services != NULL) {
 		GList *l;
@@ -1698,7 +1704,7 @@ static void _ws_process_device_lost(GDBusConnection *connection,
 
 	__ws_path_to_addr(peer_path, event.dev_addr, parameters);
 
-	g_pd->callback(g_pd->user_data, &event);
+	G_PD_CALLBACK(g_pd->user_data, &event);
 
 	__WDP_LOG_FUNC_EXIT__;
 }
@@ -1714,7 +1720,7 @@ static void _ws_process_find_stoppped(GDBusConnection *connection,
 	event.edata_type = WFD_OEM_EDATA_TYPE_NONE;
 	event.event_id = WFD_OEM_EVENT_DISCOVERY_FINISHED;
 
-	g_pd->callback(g_pd->user_data, &event);
+	G_PD_CALLBACK(g_pd->user_data, &event);
 
 	__WDP_LOG_FUNC_EXIT__;
 }
@@ -1763,7 +1769,7 @@ static void _ws_process_prov_disc_req_display_pin(GDBusConnection *connection,
 	dbus_property_get_all(peer_path, g_pd->g_dbus, SUPPLICANT_P2P_PEER,
 			__ws_peer_property, event.edata);
 
-	g_pd->callback(g_pd->user_data, &event);
+	G_PD_CALLBACK(g_pd->user_data, &event);
 	g_free(event.edata);
 
 	__WDP_LOG_FUNC_EXIT__;
@@ -1813,7 +1819,7 @@ static void _ws_process_prov_disc_resp_display_pin(GDBusConnection *connection,
 	dbus_property_get_all(peer_path, g_pd->g_dbus, SUPPLICANT_P2P_PEER,
 			__ws_peer_property, event.edata);
 
-	g_pd->callback(g_pd->user_data, &event);
+	G_PD_CALLBACK(g_pd->user_data, &event);
 	g_free(event.edata);
 
 	__WDP_LOG_FUNC_EXIT__;
@@ -1846,7 +1852,7 @@ static void _ws_process_prov_disc_req_enter_pin(GDBusConnection *connection,
 	dbus_property_get_all(peer_path, g_pd->g_dbus, SUPPLICANT_P2P_PEER,
 			__ws_peer_property, event.edata);
 
-	g_pd->callback(g_pd->user_data, &event);
+	G_PD_CALLBACK(g_pd->user_data, &event);
 	g_free(event.edata);
 
 	__WDP_LOG_FUNC_EXIT__;
@@ -1879,7 +1885,7 @@ static void _ws_process_prov_disc_resp_enter_pin(GDBusConnection *connection,
 	dbus_property_get_all(peer_path, g_pd->g_dbus, SUPPLICANT_P2P_PEER,
 			__ws_peer_property, event.edata);
 
-	g_pd->callback(g_pd->user_data, &event);
+	G_PD_CALLBACK(g_pd->user_data, &event);
 	g_free(event.edata);
 
 	__WDP_LOG_FUNC_EXIT__;
@@ -1912,7 +1918,7 @@ static void _ws_process_prov_disc_pbc_req(GDBusConnection *connection,
 	dbus_property_get_all(peer_path, g_pd->g_dbus, SUPPLICANT_P2P_PEER,
 			__ws_peer_property, event.edata);
 
-	g_pd->callback(g_pd->user_data, &event);
+	G_PD_CALLBACK(g_pd->user_data, &event);
 	g_free(event.edata);
 
 	__WDP_LOG_FUNC_EXIT__;
@@ -1945,7 +1951,7 @@ static void _ws_process_prov_disc_pbc_resp(GDBusConnection *connection,
 	dbus_property_get_all(peer_path, g_pd->g_dbus, SUPPLICANT_P2P_PEER,
 			__ws_peer_property, event.edata);
 
-	g_pd->callback(g_pd->user_data, &event);
+	G_PD_CALLBACK(g_pd->user_data, &event);
 	g_free(event.edata);
 
 	__WDP_LOG_FUNC_EXIT__;
@@ -1983,7 +1989,7 @@ static void _ws_process_prov_disc_failure(GDBusConnection *connection,
 		WDP_LOGE("No Properties");
 	}
 
-	g_pd->callback(g_pd->user_data, &event);
+	G_PD_CALLBACK(g_pd->user_data, &event);
 
 	if (event.edata_type == WFD_OEM_EDATA_TYPE_ASP_PROV)
 		g_free(edata->session_information);
@@ -2019,7 +2025,7 @@ static void _ws_process_prov_disc_failure(GDBusConnection *connection,
 	__ws_txt_to_mac(peer_dev, event.dev_addr);
 	WDP_LOGE("peer mac [" MACSTR "]", MAC2STR(event.dev_addr));
 
-	g_pd->callback(g_pd->user_data, &event);
+	G_PD_CALLBACK(g_pd->user_data, &event);
 
 	__WDP_LOG_FUNC_EXIT__;
 }
@@ -2058,7 +2064,7 @@ static void _ws_process_group_started(GDBusConnection *connection,
 		WDP_LOGE("No properties");
 	}
 
-	g_pd->callback(g_pd->user_data, &event);
+	G_PD_CALLBACK(g_pd->user_data, &event);
 	g_free(event.edata);
 
 	__WDP_LOG_FUNC_EXIT__;
@@ -2096,7 +2102,7 @@ static void _ws_process_go_neg_success(GDBusConnection *connection,
 		WDP_LOGE("No properties");
 	}
 
-	g_pd->callback(g_pd->user_data, &event);
+	G_PD_CALLBACK(g_pd->user_data, &event);
 	g_free(edata);
 
 	__WDP_LOG_FUNC_EXIT__;
@@ -2134,7 +2140,7 @@ static void _ws_process_go_neg_failure(GDBusConnection *connection,
 		WDP_LOGE("No properties");
 	}
 
-	g_pd->callback(g_pd->user_data, &event);
+	G_PD_CALLBACK(g_pd->user_data, &event);
 	g_free(event.edata);
 
 	__WDP_LOG_FUNC_EXIT__;
@@ -2193,7 +2199,7 @@ static void _ws_process_go_neg_request(GDBusConnection *connection,
 	dbus_property_get_all(peer_path, g_pd->g_dbus, SUPPLICANT_P2P_PEER,
 			__ws_peer_property, event.edata);
 
-	g_pd->callback(g_pd->user_data, &event);
+	G_PD_CALLBACK(g_pd->user_data, &event);
 	g_free(event.edata);
 
 	__WDP_LOG_FUNC_EXIT__;
@@ -2231,7 +2237,7 @@ static void _ws_process_invitation_received(GDBusConnection *connection,
 	}
 	memcpy(&(event.dev_addr), edata->sa, OEM_MACADDR_LEN);
 
-	g_pd->callback(g_pd->user_data, &event);
+	G_PD_CALLBACK(g_pd->user_data, &event);
 	g_free(event.edata);
 
 	__WDP_LOG_FUNC_EXIT__;
@@ -2262,7 +2268,7 @@ static void _ws_process_group_finished(GDBusConnection *connection,
 	memset(g_pd->group_iface_path, 0x0, DBUS_OBJECT_PATH_MAX);
 	_ws_flush();
 
-	g_pd->callback(g_pd->user_data, &event);
+	G_PD_CALLBACK(g_pd->user_data, &event);
 
 	__WDP_LOG_FUNC_EXIT__;
 }
@@ -2290,7 +2296,7 @@ static void _ws_process_service_discovery_response(GDBusConnection *connection,
 		WDP_LOGE("No Properties");
 	}
 
-	g_pd->callback(g_pd->user_data, &event);
+	G_PD_CALLBACK(g_pd->user_data, &event);
 
 	if (event.edata_type == WFD_OEM_EDATA_TYPE_NEW_SERVICE)
 		g_list_free((GList*) event.edata);
@@ -2343,7 +2349,7 @@ GLIST_ITER_START(seek_list, tmp)
 GLIST_ITER_END()
 
 	if (tmp != NULL && tmp->service_info != NULL)
-		g_pd->callback(g_pd->user_data, &event);
+		G_PD_CALLBACK(g_pd->user_data, &event);
 	else
 		WDP_LOGD("service info is not required, don't notify to user");
 
@@ -2405,7 +2411,7 @@ static void _ws_process_wps_failed(GDBusConnection *connection,
 		g_variant_iter_free(iter);
 	}
 
-	g_pd->callback(g_pd->user_data, &event);
+	G_PD_CALLBACK(g_pd->user_data, &event);
 
 	__WDP_LOG_FUNC_EXIT__;
 }
@@ -2421,7 +2427,7 @@ static void _ws_process_group_formation_failure(GDBusConnection *connection,
 	event.event_id = WFD_OEM_EVENT_GROUP_FORMATION_FAILURE;
 	event.edata_type = WFD_OEM_EDATA_TYPE_NONE;
 
-	g_pd->callback(g_pd->user_data, &event);
+	G_PD_CALLBACK(g_pd->user_data, &event);
 
 	__WDP_LOG_FUNC_EXIT__;
 }
@@ -2455,7 +2461,7 @@ static void _ws_process_invitation_accepted(GDBusConnection *connection,
 		}
 	}
 
-	g_pd->callback(g_pd->user_data, &event);
+	G_PD_CALLBACK(g_pd->user_data, &event);
 	__WDP_LOG_FUNC_EXIT__;
 }
 
@@ -2491,7 +2497,7 @@ static void _ws_process_asp_provision_start(GDBusConnection *connection,
 		WDP_LOGE("No Properties");
 	}
 
-	g_pd->callback(g_pd->user_data, &event);
+	G_PD_CALLBACK(g_pd->user_data, &event);
 
 	if (event.edata_type == WFD_OEM_EDATA_TYPE_ASP_PROV)
 		g_free(edata->session_information);
@@ -2531,7 +2537,7 @@ static void _ws_process_asp_provision_done(GDBusConnection *connection,
 		WDP_LOGE("No Properties");
 	}
 
-	g_pd->callback(g_pd->user_data, &event);
+	G_PD_CALLBACK(g_pd->user_data, &event);
 	g_free(edata);
 
 	__WDP_LOG_FUNC_EXIT__;
@@ -2727,7 +2733,7 @@ static void _ws_process_sta_authorized(GDBusConnection *connection,
 	event.event_id = WFD_OEM_EVENT_STA_CONNECTED;
 	event.edata_type = WFD_OEM_EDATA_TYPE_NONE;
 
-	g_pd->callback(g_pd->user_data, &event);
+	G_PD_CALLBACK(g_pd->user_data, &event);
 	__WDP_LOG_FUNC_EXIT__;
 }
 
@@ -2751,7 +2757,7 @@ static void _ws_process_sta_deauthorized(GDBusConnection *connection,
 	event.event_id = WFD_OEM_EVENT_STA_DISCONNECTED;
 	event.edata_type = WFD_OEM_EDATA_TYPE_NONE;
 
-	g_pd->callback(g_pd->user_data, &event);
+	G_PD_CALLBACK(g_pd->user_data, &event);
 	__WDP_LOG_FUNC_EXIT__;
 }
 
@@ -2874,7 +2880,7 @@ static void _group_signal_cb(GDBusConnection *connection,
 		dbus_property_get_all(peer_path, g_pd->g_dbus, SUPPLICANT_P2P_PEER,
 				__ws_peer_property, event.edata);
 
-		g_pd->callback(g_pd->user_data, &event);
+		G_PD_CALLBACK(g_pd->user_data, &event);
 		is_peer_joined_notified = 1;
 
 		g_free(edata);
@@ -2892,7 +2898,7 @@ static void _group_signal_cb(GDBusConnection *connection,
 
 		__ws_path_to_addr(peer_path, event.dev_addr, parameters);
 
-		g_pd->callback(g_pd->user_data, &event);
+		G_PD_CALLBACK(g_pd->user_data, &event);
 		is_peer_disconnected_notified = 1;
 	}
 }
