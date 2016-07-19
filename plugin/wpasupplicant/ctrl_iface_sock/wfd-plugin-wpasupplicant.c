@@ -294,8 +294,8 @@ static GList *service_list;
 #endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
 
 static gboolean ws_event_handler(GIOChannel *source,
-							   GIOCondition condition,
-							   gpointer data);
+				 GIOCondition condition,
+				 gpointer data);
 
 int wfd_plugin_load(wfd_oem_ops_s **ops)
 {
@@ -856,8 +856,8 @@ static int _connect_to_supplicant(char *ifname, ws_sock_data_s **sock_data)
 	GIOChannel *gio;
 	int gsource = 0;
 	gio = g_io_channel_unix_new(mon_sock);
-	if (!strstr(ifname, GROUP_IFACE_PREFIX))
-		gsource = g_io_add_watch(gio, G_IO_IN | G_IO_ERR | G_IO_HUP, (GIOFunc) ws_event_handler, sock);
+	gsource = g_io_add_watch(gio, G_IO_IN | G_IO_ERR | G_IO_HUP,
+				 (GIOFunc) ws_event_handler, sock);
 	g_io_channel_unref(gio);
 
 	sock->gsource = gsource;
@@ -1845,7 +1845,8 @@ static int _parsing_event_info(char *ifname, char *msg, wfd_oem_event_s *data)
 
 	/* parsing event string */
 	for (i = 0; ws_event_strs[i].index < WS_EVENT_LIMIT; i++) {
-		if (!strncmp(ws_event_strs[i].string, msg, strlen(ws_event_strs[i].string)))
+		if (!strncmp(ws_event_strs[i].string, msg,
+			     strlen(ws_event_strs[i].string)))
 			break;
 	}
 
@@ -2177,8 +2178,8 @@ static int _parsing_event_info(char *ifname, char *msg, wfd_oem_event_s *data)
 }
 
 static gboolean ws_event_handler(GIOChannel *source,
-								GIOCondition condition,
-								gpointer data)
+				 GIOCondition condition,
+				 gpointer data)
 {
 	__WDP_LOG_FUNC_ENTER__;
 	ws_sock_data_s * sd = (ws_sock_data_s*) data;
@@ -2289,22 +2290,33 @@ static gboolean ws_event_handler(GIOChannel *source,
 		break;
 	case WS_EVENT_GROUP_STARTED:
 		event_id = WFD_OEM_EVENT_GROUP_CREATED;
-		res = _connect_to_supplicant(GROUP_IFACE_NAME, &g_pd->group);
-		if (res < 0) {
-			WDP_LOGE("Failed to connect to group interface of supplicant");
-			/* goto done; */
+		if (!g_strcmp0(GROUP_IFACE_NAME, COMMON_IFACE_NAME)) {
+			g_pd->group = g_pd->common;
+		} else {
+			res = _connect_to_supplicant(GROUP_IFACE_NAME,
+						     &g_pd->group);
+			if (res < 0) {
+				WDP_LOGE("Failed to connect to group interface of supplicant");
+				/* goto done; */
+			}
 		}
 		break;
 	case WS_EVENT_GROUP_REMOVED:
 		event_id = WFD_OEM_EVENT_GROUP_DESTROYED;
-		if (g_pd->group) {
-			res = _disconnect_from_supplicant(GROUP_IFACE_NAME, g_pd->group);
-			if (res < 0) {
-				WDP_LOGE("Failed to disconnect from group interface of supplicant");
-				/* goto done; */
-			}
+		if (!g_strcmp0(GROUP_IFACE_NAME, COMMON_IFACE_NAME)) {
 			g_pd->group = NULL;
 			_ws_flush();
+		} else {
+			if (g_pd->group) {
+				res = _disconnect_from_supplicant(GROUP_IFACE_NAME,
+								  g_pd->group);
+				if (res < 0) {
+					WDP_LOGE("Failed to disconnect from group interface of supplicant");
+					/* goto done; */
+				}
+				g_pd->group = NULL;
+				_ws_flush();
+			}
 		}
 		break;
 	case WS_EVENT_INVITATION_RECEIVED:
@@ -2918,9 +2930,12 @@ int ws_deactivate(int concurrent)
 
 	g_pd->concurrent = concurrent;
 
-	if (g_pd->group) {
-		_disconnect_from_supplicant(GROUP_IFACE_NAME, g_pd->group);
-		g_pd->group = NULL;
+	if (g_strcmp0(GROUP_IFACE_NAME, COMMON_IFACE_NAME)) {
+		if (g_pd->group) {
+			_disconnect_from_supplicant(GROUP_IFACE_NAME,
+						    g_pd->group);
+			g_pd->group = NULL;
+		}
 	}
 
 	/*  terminate wpasupplicant */
@@ -3530,12 +3545,14 @@ int ws_create_group(wfd_oem_group_param_s *param)
 		return -1;
 	}
 
+	g_snprintf(cmd, sizeof(cmd), WS_CMD_P2P_GROUP_ADD);
+
 	if (param->persistent) {
 		if (param->persistent == 2)
-			snprintf(cmd, sizeof(cmd), WS_CMD_P2P_GROUP_ADD WS_STR_PERSISTENT "=%d",
+			g_snprintf(cmd, sizeof(cmd), WS_STR_PERSISTENT "=%d",
 					param->persistent_group_id);
 		else
-			snprintf(cmd, sizeof(cmd), WS_CMD_P2P_GROUP_ADD WS_STR_PERSISTENT);
+			g_snprintf(cmd, sizeof(cmd), WS_STR_PERSISTENT);
 	}
 
 	if (param->freq > 0) {
@@ -3554,9 +3571,9 @@ int ws_create_group(wfd_oem_group_param_s *param)
 
 	res = _ws_send_cmd(sock->ctrl_sock, cmd, reply, sizeof(reply));
 	if (res < 0) {
-			WDP_LOGE("Failed to send command to wpa_supplicant");
-			__WDP_LOG_FUNC_EXIT__;
-			return -1;
+		WDP_LOGE("Failed to send command to wpa_supplicant");
+		__WDP_LOG_FUNC_EXIT__;
+		return -1;
 	}
 
 	if (strstr(reply, "FAIL")) {
