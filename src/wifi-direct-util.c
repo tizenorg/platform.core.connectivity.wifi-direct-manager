@@ -60,6 +60,9 @@
 #include "wifi-direct-error.h"
 #include "wifi-direct-log.h"
 #include "wifi-direct-dbus.h"
+#if defined(TIZEN_FEATURE_ASP)
+#include "wifi-direct-asp.h"
+#endif
 
 #include <linux/unistd.h>
 #include <asm/types.h>
@@ -838,10 +841,6 @@ static gboolean _polling_ip(gpointer user_data)
 	g_snprintf(ip_str, IPSTR_LEN, IPSTR, IP2STR(peer->ip_addr));
 	_connect_remote_device(ip_str);
 
-	wfd_state_set(manager, WIFI_DIRECT_STATE_CONNECTED);
-	wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_CONNECTED);
-	wfd_destroy_session(manager);
-
 	char peer_mac_address[MACSTR_LEN+1] = {0, };
 
 	g_snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(peer->dev_addr));
@@ -850,6 +849,19 @@ static gboolean _polling_ip(gpointer user_data)
 				     g_variant_new("(iis)", WIFI_DIRECT_ERROR_NONE,
 							    WFD_EVENT_CONNECTION_RSP,
 							    peer_mac_address));
+
+#if defined(TIZEN_FEATURE_ASP)
+	wfd_session_s *session = manager->session;
+	if (session && session->session_id != 0)
+		wfd_asp_connect_status(session->session_mac,
+							session->session_id,
+							ASP_CONNECT_STATUS_GROUP_FORMATION_COMPLETED,
+							NULL);
+#endif
+
+	wfd_state_set(manager, WIFI_DIRECT_STATE_CONNECTED);
+	wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_CONNECTED);
+	wfd_destroy_session(manager);
 
 	__WDS_LOG_FUNC_EXIT__;
 	return FALSE;

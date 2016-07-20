@@ -44,6 +44,9 @@
 #include "wifi-direct-error.h"
 #include "wifi-direct-log.h"
 #include "wifi-direct-dbus.h"
+#ifdef TIZEN_FEATURE_ASP
+#include "wifi-direct-asp.h"
+#endif /* TIZEN_FEATURE_ASP */
 
 
 static gboolean _session_timeout_cb(gpointer *user_data)
@@ -73,6 +76,14 @@ static gboolean _session_timeout_cb(gpointer *user_data)
 				     g_variant_new("(iis)", WIFI_DIRECT_ERROR_CONNECTION_TIME_OUT,
 							    WFD_EVENT_CONNECTION_RSP,
 							    peer_mac_address));
+
+#if defined(TIZEN_FEATURE_ASP)
+	if (session->session_id != 0)
+		wfd_asp_connect_status(session->session_mac,
+							session->session_id,
+							ASP_CONNECT_STATUS_GROUP_FORMATION_STARTED,
+							NULL);
+#endif
 
 	wfd_session_cancel(session, peer_addr);
 
@@ -105,6 +116,15 @@ static void _wfd_notify_session_failed(wfd_manager_s *manager, unsigned char *pe
 				     g_variant_new("(iis)", WIFI_DIRECT_ERROR_CONNECTION_FAILED,
 							    WFD_EVENT_CONNECTION_RSP,
 							    peer_mac_address));
+
+#if defined(TIZEN_FEATURE_ASP)
+	wfd_session_s *session = manager->session;
+	if (session && session->session_id != 0)
+		wfd_asp_connect_status(session->session_mac,
+							session->session_id,
+							ASP_CONNECT_STATUS_GROUP_FORMATION_STARTED,
+							NULL);
+#endif
 
 	if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
 		wfd_state_set(manager, WIFI_DIRECT_STATE_GROUP_OWNER);
@@ -197,6 +217,10 @@ wfd_session_s *wfd_create_session(void *data, unsigned char *peer_addr, int wps_
 		session->wps_mode = WFD_WPS_MODE_KEYPAD;
 	else if (wps_mode == WFD_WPS_MODE_KEYPAD)
 		session->wps_mode = WFD_WPS_MODE_DISPLAY;
+#if defined(TIZEN_FEATURE_ASP)
+	else if (wps_mode == WFD_WPS_MODE_P2PS)
+		session->wps_mode = WFD_WPS_MODE_P2PS;
+#endif /* TIZEN_FEATURE_ASP */
 	else
 		session->wps_mode = wps_mode;
 	session->direction = direction;
@@ -317,6 +341,40 @@ int wfd_session_start(wfd_session_s *session)
 	__WDS_LOG_FUNC_EXIT__;
 	return 0;
 }
+
+#if defined(TIZEN_FEATURE_ASP)
+int wfd_session_asp_session_start(wfd_session_s *session, wfd_oem_asp_prov_s *params)
+{
+	__WDS_LOG_FUNC_ENTER__;
+
+	wfd_manager_s *manager = wfd_get_manager();
+	int res = 0;
+
+	if (session == NULL || params == NULL) {
+		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	if (session->state > SESSION_STATE_STARTED) {
+		WDS_LOGE("Invalid session state(%d)", session->state);
+		return -1;
+	}
+
+	session->state = SESSION_STATE_STARTED;
+	res = wfd_oem_asp_prov_disc_req(manager->oem_ops, params);
+	if (res < 0) {
+		WDS_LOGD("Failed to send ASP provision discovery request to peer");
+		wfd_destroy_session(manager);
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
+	wfd_session_timer(session, 1);
+
+	__WDS_LOG_FUNC_EXIT__;
+	return 0;
+}
+#endif /* TIZEN_FEATURE_ASP */
 
 #if 0
 int wfd_session_stop(wfd_session_s *session)
@@ -626,6 +684,102 @@ int wfd_session_wps(wfd_session_s *session)
 	return 0;
 }
 
+#if defined(TIZEN_FEATURE_ASP)
+/* In case of incomming session, when user accept connection request, this function should be called.
+ * In case of outgoing session, when prov_disc response arrived, this function should be called.
+ * Even though peer is GO, we can use this function, which can decide using join itself.
+ */
+int wfd_session_asp_connect(wfd_session_s *session, int role)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_manager_s *manager = wfd_get_manager();
+	wfd_oem_conn_param_s param;
+	wfd_device_s *peer = NULL;
+	int res = 0;
+
+	if (!session) {
+		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	if (session->state > SESSION_STATE_GO_NEG) {
+		WDS_LOGE("Session already finished GO Negotiation");
+		return -1;
+	}
+
+	session->state = SESSION_STATE_GO_NEG;
+	peer = session->peer;
+
+	memset(&param, 0x00, sizeof(wfd_oem_conn_param_s));
+	param.wps_mode = session->wps_mode;
+	if (role == 2)
+		param.conn_flags |= WFD_OEM_CONN_TYPE_JOIN;
+	param.go_intent = session->go_intent;
+	param.freq = session->freq;
+	param.conn_flags |= WFD_OEM_CONN_TYPE_PERSISTENT;
+
+	if (session->wps_pin[0] != '\0')
+		g_strlcpy(param.wps_pin, session->wps_pin, OEM_PINSTR_LEN + 1);
+
+	res = wfd_oem_connect(manager->oem_ops, peer->dev_addr, &param);
+	if (res < 0) {
+		WDS_LOGD("Failed to connect peer [" MACSECSTR "]", MAC2SECSTR(peer->dev_addr));
+		wfd_destroy_session(manager);
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	wfd_session_timer(session, 1);
+
+	__WDS_LOG_FUNC_EXIT__;
+	return 0;
+}
+
+/* In case of incomming session, when user accept connection request, this function should be called.
+ * In case of outgoing session, when prov_disc response arrived, this function should be called.
+ * Even though peer is GO, we can use this function, which can decide using join itself.
+ */
+int wfd_session_asp_persistent_connect(wfd_session_s *session, int persist_group_id)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_manager_s *manager = wfd_get_manager();
+	wfd_device_s *peer = NULL;
+	wfd_oem_group_param_s param;
+	int res = 0;
+
+	if (!session) {
+		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	if (session->state > SESSION_STATE_GO_NEG) {
+		WDS_LOGE("Session already finished GO Negotiation");
+		return -1;
+	}
+
+	session->state = SESSION_STATE_WPS;
+
+	memset(&param, 0x0, sizeof(param));
+	param.persistent = 2;
+	param.persistent_group_id = persist_group_id;
+
+	res = wfd_oem_create_group(manager->oem_ops, &param);
+	if (res < 0) {
+		WDS_LOGD("Failed to connect peer [" MACSECSTR "]", MAC2SECSTR(peer->dev_addr));
+		wfd_destroy_session(manager);
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	wfd_session_timer(session, 1);
+
+	__WDS_LOG_FUNC_EXIT__;
+	return 0;
+}
+#endif /* TIZEN_FEATURE_ASP */
+
 wfd_device_s *wfd_session_get_peer(wfd_session_s *session)
 {
 	__WDS_LOG_FUNC_ENTER__;
@@ -934,6 +1088,63 @@ int wfd_session_process_event(wfd_manager_s *manager, wfd_oem_event_s *event)
 			session->state = SESSION_STATE_COMPLETED;
 		}
 	}
+		break;
+#if defined(TIZEN_FEATURE_ASP)
+	case WFD_OEM_EVENT_ASP_PROV_START:
+	{
+		int req_wps_mode = WFD_WPS_MODE_NONE;
+
+		if (event->wps_mode == WFD_WPS_MODE_DISPLAY)
+			req_wps_mode = WFD_WPS_MODE_KEYPAD;
+		else if (event->wps_mode == WFD_WPS_MODE_KEYPAD)
+			req_wps_mode = WFD_WPS_MODE_DISPLAY;
+		else
+			req_wps_mode = WFD_WPS_MODE_P2PS;
+
+		session = wfd_create_session(manager, event->dev_addr,
+				req_wps_mode, SESSION_DIRECTION_INCOMING);
+		if (!session) {
+			WDS_LOGE("Failed to create session with peer [" MACSECSTR "]",
+							MAC2SECSTR(event->dev_addr));
+			break;
+		}
+
+		/* Update session */
+		if (event->wps_mode == WFD_WPS_MODE_DISPLAY)
+			g_strlcpy(session->wps_pin, event->wps_pin, PINSTR_LEN + 1);
+
+		session->state = SESSION_STATE_STARTED;
+		wfd_session_timer(session, 1);
+	}
+		break;
+	case WFD_OEM_EVENT_ASP_PROV_DONE:
+	{
+		int req_wps_mode = WFD_WPS_MODE_NONE;
+
+		if (event->wps_mode == WFD_WPS_MODE_DISPLAY)
+			req_wps_mode = WFD_WPS_MODE_KEYPAD;
+		else if (event->wps_mode == WFD_WPS_MODE_KEYPAD)
+			req_wps_mode = WFD_WPS_MODE_DISPLAY;
+		else
+			req_wps_mode = WFD_WPS_MODE_P2PS;
+
+		session = (wfd_session_s*) manager->session;
+		if (!session) {
+			session = wfd_create_session(manager, event->dev_addr,
+					req_wps_mode, SESSION_DIRECTION_INCOMING);
+			if (!session) {
+				WDS_LOGE("Failed to create session with peer [" MACSECSTR "]",
+								MAC2SECSTR(event->dev_addr));
+				break;
+			}
+			session->state = SESSION_STATE_STARTED;
+			wfd_session_timer(session, 1);
+		}
+	}
+		break;
+#endif /* TIZEN_FEATURE_ASP */
+	if (res < 0)
+		_wfd_notify_session_failed(manager, event->dev_addr);
 	break;
 	default:
 		break;

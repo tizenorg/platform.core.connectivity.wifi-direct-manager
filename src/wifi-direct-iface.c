@@ -44,6 +44,9 @@
 #ifdef TIZEN_FEATURE_SERVICE_DISCOVERY
 #include "wifi-direct-service.h"
 #endif /* TIZEN_FEATURE_SERVICE_DISCOVERY */
+#ifdef TIZEN_FEATURE_ASP
+#include "wifi-direct-asp.h"
+#endif /* TIZEN_FEATURE_ASP */
 
 #define WFD_DBUS_REPLY_ERROR_NONE(invocation) \
 	g_dbus_method_invocation_return_value((invocation), g_variant_new("(i)", WIFI_DIRECT_ERROR_NONE))
@@ -408,9 +411,29 @@ const gchar wfd_manager_introspection_xml[] = {
 				"<arg type='t' name='search_id' direction='in'/>"
 				"<arg type='i' name='result' direction='out'/>"
 			"</method>"
+		"<method name='ConnectSession'>"
+			"<arg type='a{sv}' name='parameters' direction='in'/>"
+			"<arg type='i' name='result' direction='out'/>"
+		"</method>"
+		"<method name='ConfirmSession'>"
+			"<arg type='a{sv}' name='parameters' direction='in'/>"
+			"<arg type='i' name='result' direction='out'/>"
+		"</method>"
 			"<signal name='SearchResult'>"
 				"<arg type='a{sv}' name='parameters'/>"
 			"</signal>"
+		"<signal name='SessionRequest'>"
+			"<arg type='a{sv}' name='parameters'/>"
+		"</signal>"
+		"<signal name='SessionConfigRequest'>"
+			"<arg type='a{sv}' name='parameters'/>"
+		"</signal>"
+		"<signal name='ConnectStatus'>"
+			"<arg type='a{sv}' name='parameters'/>"
+		"</signal>"
+		"<signal name='SessionStatus'>"
+			"<arg type='a{sv}' name='parameters'/>"
+		"</signal>"
 		"</interface>"
 #endif
 	"</node>"
@@ -884,6 +907,7 @@ static void __wfd_manager_manage_iface_handler(const gchar *method_name,
 
 	} else if (!g_strcmp0(method_name, "GetPeerInfo")) {
 		wfd_discovery_entry_s *peer = NULL;
+		wfd_device_s *connected_peer = NULL;
 		GVariantBuilder *builder_peer = NULL;
 		const char *peer_mac_address = NULL;
 		unsigned char mac_addr[MACADDR_LEN] = {0, };
@@ -900,6 +924,8 @@ static void __wfd_manager_manage_iface_handler(const gchar *method_name,
 			ret = WIFI_DIRECT_ERROR_OPERATION_FAILED;
 			goto failed;
 		}
+
+		connected_peer = wfd_group_find_member_by_addr(manager->group, mac_addr);
 
 		g_variant_builder_add(builder_peer, "{sv}",
 				"DeviceName",
@@ -943,6 +969,16 @@ static void __wfd_manager_manage_iface_handler(const gchar *method_name,
 		g_variant_builder_add(builder_peer, "{sv}",
 				"IsWfdDevice",
 				g_variant_new_boolean(peer->is_wfd_device));
+#endif /* TIZEN_FEATURE_WIFI_DISPLAY */
+#ifdef TIZEN_FEATURE_ASP
+		if (connected_peer) {
+			g_variant_builder_add(builder_peer, "{sv}",
+					"IsInGroup",
+					g_variant_new_boolean(true));
+			g_variant_builder_add(builder_peer, "{sv}",
+					"IPAddress",
+					wfd_manager_dbus_pack_ay(connected_peer->ip_addr, IPADDR_LEN));
+		}
 #endif /* TIZEN_FEATURE_WIFI_DISPLAY */
 
 		ret = WIFI_DIRECT_ERROR_NONE;
@@ -2211,6 +2247,173 @@ static void __wfd_manager_asp_iface_handler(const gchar *method_name,
 		ret = WIFI_DIRECT_ERROR_NONE;
 		return_parameters = g_variant_new("(i)", ret);
 		goto done;
+	} else if (!g_strcmp0(method_name, "ConnectSession")) {
+
+		GVariantIter *iter = NULL;
+		gchar *key = NULL;
+		GVariant *var = NULL;
+		wfd_oem_asp_prov_s prov_params;
+		const char *mac_str = NULL;
+		int status = 0;
+
+		if (manager->state != WIFI_DIRECT_STATE_ACTIVATED &&
+				manager->state != WIFI_DIRECT_STATE_DISCOVERING &&
+				manager->state != WIFI_DIRECT_STATE_GROUP_OWNER) {
+			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
+			goto failed;
+		}
+
+		memset(&prov_params, 0, sizeof(wfd_oem_asp_prov_s));
+
+		g_variant_get(parameters, "a{sv}", &iter);
+		while (g_variant_iter_loop(iter, "{sv}", &key, &var)) {
+
+			if (!g_strcmp0(key, "service_mac")) {
+				g_variant_get(var, "&s", &mac_str);
+				if (mac_str == NULL) {
+					ret = WIFI_DIRECT_ERROR_INVALID_PARAMETER;
+					g_variant_iter_free(iter);
+					goto failed;
+				}
+				macaddr_atoe(mac_str, prov_params.service_mac);
+			} else if (!g_strcmp0(key, "adv_id")) {
+				g_variant_get(var, "u", &(prov_params.adv_id));
+			} else if (!g_strcmp0(key, "session_mac")) {
+				g_variant_get(var, "&s", &mac_str);
+				if (mac_str == NULL) {
+					ret = WIFI_DIRECT_ERROR_INVALID_PARAMETER;
+					g_variant_iter_free(iter);
+					goto failed;
+				}
+				macaddr_atoe(mac_str, prov_params.session_mac);
+			} else if (!g_strcmp0(key, "session_id")) {
+				g_variant_get(var, "u", &(prov_params.session_id));
+			} else if (!g_strcmp0(key, "role")) {
+				g_variant_get(var, "y", &(prov_params.network_role));
+			} else if (!g_strcmp0(key, "config_method")) {
+				g_variant_get(var, "u", &(prov_params.network_config));
+			} else if (!g_strcmp0(key, "session_info")) {
+				g_variant_get(var, "&s", &(prov_params.session_information));
+			} else {
+				;/* Do Nothing */
+			}
+		}
+
+		if (ISZEROMACADDR(prov_params.service_mac) ||
+				ISZEROMACADDR(prov_params.session_mac))	{
+			ret = WIFI_DIRECT_ERROR_INVALID_PARAMETER;
+			g_variant_iter_free(iter);
+			goto failed;
+		}
+
+		WFD_DBUS_REPLY_ERROR_NONE(invocation);
+
+
+		wfd_asp_connect_status(prov_params.session_mac,
+				prov_params.session_id,
+				ASP_CONNECT_STATUS_REQUEST_SENT,
+				NULL);
+
+
+		wfd_group_s *group = (wfd_group_s*) manager->group;
+		if (group && group->member_count >= manager->max_station) {
+
+			status = ASP_CONNECT_STATUS_NOMORE_CONNECT;
+			wfd_asp_connect_status(prov_params.session_mac,
+					prov_params.session_id,
+					status,
+					NULL);
+			g_variant_iter_free(iter);
+			return;
+		}
+
+		ret = wfd_manager_asp_connect_session(manager, &prov_params);
+		if (ret == WIFI_DIRECT_ERROR_NONE) {
+			char peer_mac_address[MACSTR_LEN] = {0,};
+			g_snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(prov_params.service_mac));
+			wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+						     "Connection",
+						     g_variant_new("(iis)", WIFI_DIRECT_ERROR_NONE,
+									    WFD_EVENT_CONNECTION_IN_PROGRESS,
+									    peer_mac_address));
+		} else {
+			wfd_asp_connect_status(prov_params.session_mac,
+					prov_params.session_id,
+					ASP_CONNECT_STATUS_REQUEST_FAILED,
+					NULL);
+		}
+		g_variant_iter_free(iter);
+		return;
+
+	} else if (!g_strcmp0(method_name, "ConfirmSession")) {
+
+		GVariantIter *iter = NULL;
+		gchar *key = NULL;
+		GVariant *var = NULL;
+		wfd_oem_asp_prov_s prov_params;
+		const char *mac_str = NULL;
+		const char *pin = NULL;
+		int confirmed = 0;
+
+		if (manager->state != WIFI_DIRECT_STATE_CONNECTING) {
+			ret = WIFI_DIRECT_ERROR_NOT_PERMITTED;
+			goto failed;
+		}
+
+		memset(&prov_params, 0, sizeof(wfd_oem_asp_prov_s));
+
+		g_variant_get(parameters, "a{sv}", &iter);
+		while (g_variant_iter_loop(iter, "{sv}", &key, &var)) {
+
+			if (!g_strcmp0(key, "session_mac")) {
+				g_variant_get(var, "&s", &mac_str);
+				if (mac_str == NULL) {
+					ret = WIFI_DIRECT_ERROR_INVALID_PARAMETER;
+					g_variant_iter_free(iter);
+					goto failed;
+				}
+				macaddr_atoe(mac_str, prov_params.session_mac);
+			} else if (!g_strcmp0(key, "session_id")) {
+				g_variant_get(var, "u", &(prov_params.session_id));
+			} else if (!g_strcmp0(key, "confirmed")) {
+				g_variant_get(var, "y", &(confirmed));
+			} else if (!g_strcmp0(key, "pin")) {
+				g_variant_get(var, "&s", &(pin));
+				g_strlcpy(prov_params.wps_pin, pin, PINSTR_LEN);
+			} else {
+				;/* Do Nothing */
+			}
+		}
+
+		if (ISZEROMACADDR(prov_params.session_mac))	{
+			ret = WIFI_DIRECT_ERROR_INVALID_PARAMETER;
+			g_variant_iter_free(iter);
+			goto failed;
+		}
+
+		WFD_DBUS_REPLY_ERROR_NONE(invocation);
+
+		ret = wfd_manager_asp_confirm_session(manager, &prov_params, confirmed);
+		if (ret == WIFI_DIRECT_ERROR_NONE && confirmed > 0) {
+			char peer_mac_address[MACSTR_LEN] = {0,};
+			g_snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(prov_params.service_mac));
+			wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
+						     "Connection",
+						     g_variant_new("(iis)", WIFI_DIRECT_ERROR_NONE,
+									    WFD_EVENT_CONNECTION_IN_PROGRESS,
+									    peer_mac_address));
+			wfd_asp_connect_status(prov_params.session_mac,
+					prov_params.session_id,
+					ASP_CONNECT_STATUS_REQUEST_ACCEPTED,
+					NULL);
+		} else {
+			wfd_asp_connect_status(prov_params.session_mac,
+					prov_params.session_id,
+					ASP_CONNECT_STATUS_REQUEST_FAILED,
+					NULL);
+		}
+		g_variant_iter_free(iter);
+		return;
 	}
 
 done:
