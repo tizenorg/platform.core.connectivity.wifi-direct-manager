@@ -48,6 +48,9 @@
 #include "wifi-direct-error.h"
 #include "wifi-direct-log.h"
 #include "wifi-direct-dbus.h"
+#if defined(TIZEN_FEATURE_ASP)
+#include "wifi-direct-asp.h"
+#endif /* TIZEN_FEATURE_ASP */
 
 
 static int _wfd_event_update_peer(wfd_manager_s *manager, wfd_oem_dev_data_s *data)
@@ -405,6 +408,10 @@ static void __wfd_process_prov_disc_fail(wfd_manager_s *manager,
 	wfd_session_s *session = NULL;
 	unsigned char *peer_addr = NULL;
 	char peer_mac_address[MACSTR_LEN+1] = {0, };
+#if defined(TIZEN_FEATURE_ASP)
+	wfd_oem_asp_prov_s *prov_params = NULL;
+	prov_params = (wfd_oem_asp_prov_s *)event->edata;
+#endif
 
 	session = (wfd_session_s*) manager->session;
 	if (!session) {
@@ -419,7 +426,25 @@ static void __wfd_process_prov_disc_fail(wfd_manager_s *manager,
 		__WDS_LOG_FUNC_EXIT__;
 		return;
 	}
+#if defined(TIZEN_FEATURE_ASP)
+	if (session->session_id != 0) {
+		/* This connection is for ASP session */
+		if (prov_params->status == WFD_OEM_SC_FAIL_INVALID_PARAMS) {
+			wfd_oem_scan_param_s param;
 
+			WDS_LOGD("ASP prov disc deferred. wait response.");
+			wfd_asp_connect_status(session->session_mac,
+								session->session_id,
+								ASP_CONNECT_STATUS_REQUEST_DEFERRED,
+								NULL);
+			/* start listen to wait for provision discovery request from peer */
+			memset(&param, 0x0, sizeof(wfd_oem_scan_param_s));
+			param.scan_mode = WFD_OEM_SCAN_MODE_PASSIVE;
+			wfd_oem_start_scan(manager->oem_ops, &param);
+			return;
+		}
+	}
+#endif
 	snprintf(peer_mac_address, MACSTR_LEN, MACSTR, MAC2STR(peer_addr));
 	wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
 				     "Connection",
@@ -427,6 +452,13 @@ static void __wfd_process_prov_disc_fail(wfd_manager_s *manager,
 						   WIFI_DIRECT_ERROR_CONNECTION_FAILED,
 						   WFD_EVENT_CONNECTION_RSP,
 						   peer_mac_address));
+#if defined(TIZEN_FEATURE_ASP)
+	WDS_LOGD("ASP prov disc failed. remove session.");
+	wfd_asp_connect_status(session->session_mac,
+						session->session_id,
+						ASP_CONNECT_STATUS_REQUEST_FAILED,
+						NULL);
+#endif
 
 	if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
 		wfd_group_s *group = (wfd_group_s*) manager->group;
@@ -574,6 +606,14 @@ static void __wfd_process_go_neg_fail(wfd_manager_s *manager,
 						   WFD_EVENT_CONNECTION_RSP,
 						   peer_mac_address));
 
+#if defined(TIZEN_FEATURE_ASP)
+	if (session->session_id != 0)
+		wfd_asp_connect_status(session->session_mac,
+							session->session_id,
+							ASP_CONNECT_STATUS_GROUP_FORMATION_STARTED,
+							NULL);
+#endif
+
 	wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
 	wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
 
@@ -643,7 +683,13 @@ static void __wfd_process_wps_fail(wfd_manager_s *manager,
 						   WIFI_DIRECT_ERROR_CONNECTION_FAILED,
 						   WFD_EVENT_CONNECTION_RSP,
 						   peer_mac_address));
-
+#if defined(TIZEN_FEATURE_ASP)
+	if (session->session_id != 0)
+		wfd_asp_connect_status(session->session_mac,
+							session->session_id,
+							ASP_CONNECT_STATUS_GROUP_FORMATION_STARTED,
+							NULL);
+#endif
 	if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
 		wfd_group_s *group = (wfd_group_s*) manager->group;
 		if (group && !group->member_count &&
@@ -719,7 +765,13 @@ static void __wfd_process_key_neg_fail(wfd_manager_s *manager,
 						   WIFI_DIRECT_ERROR_CONNECTION_FAILED,
 						   WFD_EVENT_CONNECTION_RSP,
 						   peer_mac_address));
-
+#if defined(TIZEN_FEATURE_ASP)
+	if (session->session_id != 0)
+		wfd_asp_connect_status(session->session_mac,
+							session->session_id,
+							ASP_CONNECT_STATUS_GROUP_FORMATION_STARTED,
+							NULL);
+#endif
 	if (manager->local->dev_role == WFD_DEV_ROLE_GO) {
 		wfd_group_s *group = (wfd_group_s*) manager->group;
 		if (group && !group->member_count &&
@@ -819,7 +871,13 @@ static void __wfd_process_group_created(wfd_manager_s *manager, wfd_oem_event_s 
 						     g_variant_new("(iis)", WIFI_DIRECT_ERROR_NONE,
 									    WFD_EVENT_CONNECTION_RSP,
 									    peer_mac_address));
-
+#if defined(TIZEN_FEATURE_ASP)
+	if (session->session_id != 0)
+		wfd_asp_connect_status(session->session_mac,
+							session->session_id,
+							ASP_CONNECT_STATUS_GROUP_FORMATION_COMPLETED,
+							NULL);
+#endif
 			wfd_state_set(manager, WIFI_DIRECT_STATE_CONNECTED);
 			wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_CONNECTED);
 
@@ -859,12 +917,20 @@ static void __wfd_process_group_destroyed(wfd_manager_s *manager, wfd_oem_event_
 								    peer_mac_address));
 
 	} else if (manager->state == WIFI_DIRECT_STATE_CONNECTING && manager->session) {
+
 		wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
 					     "Connection",
 					     g_variant_new("(iis)", WIFI_DIRECT_ERROR_CONNECTION_FAILED,
 								    WFD_EVENT_CONNECTION_RSP,
 								    peer_mac_address));
-
+#if defined(TIZEN_FEATURE_ASP)
+		wfd_session_s *session = manager->session;
+		if (session->session_id != 0)
+			wfd_asp_connect_status(session->session_mac,
+					session->session_id,
+					ASP_CONNECT_STATUS_GROUP_FORMATION_FAILED,
+					NULL);
+#endif
 	} else if (manager->state >= WIFI_DIRECT_STATE_CONNECTED) {
 		if (manager->local->dev_role != WFD_DEV_ROLE_GO) {
 			wfd_manager_dbus_emit_signal(WFD_MANAGER_MANAGE_INTERFACE,
@@ -1080,6 +1146,13 @@ static void __wfd_process_sta_connected(wfd_manager_s *manager, wfd_oem_event_s 
 				     "PeerIPAssigned",
 				     g_variant_new("(ss)", peer_mac_address,
 							   assigned_ip_address));
+#if defined(TIZEN_FEATURE_ASP)
+	if (session->session_id != 0)
+		wfd_asp_connect_status(session->session_mac,
+							session->session_id,
+							ASP_CONNECT_STATUS_GROUP_FORMATION_COMPLETED,
+							NULL);
+#endif
 	} else
 #endif /* TIZEN_FEATURE_IP_OVER_EAPOL */
 	wfd_util_dhcps_wait_ip_leased(peer);
@@ -1211,6 +1284,14 @@ static void __wfd_process_sta_disconnected(wfd_manager_s *manager, wfd_oem_event
 						     g_variant_new("(iis)", WIFI_DIRECT_ERROR_CONNECTION_FAILED,
 									    WFD_EVENT_CONNECTION_RSP,
 									    peer_mac_address));
+#if defined(TIZEN_FEATURE_ASP)
+			wfd_session_s *session = manager->session;
+			if (session && session->session_id != 0)
+				wfd_asp_connect_status(session->session_mac,
+									session->session_id,
+									ASP_CONNECT_STATUS_GROUP_FORMATION_FAILED,
+									NULL);
+#endif
 		} else {
 			WDS_LOGE("Unexpected Peer State. Ignore it");
 			__WDS_LOG_FUNC_EXIT__;
@@ -1276,6 +1357,14 @@ static void __wfd_process_group_formation_failure(wfd_manager_s *manager, wfd_oe
 				     g_variant_new("(iis)", WIFI_DIRECT_ERROR_CONNECTION_FAILED,
 							    WFD_EVENT_CONNECTION_RSP,
 							    peer_mac_address));
+
+#if defined(TIZEN_FEATURE_ASP)
+	if (session->session_id != 0)
+		wfd_asp_connect_status(session->session_mac,
+							session->session_id,
+							ASP_CONNECT_STATUS_GROUP_FORMATION_FAILED,
+							NULL);
+#endif
 
 	wfd_state_set(manager, WIFI_DIRECT_STATE_ACTIVATED);
 	wfd_util_set_wifi_direct_state(WIFI_DIRECT_STATE_ACTIVATED);
@@ -1457,10 +1546,150 @@ static void __wfd_process_asp_serv_resp(wfd_manager_s *manager, wfd_oem_event_s 
 	__WDS_LOG_FUNC_EXIT__;
 	return;
 }
+/*
+int __wfd_handle_asp_prov(wfd_oem_event_s *event, asp_session_s *asp_session)
+{
+	__WDS_LOG_FUNC_ENTER__;
+
+	wfd_manager_s *manager = wfd_get_manager();
+	wfd_session_s *session = NULL;
+	wfd_oem_asp_prov_s *prov_params = NULL;
+	int res = 0;
+
+	prov_params = (wfd_oem_asp_prov_s *)event->edata;
+	if (prov_params == NULL || asp_session == NULL) {
+		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
+
+	res = wfd_session_process_event(manager, event);
+	session = (wfd_session_s *)manager->session;
+	if (res < 0 || session == NULL) {
+		WDS_LOGE("Failed to process event of session");
+		__WDS_LOG_FUNC_EXIT__;
+		return -1;
+	}
+	memcpy(&(session->session_mac), prov_params->session_mac, sizeof(session->session_mac));
+	session->session_id = prov_params->session_id;
+
+	memset(asp_session, 0, sizeof(asp_session_s));
+	memcpy(&(asp_session->session_mac), prov_params->session_mac, sizeof(asp_session->session_mac));
+	asp_session->session_id = prov_params->session_id;
+	memcpy(&(asp_session->service_mac), prov_params->service_mac, sizeof(asp_session->service_mac));
+	asp_session->advertisement_id = prov_params->adv_id;
+	asp_session->network_role = prov_params->network_role;
+	asp_session->network_config = prov_params->network_config;
+	asp_session->persist = prov_params->persist;
+	asp_session->state = prov_params->status;
+	if (prov_params->session_information)
+		asp_session->session_information = strdup(prov_params->session_information);
+
+	__WDS_LOG_FUNC_EXIT__;
+	return 0;
+}
+*/
+
+int __wfd_handle_asp_prov_done(wfd_session_s *session, wfd_oem_event_s *event)
+{
+	__WDS_LOG_FUNC_ENTER__;
+
+	wfd_oem_asp_prov_s *prov_params = NULL;
+	prov_params = (wfd_oem_asp_prov_s *)event->edata;
+	int res = 0;
+
+	if (prov_params->persist &&
+	(prov_params->network_role || prov_params->network_config)) {
+		WDS_LOGE("Persistent group is used but "
+				"conncap/dev_passwd_id are present");
+		return -1;
+	}
+
+	if (!prov_params->persist &&
+	(!prov_params->network_role && !prov_params->network_config)) {
+		WDS_LOGE("Persistent group not used but "
+				"conncap/dev_passwd_id are missing");
+		return -1;
+	}
+
+	if (session->wps_mode == WFD_OEM_WPS_MODE_P2PS)
+		g_strlcpy(session->wps_pin, OEM_DEFAULT_P2PS_PIN, OEM_PINSTR_LEN + 1);
+
+	if (prov_params->persist) {
+		res = wfd_session_asp_persistent_connect(session, prov_params->persistent_group_id);
+	} else if (prov_params->network_role == 1) {
+		res = wfd_session_asp_connect(session, 1);
+	} else if (prov_params->network_role == 2) {
+		res = wfd_session_asp_connect(session, 2);
+	} else if (prov_params->network_role == 4) {
+		WDS_LOGD("don't need to take action.");
+
+	} else {
+		WDS_LOGE("Unhandled event");
+		res = -1;
+	}
+
+	__WDS_LOG_FUNC_EXIT__;
+	return res;
+}
 
 static void __wfd_process_asp_prov_start(wfd_manager_s *manager, wfd_oem_event_s *event)
 {
 	__WDS_LOG_FUNC_ENTER__;
+
+	wfd_device_s *peer = NULL;
+	wfd_session_s *session = NULL;
+	wfd_oem_asp_prov_s *prov_params = NULL;
+	int res = 0;
+
+#ifdef CTRL_IFACE_DBUS
+	wfd_oem_dev_data_s *edata = NULL;
+
+	edata = (wfd_oem_dev_data_s*) event->edata;
+	if (!edata || event->edata_type != WFD_OEM_EDATA_TYPE_ASP_PROV) {
+		WDS_LOGE("Invalid event data");
+		return;
+	}
+
+	res = _wfd_event_update_peer(manager, edata);
+	peer = wfd_peer_find_by_dev_addr(manager, event->dev_addr);
+	if (peer)
+		peer->state = WFD_PEER_STATE_CONNECTING;
+#else /* CTRL_IFACE_DBUS */
+	peer = wfd_peer_find_by_dev_addr(manager, event->dev_addr);
+	if (!peer) {
+		WDS_LOGD("Prov_disc from unknown peer. Add new peer");
+		peer = wfd_add_peer(manager, event->dev_addr, "DIRECT-");
+		if (!peer) {
+			WDS_LOGE("Failed to add peer");
+			return;
+		}
+		peer->state = WFD_PEER_STATE_CONNECTING;
+		wfd_update_peer(manager, peer);
+	}
+	wfd_update_peer_time(manager, event->dev_addr);
+#endif /* CTRL_IFACE_DBUS */
+
+	res = wfd_session_process_event(manager, event);
+	session = (wfd_session_s *)manager->session;
+	if (res < 0 || session == NULL) {
+		WDS_LOGE("Failed to process event of session");
+		__WDS_LOG_FUNC_EXIT__;
+		return;
+	}
+
+	WDS_LOGD("created session [%u] with peer [" MACSTR "]", session->session_id,
+			MAC2STR(session->session_mac));
+
+	/* Incomming Session, auto_accept = TRUE emit request Received */
+	/* generate SessionConfigRequest if event->wps_mode is not P2PS  and return*/
+	wfd_asp_session_request(prov_params);
+	wfd_asp_connect_status(prov_params->session_mac,
+						prov_params->session_id,
+						ASP_CONNECT_STATUS_REQUEST_RECEIVED,
+						NULL);
+
+	wfd_state_set(manager, WIFI_DIRECT_STATE_CONNECTING);
 
 	__WDS_LOG_FUNC_EXIT__;
 	return;
@@ -1470,6 +1699,99 @@ static void __wfd_process_asp_prov_done(wfd_manager_s *manager, wfd_oem_event_s 
 {
 	__WDS_LOG_FUNC_ENTER__;
 
+	wfd_device_s *peer = NULL;
+	wfd_session_s *session = NULL;
+	wfd_oem_asp_prov_s *prov_params;
+	int res = 0;
+
+#ifdef CTRL_IFACE_DBUS
+	wfd_oem_dev_data_s *edata = NULL;
+
+	edata = (wfd_oem_dev_data_s*) event->edata;
+	prov_params = (wfd_oem_asp_prov_s *)edata;
+	if (!edata || event->edata_type != WFD_OEM_EDATA_TYPE_ASP_PROV) {
+		WDS_LOGE("Invalid event data");
+		return;
+	}
+
+	res = _wfd_event_update_peer(manager, edata);
+	peer = wfd_peer_find_by_dev_addr(manager, event->dev_addr);
+	if (peer)
+		peer->state = WFD_PEER_STATE_CONNECTING;
+#else /* CTRL_IFACE_DBUS */
+	peer = wfd_peer_find_by_dev_addr(manager, event->dev_addr);
+	if (!peer) {
+		WDS_LOGD("Prov_disc from unknown peer. Add new peer");
+		peer = wfd_add_peer(manager, event->dev_addr, "DIRECT-");
+		if (!peer) {
+			WDS_LOGE("Failed to add peer");
+			return;
+		}
+		peer->state = WFD_PEER_STATE_CONNECTING;
+		wfd_update_peer(manager, peer);
+	}
+	wfd_update_peer_time(manager, event->dev_addr);
+#endif /* CTRL_IFACE_DBUS */
+
+	/* Incomming Session, auto_accept = TRUE emit request Received */
+	/* generate SessionConfigRequest if event->wps_mode is not P2PS  and return*/
+	if (manager->session == NULL) {
+		wfd_asp_session_request(prov_params);
+		wfd_asp_connect_status(prov_params->session_mac,
+							prov_params->session_id,
+							ASP_CONNECT_STATUS_REQUEST_RECEIVED,
+							NULL);
+	}
+	res = wfd_session_process_event(manager, event);
+	session = (wfd_session_s *)manager->session;
+	if (res < 0 || session == NULL) {
+		WDS_LOGE("Failed to process event of session");
+		wfd_destroy_session(manager);
+		wfd_asp_connect_status(prov_params->session_mac,
+							prov_params->session_id,
+							ASP_CONNECT_STATUS_REQUEST_FAILED,
+							NULL);
+		wfd_oem_refresh(manager->oem_ops);
+		__WDS_LOG_FUNC_EXIT__;
+		return;
+	}
+
+	if (prov_params->status != 0 && prov_params->status != 12) {
+		WDS_LOGD("ASP-PROV failed. remove session.");
+		wfd_destroy_session(manager);
+		wfd_oem_refresh(manager->oem_ops);
+		wfd_asp_connect_status(prov_params->session_mac,
+							prov_params->session_id,
+							ASP_CONNECT_STATUS_REQUEST_FAILED,
+							NULL);
+		__WDS_LOG_FUNC_EXIT__;
+		return;
+	}
+
+	wfd_asp_connect_status(prov_params->session_mac,
+						prov_params->session_id,
+						ASP_CONNECT_STATUS_REQUEST_ACCEPTED,
+						NULL);
+
+	wfd_asp_connect_status(prov_params->session_mac,
+						prov_params->session_id,
+						ASP_CONNECT_STATUS_GROUP_FORMATION_STARTED,
+						NULL);
+	res = __wfd_handle_asp_prov_done(session, event);
+	if (res < 0) {
+		WDS_LOGE("Connect failed. remove session.");
+		wfd_destroy_session(manager);
+		wfd_oem_refresh(manager->oem_ops);
+
+		wfd_asp_connect_status(prov_params->session_mac,
+							prov_params->session_id,
+							ASP_CONNECT_STATUS_GROUP_FORMATION_FAILED,
+							NULL);
+		__WDS_LOG_FUNC_EXIT__;
+		return;
+	}
+
+	WDS_LOGD("Provision done succeeded.");
 	__WDS_LOG_FUNC_EXIT__;
 	return;
 }

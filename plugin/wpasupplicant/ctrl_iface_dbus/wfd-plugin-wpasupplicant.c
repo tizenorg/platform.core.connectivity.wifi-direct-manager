@@ -1218,6 +1218,8 @@ static void __ws_extract_asp_provision_start_details(const char *key, GVariant *
 	__WDP_LOG_FUNC_ENTER__;
 	wfd_oem_event_s *event = (wfd_oem_event_s *)user_data;
 	wfd_oem_asp_prov_s *asp_params = NULL;
+	int dev_passwd_id = 0;
+
 	if (!event || !event->edata) {
 		__WDP_LOG_FUNC_EXIT__;
 		return;
@@ -1251,8 +1253,15 @@ static void __ws_extract_asp_provision_start_details(const char *key, GVariant *
 		WDP_LOGD("Retrive session id [%u]", asp_params->session_id);
 
 	} else if (g_strcmp0(key, "dev_passwd_id") == 0) {
-		g_variant_get(value, "i", &event->wps_mode);
-		WDP_LOGD("Retrive dev_passwd_id [%d]", event->wps_mode);
+		/* This is requested WPS mode */
+		g_variant_get(value, "i", &dev_passwd_id);
+		WDP_LOGD("Retrive dev_passwd_id [%d]", dev_passwd_id);
+		if (dev_passwd_id == WS_DEV_PASSWD_ID_USER_SPECIFIED)
+			event->wps_mode = WFD_OEM_WPS_MODE_DISPLAY;
+		else if (dev_passwd_id == WS_DEV_PASSWD_ID_REGISTRAR_SPECIFIED)
+			event->wps_mode = WFD_OEM_WPS_MODE_KEYPAD;
+		else if (dev_passwd_id == WS_DEV_PASSWD_ID_P2PS)
+			event->wps_mode = WFD_OEM_WPS_MODE_P2PS;
 
 	} else if (g_strcmp0(key, "conncap") == 0) {
 		g_variant_get(value, "u", &asp_params->network_role);
@@ -1317,8 +1326,16 @@ static void __ws_extract_asp_provision_done_details(const char *key, GVariant *v
 		WDP_LOGD("Retrive session id [%u]", asp_params->session_id);
 
 	} else if (g_strcmp0(key, "dev_passwd_id") == 0) {
-		g_variant_get(value, "i", &event->wps_mode);
-		WDP_LOGD("Retrive dev_passwd_id [%d]", event->wps_mode);
+		int dev_passwd_id = 0;
+		/* This is requested WPS mode */
+		g_variant_get(value, "i", &dev_passwd_id);
+		WDP_LOGD("Retrive dev_passwd_id [%d]", dev_passwd_id);
+		if (dev_passwd_id == WS_DEV_PASSWD_ID_USER_SPECIFIED)
+			event->wps_mode = WFD_OEM_WPS_MODE_DISPLAY;
+		else if (dev_passwd_id == WS_DEV_PASSWD_ID_REGISTRAR_SPECIFIED)
+			event->wps_mode = WFD_OEM_WPS_MODE_KEYPAD;
+		else if (dev_passwd_id == WS_DEV_PASSWD_ID_P2PS)
+			event->wps_mode = WFD_OEM_WPS_MODE_P2PS;
 
 	} else if (g_strcmp0(key, "conncap") == 0) {
 		g_variant_get(value, "u", &asp_params->network_role);
@@ -1642,7 +1659,8 @@ static void _ws_process_device_found_properties(GDBusConnection *connection,
 	WDP_LOGD("Retrive Added path [%s]", peer_path);
 
 	loc = strrchr(peer_path,'/');
-	__ws_mac_compact_to_normal(loc + 1, peer_dev);
+	if (loc != NULL)
+		__ws_mac_compact_to_normal(loc + 1, peer_dev);
 	__ws_txt_to_mac(peer_dev, event.dev_addr);
 	WDP_LOGD("peer mac [" MACSTR "]", MAC2STR(event.dev_addr));
 
