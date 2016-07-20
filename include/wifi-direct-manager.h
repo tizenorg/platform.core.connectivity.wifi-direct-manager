@@ -236,5 +236,10 @@ int wfd_manager_set_session_availability(int availability);
 #endif /* TIZEN_FEATURE_WIFI_DISPLAY */
 int wfd_manager_start_discovery(wfd_manager_s *manager, int mode, int timeout, const char* type, int channel);
 int wfd_manager_cancel_discovery(wfd_manager_s *manager);
+#if defined(TIZEN_FEATURE_ASP)
+wfd_device_s *wfd_manager_get_connected_peer_by_addr(wfd_manager_s *manager, unsigned char *peer_addr);
+int wfd_manager_asp_connect_session(wfd_manager_s *manager, void *params);
+int wfd_manager_asp_confirm_session(wfd_manager_s *manager, void *params, int confirmed);
+#endif /* TIZEN_FEATURE_ASP */
 
 #endif /* __WIFI_DIRECT_MANAGER_H__ */

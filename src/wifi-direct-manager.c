@@ -685,6 +685,104 @@ int wfd_manager_connect(wfd_manager_s *manager, unsigned char *peer_addr)
 	return WIFI_DIRECT_ERROR_NONE;
 }
 
+#if defined(TIZEN_FEATURE_ASP)
+int wfd_manager_asp_connect_session(wfd_manager_s *manager, void *params)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_session_s *session = NULL;
+	wfd_oem_asp_prov_s *prov_params = NULL;
+	int req_wps_mode = WFD_WPS_MODE_P2PS;
+	int res = 0;
+
+	prov_params = (wfd_oem_asp_prov_s *)params;
+	if (!manager || !prov_params) {
+		WDS_LOGE("Invalid parameter");
+		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
+	}
+
+	session = (wfd_session_s*) manager->session;
+	if (session) {
+		WDS_LOGE("Session already exists");
+		return WIFI_DIRECT_ERROR_NOT_PERMITTED;
+	}
+
+	if (prov_params->network_config == WFD_OEM_ASP_WPS_TYPE_PIN_DISPLAY)
+		req_wps_mode = WFD_WPS_MODE_DISPLAY;
+	else if (prov_params->network_config == WFD_OEM_ASP_WPS_TYPE_PIN_KEYPAD)
+		req_wps_mode = WFD_WPS_MODE_KEYPAD;
+	else
+		req_wps_mode = WFD_WPS_MODE_P2PS;
+
+	session = wfd_create_session(manager, prov_params->service_mac,
+			req_wps_mode, SESSION_DIRECTION_OUTGOING);
+	if (!session) {
+		WDS_LOGE("Failed to create new session");
+		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
+	}
+
+	res = wfd_session_asp_session_start(session, prov_params);
+	if (res < 0) {
+		WDS_LOGE("Failed to start session");
+		wfd_destroy_session(manager);
+		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
+	}
+
+	wfd_state_set(manager, WIFI_DIRECT_STATE_CONNECTING);
+
+	__WDS_LOG_FUNC_EXIT__;
+	return WIFI_DIRECT_ERROR_NONE;
+}
+
+int wfd_manager_asp_confirm_session(wfd_manager_s *manager, void *params, int confirmed)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_session_s *session = NULL;
+	wfd_oem_asp_prov_s *prov_params = NULL;
+	int res = 0;
+
+	prov_params = (wfd_oem_asp_prov_s *)params;
+	if (!manager || !prov_params) {
+		WDS_LOGE("Invalid parameter");
+		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
+	}
+
+	session = (wfd_session_s*) manager->session;
+	if (!session) {
+		WDS_LOGE("Session not exists");
+		return WIFI_DIRECT_ERROR_NOT_PERMITTED;
+	}
+
+
+	WDS_LOGD("confirm session [%u] with peer [" MACSTR "]", prov_params->session_id,
+			MAC2STR(prov_params->session_mac));
+
+	WDS_LOGD("created session [%u] with peer [" MACSTR "]", session->session_id,
+			MAC2STR(session->session_mac));
+
+	if (session->session_id != prov_params->session_id ||
+			memcmp(&(session->session_mac), prov_params->session_mac, MACADDR_LEN) != 0) {
+		WDS_LOGE("Session MAC or ID not matched");
+		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
+	}
+
+	if (confirmed)
+		prov_params->status = 12;
+	else
+		prov_params->status = 11;
+
+	res = wfd_oem_asp_prov_disc_req(manager->oem_ops, prov_params);
+	if (res < 0) {
+		WDS_LOGE("Failed to start session");
+		wfd_destroy_session(manager);
+		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
+	}
+	wfd_state_set(manager, WIFI_DIRECT_STATE_CONNECTING);
+
+	__WDS_LOG_FUNC_EXIT__;
+	return WIFI_DIRECT_ERROR_NONE;
+}
+#endif
+
 int wfd_manager_accept_connection(wfd_manager_s *manager, unsigned char *peer_addr)
 {
 	__WDS_LOG_FUNC_ENTER__;
@@ -709,7 +807,7 @@ int wfd_manager_accept_connection(wfd_manager_s *manager, unsigned char *peer_ad
 		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
 	}
 
-	if (!memcmp(session->peer->dev_addr, peer_addr ,MACADDR_LEN)) {
+	if (!memcmp(session->peer->dev_addr, peer_addr, MACADDR_LEN)) {
 		WDS_LOGE("Peer and ongoing session peer are different");
 		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
 	}
@@ -1236,6 +1334,26 @@ int wfd_manager_get_connected_peers(wfd_manager_s *manager, wfd_connected_peer_i
 	__WDS_LOG_FUNC_EXIT__;
 	return count;
 }
+
+#ifdef TIZEN_FEATURE_ASP
+wfd_device_s *wfd_manager_get_connected_peer_by_addr(wfd_manager_s *manager, unsigned char *peer_addr)
+{
+	__WDS_LOG_FUNC_ENTER__;
+	wfd_device_s *peer = NULL;
+
+	if (peer_addr == NULL) {
+		WDS_LOGE("Invalid parameter");
+		__WDS_LOG_FUNC_EXIT__;
+		return peer;
+	}
+
+	if (manager->group)
+		peer = wfd_group_find_member_by_addr(manager->group, peer_addr);
+
+	__WDS_LOG_FUNC_EXIT__;
+	return peer;
+}
+#endif /* TIZEN_FEATURE_ASP */
 
 #if 0
 wfd_device_s *wfd_manager_find_connected_peer(wfd_manager_s *manager, unsigned char *peer_addr)

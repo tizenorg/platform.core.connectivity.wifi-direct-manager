@@ -33,6 +33,9 @@ typedef enum {
 	SESSION_TYPE_INVITE,
 	SESSION_TYPE_JOIN,
 	SESSION_TYPE_MULTI,
+#if defined(TIZEN_FEATURE_ASP)
+	SESSION_TYPE_ASP,
+#endif /* TIZEN_FEATURE_ASP */
 } session_type_e;
 
 typedef enum {
@@ -63,6 +66,10 @@ typedef struct {
 	int go_intent;
 	int freq;
 	char wps_pin[PINSTR_LEN+1];
+#if defined(TIZEN_FEATURE_ASP)
+	unsigned int session_id;
+	unsigned char session_mac[MACADDR_LEN];
+#endif /* TIZEN_FEATURE_ASP */
 } wfd_session_s;
 
 wfd_session_s *wfd_create_session(void *data, unsigned char *peer_addr, int wps_mode, int direction);
@@ -84,5 +91,10 @@ int wfd_session_complete(wfd_session_s *session);
 int wfd_session_timer(wfd_session_s *session, int start);
 
 int wfd_session_process_event(wfd_manager_s *manager, wfd_oem_event_s *event);
+#if defined(TIZEN_FEATURE_ASP)
+int wfd_session_asp_session_start(wfd_session_s *session, wfd_oem_asp_prov_s *params);
+int wfd_session_asp_connect(wfd_session_s *session, int role);
+int wfd_session_asp_persistent_connect(wfd_session_s *session, int persist_group_id);
+#endif /* TIZEN_FEATURE_ASP */
 
 #endif /* __WIFI_DIRECT_SESSION_H__ */
