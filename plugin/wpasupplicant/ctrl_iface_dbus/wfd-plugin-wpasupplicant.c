@@ -1642,7 +1642,8 @@ static void _ws_process_device_found_properties(GDBusConnection *connection,
 	WDP_LOGD("Retrive Added path [%s]", peer_path);
 
 	loc = strrchr(peer_path,'/');
-	__ws_mac_compact_to_normal(loc + 1, peer_dev);
+	if (loc != NULL)
+		__ws_mac_compact_to_normal(loc + 1, peer_dev);
 	__ws_txt_to_mac(peer_dev, event.dev_addr);
 	WDP_LOGD("peer mac [" MACSTR "]", MAC2STR(event.dev_addr));
 

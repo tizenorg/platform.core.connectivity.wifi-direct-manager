@@ -709,7 +709,7 @@ int wfd_manager_accept_connection(wfd_manager_s *manager, unsigned char *peer_ad
 		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
 	}
 
-	if (!memcmp(session->peer->dev_addr, peer_addr ,MACADDR_LEN)) {
+	if (!memcmp(session->peer->dev_addr, peer_addr, MACADDR_LEN)) {
 		WDS_LOGE("Peer and ongoing session peer are different");
 		return WIFI_DIRECT_ERROR_OPERATION_FAILED;
 	}
